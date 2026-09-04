@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="_sys.css">
+<style>
+  .h1{font-size:54px; max-width:940px;}
+  .sub{font-size:25px; max-width:940px;}
+  .bg .glow-lime{top:-200px; left:-220px; bottom:auto; right:auto;}
+  .bg .glow-teal{right:-240px; bottom:-260px; left:auto; top:auto;}
+  /* textura de fundo (swirl da intersecção), como no slide 1 e 2 */
+  .bg .stroke{width:1180px; top:-340px; right:-260px; opacity:.14;}
+
+  .matrix{margin-top:auto; margin-bottom:6px; display:flex; align-items:center; justify-content:center; gap:0;}
+  .plot{position:relative; width:760px; height:560px; margin:0 0 44px 70px;}
+
+  /* eixos */
+  .ylab, .xlab{position:absolute; font-family:var(--font-display); font-weight:var(--fw-bold);
+    text-transform:uppercase; letter-spacing:.14em; font-size:20px; color:#fff;}
+  .ylab{left:-58px; top:50%; transform:translateY(-50%) rotate(180deg); writing-mode:vertical-lr;}
+  .xlab{left:0; bottom:-42px; width:100%; text-align:center;}
+  .tick{position:absolute; font-family:var(--font-mono); font-size:14px; color:var(--ink-2); text-transform:uppercase;}
+  .tick.y1{left:-46px; top:-2px;} .tick.y0{left:-46px; bottom:-2px;}
+  .tick.x0{left:0; bottom:-40px;} .tick.x1{right:0; bottom:-40px;}
+
+  /* grade 2×2 */
+  .grid2{position:absolute; inset:0; display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr;
+    border:1.5px solid var(--hair-2); border-radius:8px; overflow:hidden;}
+  .q{position:relative; padding:26px 28px; display:flex; flex-direction:column;
+    border-right:1px solid var(--hair); border-bottom:1px solid var(--hair);}
+  .q:nth-child(2), .q:nth-child(4){border-right:none;}
+  .q:nth-child(3), .q:nth-child(4){border-bottom:none;}
+  .q .qt{font-family:var(--font-display); font-weight:var(--fw-bold); text-transform:uppercase;
+    letter-spacing:.03em; font-size:26px; color:#fff; line-height:1.05;}
+  .q .qs{font-family:var(--font-mono); font-size:14px; color:var(--ink-2); margin-top:8px; letter-spacing:.2px;}
+  .q.dim{opacity:.5;}
+  .q.dim .qt{font-weight:var(--fw-semibold); font-size:23px;}
+
+  /* quadrante vencedor: alto impacto + baixo esforço (canto superior esquerdo) */
+  .q.win{background:color-mix(in srgb,var(--lime-500) 10%,transparent);
+    box-shadow:inset 0 0 0 2px var(--lime-500), 0 0 40px color-mix(in srgb,var(--lime-500) 22%,transparent);}
+  .q.win .qt{color:var(--lime-500); font-size:30px;}
+  .q.win .qs{color:color-mix(in srgb,var(--lime-500) 80%,#fff);}
+  .q.win .dot{position:absolute; left:44px; top:150px; width:26px; height:26px; border-radius:50%;
+    background:var(--lime-500); box-shadow:0 0 0 8px color-mix(in srgb,var(--lime-500) 16%,transparent),
+    0 0 24px color-mix(in srgb,var(--lime-500) 60%,transparent);}
+  .q .badge{position:absolute; right:22px; top:22px; font-family:var(--font-mono); font-size:13px;
+    color:var(--lime-500); border:1px solid color-mix(in srgb,var(--lime-500) 45%,transparent);
+    border-radius:999px; padding:4px 10px;}
+</style>
+</head>
+<body class="on-black">
+  <div class="slide">
+    <div class="bg">
+      <div class="grid"></div>
+      <div class="glow-lime"></div>
+      <div class="glow-teal"></div>
+      <img class="stroke" src="../../assets/intersecoes/8.png" alt="">
+    </div>
+
+    <div class="content">
+      <header class="top">
+        <img class="wordmark" src="../../assets/logo-nogma-lime.png" alt="nogma">
+        <span class="counter">04 / 07</span>
+      </header>
+
+      <div class="eyebrow sq">O método</div>
+      <h1 class="h1">A gente não pergunta<br>o que <span class="lm">dá pra automatizar</span>.</h1>
+      <p class="sub">Cruza impacto, retorno e esforço de cada tarefa. No mapa de <b>impacto × esforço</b>, o ponto de partida fica <span class="lm">óbvio</span>.</p>
+
+      <div class="matrix">
+        <div class="plot">
+          <div class="ylab">Impacto</div>
+          <div class="xlab">Esforço</div>
+          <span class="tick y1">alto</span><span class="tick y0">baixo</span>
+          <span class="tick x0">baixo</span><span class="tick x1">alto</span>
+
+          <div class="grid2">
+            <div class="q win">
+              <div class="badge">comece aqui</div>
+              <div class="qt">Ganho<br>rápido</div>
+              <div class="qs">alto impacto · baixo esforço</div>
+              <div class="dot"></div>
+            </div>
+            <div class="q">
+              <div class="qt">Vale, mas<br>planeje</div>
+              <div class="qs">alto impacto · alto esforço</div>
+            </div>
+            <div class="q dim">
+              <div class="qt">Se sobrar<br>tempo</div>
+              <div class="qs">baixo impacto · baixo esforço</div>
+            </div>
+            <div class="q dim">
+              <div class="qt">Deixa<br>pra lá</div>
+              <div class="qs">baixo impacto · alto esforço</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="foot">
+        <span class="site">nogma.br</span>
+        <span class="drag">→</span>
+      </footer>
+    </div>
+  </div>
+</body>
+</html>

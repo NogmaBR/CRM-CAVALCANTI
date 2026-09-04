@@ -1,0 +1,313 @@
+<!-- @dsCard group="Site" viewport="1320x900" name="Nogma — Site" subtitle="Landing page da consultoria (hero, serviços, resultados)" -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nogma — Automação & IA para PMEs</title>
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+  /* ===== Dark-tech theme — near-black base, lime/petroleum accents ===== */
+  :root{
+    --site-bg:#0A0B0C; --site-surface:#131517; --site-surface-2:#191C1E;
+    --hair:color-mix(in srgb,#fff 9%,transparent); --hair-2:color-mix(in srgb,#fff 14%,transparent);
+    --teal:#3FB7C9; /* petroleum-family electric secondary */
+  }
+  html,body{ margin:0; background:var(--site-bg); color:#fff; font-family:var(--font-sans); }
+  .ng-ic{ vertical-align:middle; }
+  .wrap{ max-width:1200px; margin:0 auto; padding:0 32px; position:relative; z-index:1; }
+  .mono{ font-family:var(--font-mono); font-size:12px; letter-spacing:.04em; color:var(--teal); }
+  .eyebrow{ font-family:var(--font-display); font-weight:700; letter-spacing:.16em; text-transform:uppercase; font-size:13px; color:var(--lime-500); display:inline-flex; align-items:center; gap:10px; }
+  .eyebrow::before{ content:""; width:22px; height:1.5px; background:var(--lime-500); display:inline-block; }
+
+  /* Nav */
+  .nav{ position:sticky; top:0; z-index:100; background:color-mix(in srgb,#0A0B0C 68%,transparent); backdrop-filter:blur(16px) saturate(1.5);
+    border-bottom:1px solid var(--hair); }
+  .nav__in{ display:flex; align-items:center; justify-content:space-between; height:70px; }
+  .nav__logo{ height:22px; width:auto; }
+  .nav__links{ display:flex; gap:32px; }
+  .nav__links a{ font-size:14.5px; font-weight:600; color:var(--neutral-400); }
+  .nav__links a:hover{ color:#fff; }
+  .nav__right{ display:flex; align-items:center; gap:16px; }
+  .nav__signin{ font-size:14.5px; font-weight:600; color:#fff; }
+
+  /* Hero */
+  .hero{ padding:96px 0 96px; position:relative; overflow:hidden; }
+  .hero__glow{ position:absolute; top:-160px; left:-120px; width:640px; height:640px; pointer-events:none;
+    background:radial-gradient(circle, color-mix(in srgb,var(--lime-500) 22%,transparent) 0%, transparent 62%); filter:blur(20px); }
+  .hero__glow--teal{ left:auto; right:-160px; top:120px; width:520px; height:520px;
+    background:radial-gradient(circle, color-mix(in srgb,var(--teal) 20%,transparent) 0%, transparent 64%); }
+  .hero__grid{ display:grid; grid-template-columns:1.15fr .85fr; gap:56px; align-items:center; }
+  .hero__chip{ display:inline-flex; align-items:center; gap:8px; padding:6px 12px; border-radius:999px;
+    border:1px solid var(--hair-2); background:color-mix(in srgb,#fff 4%,transparent); font-size:12.5px; color:var(--neutral-300); margin-bottom:22px; }
+  .hero__chip .pulse{ width:7px; height:7px; border-radius:50%; background:var(--lime-500); box-shadow:0 0 0 0 var(--lime-500); animation:pulse 2s infinite; }
+  @keyframes pulse{ 0%{ box-shadow:0 0 0 0 color-mix(in srgb,var(--lime-500) 60%,transparent) } 70%{ box-shadow:0 0 0 7px transparent } 100%{ box-shadow:0 0 0 0 transparent } }
+  .hero h1{ font-size:clamp(44px,5vw,74px); font-weight:800; letter-spacing:-.03em; line-height:1.02; color:#fff; }
+  .hero__lime{ color:var(--lime-500); }
+  .hero__sub{ font-size:19px; line-height:1.6; color:var(--neutral-300); max-width:520px; margin-top:22px; }
+  .hero__cta{ display:flex; gap:14px; margin-top:32px; }
+  .hero__trust{ display:flex; align-items:center; gap:10px; margin-top:28px; font-size:13.5px; color:var(--neutral-400); }
+  .hero__trust b{ color:#fff; }
+
+  /* Hero visual — product peek */
+  .peek{ position:relative; background:var(--petroleum-900); border:1px solid var(--hair-2); border-radius:var(--radius-2xl); padding:22px;
+    box-shadow:0 40px 90px rgba(0,0,0,.5), 0 0 0 1px rgba(204,255,0,.04); overflow:hidden; }
+  .peek::before{ content:""; position:absolute; inset:0; background-image:linear-gradient(var(--hair) 1px,transparent 1px),linear-gradient(90deg,var(--hair) 1px,transparent 1px); background-size:28px 28px; opacity:.35; pointer-events:none; }
+  .peek__bar{ display:flex; align-items:center; gap:6px; margin-bottom:16px; position:relative; }
+  .peek__bar span{ width:10px; height:10px; border-radius:50%; background:color-mix(in srgb,#fff 22%,transparent); }
+  .peek__bar .peek__tag{ width:auto; height:auto; border-radius:0; background:none; margin-left:auto; font-family:var(--font-mono); font-size:11px; color:var(--lime-500); white-space:nowrap; }
+  .peek__card{ position:relative; background:color-mix(in srgb,#fff 5%,transparent); border:1px solid var(--hair);
+    border-radius:var(--radius-lg); padding:16px; color:#fff; }
+  .peek__row{ display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--hair); }
+  .peek__row:last-child{ border-bottom:none; }
+  .peek__ic{ width:34px; height:34px; border-radius:10px; background:var(--lime-500); display:flex; align-items:center; justify-content:center; flex:none; }
+  .peek__name{ font-weight:700; font-size:14px; }
+  .peek__meta{ font-size:12px; color:var(--petroleum-200); font-family:var(--font-mono); }
+  .peek__pct{ margin-left:auto; font-family:var(--font-display); font-weight:700; color:var(--lime-500); font-size:18px; }
+
+  /* Proof */
+  .proof{ padding:34px 0; border-top:1px solid var(--hair); border-bottom:1px solid var(--hair); background:color-mix(in srgb,#000 30%,transparent); }
+  .proof__label{ text-align:center; font-family:var(--font-mono); font-size:12px; letter-spacing:.06em; color:var(--neutral-500); }
+  .proof__row{ display:flex; align-items:center; justify-content:center; gap:52px; margin-top:22px; flex-wrap:wrap; }
+  .proof__row span{ font-family:var(--font-display); font-weight:700; font-size:22px; color:var(--neutral-600); letter-spacing:.02em; transition:color var(--dur-base); }
+  .proof__row span:hover{ color:var(--neutral-300); }
+
+  /* Sections */
+  section.blk{ padding:100px 0; position:relative; }
+  .blk__head{ max-width:640px; }
+  .blk__head h2{ font-size:clamp(32px,3.4vw,46px); font-weight:800; letter-spacing:-.025em; margin-top:16px; line-height:1.08; color:#fff; }
+  .blk__head h2 em{ font-style:normal; color:var(--lime-500); }
+  .blk__head p{ font-size:17px; color:var(--neutral-400); margin-top:16px; line-height:1.6; }
+
+  .services{ display:grid; grid-template-columns:repeat(3,1fr); gap:20px; margin-top:48px; }
+  .svc{ position:relative; padding:28px; background:var(--site-surface); border:1px solid var(--hair); border-radius:var(--radius-lg);
+    transition:border-color var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base); }
+  .svc:hover{ border-color:color-mix(in srgb,var(--lime-500) 55%,transparent); transform:translateY(-3px); box-shadow:0 20px 50px rgba(0,0,0,.4), 0 0 30px rgba(204,255,0,.06); }
+  .svc__ic{ width:52px; height:52px; border-radius:14px; background:var(--petroleum-800); display:flex; align-items:center; justify-content:center; color:var(--lime-500); margin-bottom:20px; border:1px solid var(--hair); }
+  .svc h3{ font-size:20px; font-weight:800; letter-spacing:-.01em; color:#fff; }
+  .svc p{ font-size:14.5px; color:var(--neutral-400); line-height:1.6; margin-top:10px; }
+  .svc__link{ display:inline-flex; align-items:center; gap:6px; margin-top:16px; font-weight:700; font-size:14px; color:var(--lime-500); }
+
+  .steps{ display:grid; grid-template-columns:repeat(4,1fr); gap:20px; margin-top:48px; }
+  .step{ position:relative; }
+  .step__n{ font-family:var(--font-mono); font-weight:700; font-size:14px; color:var(--lime-500); background:color-mix(in srgb,var(--lime-500) 12%,transparent);
+    width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; border:1px solid color-mix(in srgb,var(--lime-500) 35%,transparent); }
+  .step h4{ font-size:17px; font-weight:800; margin-top:16px; color:#fff; }
+  .step p{ font-size:14px; color:var(--neutral-400); line-height:1.55; margin-top:8px; }
+
+  /* Results — petroleum panel (color pop) */
+  .results{ position:relative; background:var(--petroleum-800); color:#fff; border-radius:var(--radius-2xl); padding:60px 56px; overflow:hidden; border:1px solid var(--hair-2); }
+  .results::before{ content:""; position:absolute; top:-140px; right:-100px; width:460px; height:460px; background:radial-gradient(circle,color-mix(in srgb,var(--lime-500) 16%,transparent),transparent 60%); pointer-events:none; }
+  .results .eyebrow{ color:var(--lime-500); }
+  .results h2{ color:#fff; font-size:clamp(30px,3.2vw,42px); font-weight:800; letter-spacing:-.025em; margin-top:16px; max-width:560px; }
+  .results__grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:40px; margin-top:44px; position:relative; }
+  .results__stat{ position:relative; padding-top:20px; border-top:1px solid var(--hair-2); }
+  .results__stat strong{ display:block; font-family:var(--font-display); font-weight:700; font-size:clamp(44px,5vw,64px); color:var(--lime-500); letter-spacing:-.02em; line-height:1; }
+  .results__stat span{ display:block; margin-top:10px; color:var(--petroleum-200); font-size:15px; }
+
+  /* Quote */
+  .quote{ text-align:center; max-width:820px; margin:0 auto; }
+  .quote__mark{ font-family:var(--font-display); font-size:64px; color:var(--lime-500); line-height:1; }
+  .quote p{ font-size:clamp(24px,2.6vw,34px); font-weight:700; letter-spacing:-.02em; line-height:1.3; color:#fff; margin-top:8px; }
+  .quote__by{ display:flex; align-items:center; justify-content:center; gap:12px; margin-top:28px; }
+  .quote__by .n{ font-weight:700; font-size:14.5px; color:#fff; }
+  .quote__by .r{ font-size:13px; color:var(--neutral-500); }
+
+  /* CTA band — lime pop */
+  .cta{ position:relative; background:var(--lime-500); border-radius:var(--radius-2xl); padding:60px; display:flex; align-items:center; justify-content:space-between; gap:32px; flex-wrap:wrap; overflow:hidden; }
+  .cta h2{ position:relative; font-size:clamp(30px,3.4vw,44px); font-weight:800; letter-spacing:-.025em; color:var(--petroleum-950); max-width:560px; line-height:1.05; }
+  .cta p{ position:relative; color:var(--petroleum-900); font-size:16px; margin-top:12px; max-width:440px; }
+  .cta > div:last-child{ position:relative; }
+
+  /* Footer */
+  footer{ background:#060708; color:#fff; padding:64px 0 40px; margin-top:100px; border-top:1px solid var(--hair); }
+  .foot__grid{ display:grid; grid-template-columns:1.5fr 1fr 1fr 1fr; gap:32px; }
+  .foot__logo{ height:22px; width:auto; }
+  .foot__tag{ color:var(--neutral-400); font-size:14px; line-height:1.6; margin-top:16px; max-width:280px; }
+  .foot h5{ font-family:var(--font-display); letter-spacing:.12em; text-transform:uppercase; font-size:12px; color:var(--lime-500); font-weight:700; }
+  .foot ul{ list-style:none; margin:14px 0 0; padding:0; display:flex; flex-direction:column; gap:10px; }
+  .foot ul a{ color:var(--neutral-300); font-size:14px; }
+  .foot ul a:hover{ color:var(--lime-500); }
+  .foot__bot{ display:flex; justify-content:space-between; margin-top:48px; padding-top:24px; border-top:1px solid var(--hair); color:var(--neutral-500); font-size:13px; }
+
+  @media (max-width:900px){
+    .hero__grid,.foot__grid{ grid-template-columns:1fr; } .services,.results__grid{ grid-template-columns:1fr; }
+    .steps{ grid-template-columns:1fr 1fr; } .nav__links{ display:none; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../assets/icons.jsx" type="text/babel"></script>
+<script type="text/babel">
+const { Button, Badge, Card, Stat } = window.NogmaDesignSystem_54b71f;
+const Ic = window.NogmaIcon;
+
+function Nav(){
+  return (
+    <div className="nav"><div className="wrap nav__in">
+      <img className="nav__logo" src="../../assets/logo-nogma-lime.png" alt="nogma" />
+      <div className="nav__links">
+        <a href="#servicos">Serviços</a><a href="#como">Como funciona</a><a href="#cases">Resultados</a><a href="#contato">Contato</a>
+      </div>
+      <div className="nav__right">
+        <a className="nav__signin" href="#">Entrar</a>
+        <Button variant="primary" size="sm">Falar com a gente</Button>
+      </div>
+    </div></div>
+  );
+}
+
+function Hero(){
+  return (
+    <div className="hero"><div className="hero__glow" /><div className="hero__glow hero__glow--teal" /><div className="wrap hero__grid on-black">
+      <div>
+        <div className="hero__chip"><span className="pulse" />24 automações rodando agora</div>
+        <div className="eyebrow">Automação &amp; IA para PMEs</div>
+        <h1>Menos operação manual. <span className="hero__lime">Mais resultado</span>.</h1>
+        <p className="hero__sub">A Nogma conecta ideias, pessoas e processos. Desenhamos e operamos automações e agentes de IA sob medida — pragmáticos, diretos e feitos para escalar seu negócio.</p>
+        <div className="hero__cta">
+          <Button variant="primary" size="lg" trailingIcon={<Ic name="arrow-right" size={18} />}>Agendar diagnóstico</Button>
+          <Button variant="secondary" size="lg" leadingIcon={<Ic name="play" size={16} />}>Ver como funciona</Button>
+        </div>
+        <div className="hero__trust"><Ic name="circle-check" size={16} color="var(--success)" /><span><b>+40 PMEs</b> automatizam a operação com a Nogma</span></div>
+      </div>
+      <div className="peek">
+        <div className="peek__bar"><span/><span/><span/><span className="peek__tag">● ao vivo</span></div>
+        <div className="peek__card">
+          <div className="peek__row"><span className="peek__ic"><Ic name="workflow" size={18} color="var(--petroleum-950)" /></span><div><div className="peek__name">Conciliação fiscal</div><div className="peek__meta">1.240 notas · há 4 min</div></div><span className="peek__pct">98%</span></div>
+          <div className="peek__row"><span className="peek__ic"><Ic name="bot" size={18} color="var(--petroleum-950)" /></span><div><div className="peek__name">Triagem de atendimento</div><div className="peek__meta">3.480 tickets · há 2 min</div></div><span className="peek__pct">96%</span></div>
+          <div className="peek__row"><span className="peek__ic"><Ic name="mail" size={18} color="var(--petroleum-950)" /></span><div><div className="peek__name">Follow-up de propostas</div><div className="peek__meta">612 envios · há 18 min</div></div><span className="peek__pct">91%</span></div>
+        </div>
+      </div>
+    </div></div>
+  );
+}
+
+function Proof(){
+  return (
+    <div className="proof"><div className="wrap">
+      <div className="proof__label">Confiança de operações que não podem parar</div>
+      <div className="proof__row"><span>Vitrine</span><span>Móvel&amp;Cia</span><span>Contábil PR</span><span>Nutre</span><span>LogFácil</span><span>Studio 9</span></div>
+    </div></div>
+  );
+}
+
+const SERVICES = [
+  { ic:"workflow", t:"Automação de processos", d:"Mapeamos o que consome o tempo do seu time e automatizamos ponta a ponta — do financeiro ao atendimento." },
+  { ic:"bot", t:"Agentes de IA", d:"Agentes que executam tarefas, conversam com seus sistemas e aprendem as regras do seu negócio." },
+  { ic:"gauge", t:"Consultoria & estratégia", d:"Diagnóstico, priorização e roadmap. Foco no que é funcional e gera retorno mensurável." },
+];
+function Services(){
+  return (
+    <section className="blk" id="servicos"><div className="wrap">
+      <div className="blk__head">
+        <div className="eyebrow">O que fazemos</div>
+        <h2>Transformação e <em>resultado</em> — não ferramenta, nem método.</h2>
+        <p>Entregamos a operação funcionando. Você acompanha os indicadores; a gente cuida da engrenagem.</p>
+      </div>
+      <div className="services">
+        {SERVICES.map((s)=>(
+          <div key={s.t} className="svc">
+            <div className="svc__ic"><Ic name={s.ic} size={24} /></div>
+            <h3>{s.t}</h3><p>{s.d}</p>
+            <span className="svc__link">Saber mais <Ic name="arrow-right" size={15} /></span>
+          </div>
+        ))}
+      </div>
+    </div></section>
+  );
+}
+
+const STEPS = [
+  { t:"Diagnóstico", d:"Entendemos seus processos e onde está o desperdício." },
+  { t:"Desenho", d:"Priorizamos e desenhamos a automação sob medida." },
+  { t:"Implementação", d:"Construímos, integramos e testamos com seu time." },
+  { t:"Operação", d:"Monitoramos, ajustamos e escalamos com você." },
+];
+function How(){
+  return (
+    <section className="blk" id="como" style={{paddingTop:0}}><div className="wrap">
+      <div className="blk__head">
+        <div className="eyebrow">Como funciona</div>
+        <h2>Do caos operacional ao <em>piloto automático</em> em 4 passos.</h2>
+      </div>
+      <div className="steps">
+        {STEPS.map((s,i)=>(
+          <div className="step" key={s.t}>
+            <div className="step__n">0{i+1}</div><h4>{s.t}</h4><p>{s.d}</p>
+          </div>
+        ))}
+      </div>
+    </div></section>
+  );
+}
+
+function Results(){
+  return (
+    <section className="blk" id="cases" style={{paddingTop:0}}><div className="wrap">
+      <div className="results">
+        <div className="eyebrow">Resultados</div>
+        <h2>O impacto aparece já no primeiro trimestre.</h2>
+        <div className="results__grid">
+          <div className="results__stat"><strong>128h</strong><span>economizadas por mês, em média, por cliente</span></div>
+          <div className="results__stat"><strong>+42%</strong><span>de produtividade nas equipes de operação</span></div>
+          <div className="results__stat"><strong>95%</strong><span>de taxa de sucesso nas automações ativas</span></div>
+        </div>
+      </div>
+    </div></section>
+  );
+}
+
+function Quote(){
+  return (
+    <section className="blk" style={{paddingTop:0}}><div className="wrap quote">
+      <div className="quote__mark">“</div>
+      <p>A Nogma não vendeu uma ferramenta. Entregou a operação rodando sozinha — e um time livre pra pensar em crescimento.</p>
+      <div className="quote__by">
+        <img src="../../assets/isotype-n-lime.png" alt="" style={{width:20,height:'auto'}} />
+        <div style={{textAlign:'left'}}><div className="n">Marina Alves</div><div className="r">COO · Vitrine Comércio</div></div>
+      </div>
+    </div></section>
+  );
+}
+
+function CTA(){
+  return (
+    <section className="blk" id="contato" style={{paddingTop:0}}><div className="wrap">
+      <div className="cta">
+        <div><h2>Vamos automatizar o que trava o seu negócio?</h2><p>Diagnóstico inicial gratuito. Sem compromisso, sem jargão.</p></div>
+        <Button variant="solid" size="lg" trailingIcon={<Ic name="arrow-right" size={18} />}>Agendar diagnóstico</Button>
+      </div>
+    </div></section>
+  );
+}
+
+function Footer(){
+  return (
+    <footer><div className="wrap foot">
+      <div className="foot__grid">
+        <div>
+          <img className="foot__logo" src="../../assets/logo-nogma-lime.png" alt="nogma" />
+          <p className="foot__tag">Consultoria de automação e IA para PMEs. Conexão, estrutura e pragmatismo.</p>
+        </div>
+        <div><h5>Empresa</h5><ul><li><a href="#">Sobre</a></li><li><a href="#">Cases</a></li><li><a href="#">Carreiras</a></li></ul></div>
+        <div><h5>Serviços</h5><ul><li><a href="#">Automação</a></li><li><a href="#">Agentes de IA</a></li><li><a href="#">Consultoria</a></li></ul></div>
+        <div><h5>Contato</h5><ul><li><a href="#">oi@nogma.com.br</a></li><li><a href="#">LinkedIn</a></li><li><a href="#">Instagram</a></li></ul></div>
+      </div>
+      <div className="foot__bot"><span>© 2026 Nogma Consultoria</span><span>Feito com pragmatismo em Curitiba, PR</span></div>
+    </div></footer>
+  );
+}
+
+function Site(){
+  return (<div><Nav/><Hero/><Proof/><Services/><How/><Results/><Quote/><CTA/><Footer/></div>);
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<Site/>);
+</script>
+</body>
+</html>

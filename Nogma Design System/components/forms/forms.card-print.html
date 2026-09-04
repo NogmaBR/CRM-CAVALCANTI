@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"></script>
+<script src="../../_ds_bundle.js"></script>
+<script src="https://unpkg.com/lucide@0.544.0/dist/umd/lucide.min.js"></script>
+<style>
+  body{ margin:0; padding:26px; background:var(--bg-canvas); font-family:var(--font-sans); }
+  .cols{ display:grid; grid-template-columns:1fr 1fr; gap:22px 28px; max-width:640px; }
+  .stack{ display:flex; flex-direction:column; gap:16px; }
+
+  @page { size: letter; margin: 0; }
+  @media print {
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { padding: 0.5in 0.6in; background:#fff; }
+    *, *::before, *::after {
+      animation-delay: -99s !important; animation-duration: .001s !important;
+      animation-iteration-count: 1 !important; animation-fill-mode: both !important;
+      animation-play-state: running !important; transition-duration: 0s !important;
+    }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { Input, Textarea, Select, Checkbox, Switch, RadioGroup } = window.NogmaDesignSystem_54b71f;
+const I = (n) => <i data-lucide={n} style={{width:16,height:16}} />;
+function Demo(){
+  const [plan,setPlan] = React.useState("pro");
+  return (
+    <div className="cols">
+      <div className="stack">
+        <Input label="E-mail" type="email" placeholder="voce@empresa.com" leading={I("mail")} defaultValue="ana@nogma.com.br" />
+        <Input label="Valor mensal" leading="R$" defaultValue="2.400" />
+        <Input label="Senha" type="password" error="Mínimo de 8 caracteres" defaultValue="123" />
+        <Select label="Setor" options={["Financeiro","Operações","Vendas","Atendimento"]} defaultValue="Operações" />
+      </div>
+      <div className="stack">
+        <Textarea label="Descreva o processo" rows={3} defaultValue="Conciliação de notas fiscais toda segunda." />
+        <div className="stack" style={{gap:10}}>
+          <Checkbox label="Aceito os termos" description="Cancele quando quiser." defaultChecked />
+          <Switch label="Notificações por e-mail" tone="lime" defaultChecked />
+          <Switch label="Modo automático" defaultChecked />
+        </div>
+        <RadioGroup name="plano" value={plan} onChange={setPlan}
+          options={[{value:"start",label:"Start"},{value:"pro",label:"Pro",description:"Mais popular"},{value:"scale",label:"Scale"}]} />
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<Demo/>);
+setTimeout(()=> window.lucide && window.lucide.createIcons(), 60);
+</script>
+<script>
+addEventListener('load', () => {
+  (async () => {
+    const root = document.getElementById('root');
+    for (let i=0; i<100 && !root.childElementCount; i++) await new Promise(r=>setTimeout(r,50));
+    try { await document.fonts.ready; } catch (e) {}
+    const imgs = Array.from(document.images).filter((i) => !i.complete);
+    await Promise.race([
+      Promise.allSettled(imgs.map((i) => i.decode())),
+      new Promise((r) => setTimeout(r, 8000)),
+    ]);
+    setTimeout(() => window.print(), 500);
+  })();
+});
+</script>
+</body>
+</html>

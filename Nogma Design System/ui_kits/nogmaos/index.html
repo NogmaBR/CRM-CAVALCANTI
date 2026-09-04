@@ -1,0 +1,210 @@
+<!-- @dsCard group="NogmaOS" viewport="1320x840" name="NogmaOS — App" subtitle="Painel interno: dashboard, automações, agente (interativo)" -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NogmaOS</title>
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+  html,body{ margin:0; height:100%; background:var(--neutral-100); font-family:var(--font-sans); color:var(--text-primary); }
+  #root{ height:100%; }
+  .nos-app{ display:flex; height:100vh; overflow:hidden; }
+  .nos-mark{ color:var(--lime-500); font-weight:900; }
+  .ng-ic{ vertical-align:middle; }
+
+  /* ---- Sidebar ---- */
+  .nos-sidebar{ width:248px; flex:none; background:var(--petroleum-800); color:#fff; display:flex; flex-direction:column;
+    padding:20px 14px; gap:8px; transition:width var(--dur-base) var(--ease-out); }
+  .nos-sidebar--collapsed{ width:76px; }
+  .nos-brand{ display:flex; align-items:center; gap:10px; padding:6px 8px 18px; }
+  .nos-brand__mark img{ width:26px; height:auto; display:block; }
+  .nos-brand__word{ height:20px; width:auto; }
+  .nos-nav{ display:flex; flex-direction:column; gap:3px; }
+  .nos-navitem{ display:flex; align-items:center; gap:12px; padding:11px 12px; border:none; background:transparent;
+    color:var(--petroleum-200); border-radius:var(--radius-md); cursor:pointer; font-family:inherit; font-size:14.5px;
+    font-weight:600; text-align:left; width:100%; transition:background var(--dur-base), color var(--dur-base); }
+  .nos-navitem:hover{ background:color-mix(in srgb,#fff 8%,transparent); color:#fff; }
+  .nos-navitem.is-active{ background:var(--lime-500); color:var(--petroleum-950); }
+  .nos-navitem__label{ flex:1; }
+  .nos-navitem__badge{ background:color-mix(in srgb,#fff 16%,transparent); color:#fff; font-size:11px; font-weight:700;
+    padding:2px 7px; border-radius:999px; }
+  .nos-navitem.is-active .nos-navitem__badge{ background:var(--petroleum-800); color:var(--lime-500); }
+  .nos-side-foot{ margin-top:auto; display:flex; flex-direction:column; gap:8px; }
+  .nos-userpill{ display:flex; align-items:center; gap:10px; padding:8px; border-radius:var(--radius-md);
+    background:color-mix(in srgb,#fff 6%,transparent); }
+  .nos-userpill__meta{ flex:1; min-width:0; }
+  .nos-userpill__name{ font-size:13.5px; font-weight:700; color:#fff; }
+  .nos-userpill__org{ font-size:11.5px; color:var(--petroleum-300); }
+
+  /* ---- Main ---- */
+  .nos-main{ flex:1; display:flex; flex-direction:column; min-width:0; background:var(--neutral-100); }
+  .nos-topbar{ display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 28px;
+    background:var(--surface-card); border-bottom:1px solid var(--border-subtle); }
+  .nos-topbar__left{ display:flex; align-items:center; gap:14px; }
+  .nos-topbar__title{ font-size:20px; font-weight:800; letter-spacing:-.015em; }
+  .nos-topbar__sub{ font-size:12.5px; color:var(--text-muted); }
+  .nos-topbar__right{ display:flex; align-items:center; gap:12px; }
+  .nos-search{ display:flex; align-items:center; gap:8px; background:var(--neutral-100); border:1px solid transparent;
+    border-radius:var(--radius-md); padding:0 12px; height:40px; width:300px; transition:border-color var(--dur-base),background var(--dur-base); }
+  .nos-search:focus-within{ background:#fff; border-color:var(--border-focus); }
+  .nos-search input{ flex:1; border:none; background:transparent; outline:none; font-family:inherit; font-size:14px; color:var(--text-primary); }
+  .nos-search kbd{ font-family:var(--font-mono); font-size:11px; color:var(--text-muted); background:#fff; border:1px solid var(--border-subtle);
+    border-radius:5px; padding:1px 6px; }
+  .nos-iconbtn{ position:relative; width:40px; height:40px; display:inline-flex; align-items:center; justify-content:center;
+    border:none; background:transparent; border-radius:var(--radius-md); cursor:pointer; color:var(--text-secondary); }
+  .nos-iconbtn--ghost:hover{ background:var(--neutral-100); color:var(--text-primary); }
+  .nos-dot{ position:absolute; top:8px; right:9px; width:7px; height:7px; border-radius:50%; background:var(--danger); border:1.5px solid #fff; }
+
+  .nos-content{ flex:1; overflow:auto; }
+  .nos-page{ padding:28px; max-width:1180px; margin:0 auto; display:flex; flex-direction:column; gap:22px; }
+  .nos-eyebrow{ font-family:var(--font-display); font-weight:700; letter-spacing:.14em; text-transform:uppercase;
+    font-size:12px; color:var(--petroleum-600); }
+  .nos-greet{ display:flex; align-items:flex-end; justify-content:space-between; gap:16px; }
+  .nos-greet__title{ font-size:28px; font-weight:800; letter-spacing:-.02em; margin-top:4px; white-space:nowrap; }
+
+  .nos-kpis{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+  .nos-cols{ display:grid; grid-template-columns:1.7fr 1fr; gap:20px; align-items:start; }
+  .nos-side{ display:flex; flex-direction:column; gap:16px; }
+
+  /* ---- Table card ---- */
+  .nos-tablecard{ overflow:hidden; }
+  .nos-tablecard__head{ display:flex; align-items:center; justify-content:space-between; padding:18px 20px; border-bottom:1px solid var(--border-subtle); }
+  .nos-tablecard__title{ font-weight:800; font-size:16px; letter-spacing:-.01em; }
+  .nos-tablecard__sub{ font-size:12.5px; color:var(--text-muted); }
+  .nos-linkbtn{ display:inline-flex; align-items:center; gap:5px; border:none; background:transparent; cursor:pointer;
+    font-family:inherit; font-weight:700; font-size:13px; color:var(--petroleum-700); }
+  .nos-linkbtn:hover{ color:var(--petroleum-900); }
+  .nos-table{ width:100%; border-collapse:collapse; }
+  .nos-table th{ text-align:left; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted);
+    font-weight:700; padding:12px 20px; border-bottom:1px solid var(--border-subtle); }
+  .nos-table td{ padding:14px 20px; border-bottom:1px solid var(--border-subtle); vertical-align:middle; font-size:14px; }
+  .nos-table tr:last-child td{ border-bottom:none; }
+  .nos-table--full td, .nos-table--full th{ padding-left:24px; padding-right:24px; }
+  .nos-table tbody tr:hover{ background:var(--neutral-50); }
+  .nos-cellmain{ font-weight:700; }
+  .nos-cellsub{ font-size:12px; color:var(--text-muted); margin-top:2px; }
+  .nos-num{ font-variant-numeric:tabular-nums; font-weight:600; }
+
+  /* ---- Agent card / feed ---- */
+  .nos-agentcard{ background:var(--petroleum-800) !important; color:#fff; border:none !important; }
+  .nos-agentcard__top{ display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+  .nos-agentcard__ic{ width:40px; height:40px; border-radius:12px; background:var(--lime-500); display:flex; align-items:center; justify-content:center; }
+  .nos-agentcard__title{ font-weight:800; font-size:15px; }
+  .nos-agentcard__meta{ font-size:12px; color:var(--petroleum-200); }
+  .nos-agentcard__body{ font-size:14px; line-height:1.55; color:var(--petroleum-100); margin-bottom:14px; }
+  .nos-feed{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:14px; }
+  .nos-feed li{ display:flex; gap:10px; font-size:13.5px; line-height:1.4; }
+  .nos-feed b{ font-weight:700; }
+  .nos-feed__dot{ width:9px; height:9px; border-radius:50%; margin-top:4px; flex:none; }
+  .nos-feed__dot--ok{ background:var(--success); }
+  .nos-feed__dot--warn{ background:var(--warning); }
+  .nos-feed__t{ display:block; font-size:11.5px; color:var(--text-muted); margin-top:2px; }
+
+  /* ---- Login ---- */
+  .nos-login{ display:grid; grid-template-columns:1.05fr 1fr; height:100vh; }
+  .nos-login__aside{ background:var(--petroleum-800); color:#fff; padding:56px; display:flex; flex-direction:column; gap:40px; }
+  .nos-login__logo{ width:150px; height:auto; }
+  .nos-login__eyebrow{ font-family:var(--font-display); font-weight:700; letter-spacing:.16em; text-transform:uppercase; font-size:13px; color:var(--lime-500); }
+  .nos-login__pitch{ margin-top:auto; display:flex; flex-direction:column; gap:16px; }
+  .nos-login__pitch h2{ font-size:38px; font-weight:800; letter-spacing:-.025em; line-height:1.12; color:#fff; max-width:440px; }
+  .nos-login__pitch p{ font-size:16px; color:var(--petroleum-200); max-width:400px; }
+  .nos-login__stats{ display:flex; gap:36px; }
+  .nos-login__stats strong{ display:block; font-family:var(--font-display); font-weight:700; font-size:30px; color:var(--lime-500); letter-spacing:-.01em; }
+  .nos-login__stats span{ font-size:12.5px; color:var(--petroleum-200); }
+  .nos-login__panel{ display:flex; align-items:center; justify-content:center; background:var(--surface-card); padding:32px; }
+  .nos-login__card{ width:100%; max-width:380px; }
+  .nos-login__card h1{ font-size:30px; font-weight:800; letter-spacing:-.02em; }
+  .nos-login__hint{ color:var(--text-secondary); margin-top:6px; margin-bottom:26px; font-size:15px; }
+  .nos-login__form{ display:flex; flex-direction:column; gap:16px; }
+  .nos-login__row{ display:flex; align-items:center; justify-content:space-between; }
+  .nos-login__link{ font-size:13px; font-weight:600; color:var(--petroleum-700); }
+  .nos-login__foot{ margin-top:26px; text-align:center; font-size:12px; color:var(--text-muted); }
+
+  /* ---- Agent chat screen ---- */
+  .nos-agent{ display:grid; grid-template-columns:1fr 320px; gap:20px; padding:28px; max-width:1180px; margin:0 auto; height:calc(100% - 0px); }
+  .nos-chat{ background:var(--surface-card); border:1px solid var(--border-subtle); border-radius:var(--radius-lg); display:flex; flex-direction:column; overflow:hidden; height:calc(100vh - 137px); }
+  .nos-chat__head{ display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--border-subtle); }
+  .nos-chat__ic{ width:40px; height:40px; border-radius:12px; background:var(--lime-500); display:flex; align-items:center; justify-content:center; }
+  .nos-chat__id{ flex:1; }
+  .nos-chat__name{ font-weight:800; font-size:15px; }
+  .nos-chat__status{ display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--text-muted); }
+  .nos-online{ width:8px; height:8px; border-radius:50%; background:var(--success); }
+  .nos-chat__body{ flex:1; overflow:auto; padding:22px 20px; display:flex; flex-direction:column; gap:14px; background:var(--neutral-50); }
+  .nos-msg{ display:flex; gap:10px; max-width:78%; }
+  .nos-msg--user{ align-self:flex-end; flex-direction:row-reverse; }
+  .nos-msg__av{ width:30px; height:30px; border-radius:9px; background:var(--petroleum-800); display:flex; align-items:center; justify-content:center; flex:none; margin-top:2px; }
+  .nos-msg__bubble{ padding:11px 14px; border-radius:14px; font-size:14px; line-height:1.5; }
+  .nos-msg--agent .nos-msg__bubble{ background:#fff; border:1px solid var(--border-subtle); border-top-left-radius:4px; }
+  .nos-msg--user .nos-msg__bubble{ background:var(--petroleum-800); color:#fff; border-top-right-radius:4px; }
+  .nos-chat__composer{ display:flex; align-items:center; gap:8px; padding:12px 14px; border-top:1px solid var(--border-subtle); background:var(--surface-card); }
+  .nos-chat__composer input{ flex:1; border:none; outline:none; font-family:inherit; font-size:14.5px; background:transparent; color:var(--text-primary); }
+  .nos-sendbtn{ width:40px; height:40px; border:none; border-radius:var(--radius-md); background:var(--lime-500); cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .nos-sendbtn:hover{ background:var(--lime-300); }
+  .nos-agent__rail{ display:flex; flex-direction:column; gap:16px; }
+  .nos-tools{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:12px; }
+  .nos-tools li{ display:flex; align-items:center; gap:10px; font-size:14px; font-weight:600; }
+  .nos-tools li .ng-ic{ color:var(--text-secondary); }
+  .nos-tool__ic{ width:30px; height:30px; border-radius:8px; background:var(--neutral-100); display:flex; align-items:center; justify-content:center; }
+  .nos-tools li > *:last-child{ margin-left:auto; }
+  .nos-railstats{ display:flex; flex-direction:column; gap:16px; }
+
+  @media (max-width:1080px){ .nos-cols{ grid-template-columns:1fr; } .nos-kpis{ grid-template-columns:repeat(2,1fr); } .nos-agent{ grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../../assets/icons.jsx" type="text/babel"></script>
+<script src="Chrome.jsx" type="text/babel"></script>
+<script src="LoginScreen.jsx" type="text/babel"></script>
+<script src="AppScreens.jsx" type="text/babel"></script>
+<script type="text/babel">
+const { Button } = window.NogmaDesignSystem_54b71f;
+const { Sidebar, TopBar } = window.NogmaOSChrome;
+const Login = window.NogmaOSLogin;
+const { DashboardScreen, AutomationsScreen, AgentScreen } = window.NogmaOSScreens;
+const Ic = window.NogmaIcon;
+
+const TITLES = {
+  dashboard: ["Dashboard", "Visão geral da sua operação"],
+  automations: ["Automações", "Fluxos rodando na sua conta"],
+  agents: ["Agente Fiscal", "Converse e ajuste seu agente"],
+  reports: ["Relatórios", "Em breve"],
+  team: ["Equipe", "Em breve"],
+  settings: ["Configurações", "Preferências da conta"],
+};
+
+function App(){
+  const [authed, setAuthed] = React.useState(false);
+  const [route, setRoute] = React.useState("dashboard");
+  const [collapsed, setCollapsed] = React.useState(false);
+
+  if (!authed) return <Login onLogin={()=>setAuthed(true)} />;
+
+  const [title, sub] = TITLES[route] || ["NogmaOS", ""];
+  let screen;
+  if (route === "dashboard") screen = <DashboardScreen onOpenAgent={setRoute} />;
+  else if (route === "automations") screen = <AutomationsScreen onOpenAgent={setRoute} />;
+  else if (route === "agents") screen = <AgentScreen />;
+  else screen = <div className="nos-page"><div style={{padding:"60px 0",textAlign:"center",color:"var(--text-muted)"}}>Seção em construção.</div></div>;
+
+  const action = <Button variant="primary" leadingIcon={<Ic name="plus" size={18} />}>Nova automação</Button>;
+
+  return (
+    <div className="nos-app">
+      <Sidebar route={route} onNav={setRoute} collapsed={collapsed} />
+      <div className="nos-main">
+        <TopBar title={title} subtitle={sub} onToggle={()=>setCollapsed(c=>!c)} actions={(route!=="agents"&&route!=="dashboard")?action:null} />
+        <div className="nos-content">{screen}</div>
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>

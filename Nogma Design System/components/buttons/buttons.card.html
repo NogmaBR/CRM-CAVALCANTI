@@ -1,0 +1,58 @@
+<!-- @dsCard group="Components" viewport="700x300" name="Buttons" subtitle="Lime CTA · petroleum · outline · ghost · danger · icon" -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"></script>
+<script src="../../_ds_bundle.js"></script>
+<script src="https://unpkg.com/lucide@0.544.0/dist/umd/lucide.min.js"></script>
+<style>
+  body{ margin:0; padding:26px; background:var(--bg-canvas); font-family:var(--font-sans); }
+  .grid{ display:flex; flex-direction:column; gap:20px; }
+  .row{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .lbl{ width:78px; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted); font-weight:700; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { Button, IconButton } = window.NogmaDesignSystem_54b71f;
+const I = (n) => <i data-lucide={n} style={{width:18,height:18}} />;
+function Demo(){
+  return (
+    <div className="grid">
+      <div className="row">
+        <span className="lbl">Variants</span>
+        <Button variant="primary" leadingIcon={I("zap")}>Começar</Button>
+        <Button variant="solid">Solid</Button>
+        <Button variant="secondary">Outline</Button>
+        <Button variant="ghost">Ghost</Button>
+        <Button variant="danger">Excluir</Button>
+      </div>
+      <div className="row">
+        <span className="lbl">Sizes</span>
+        <Button variant="primary" size="sm">Small</Button>
+        <Button variant="primary" size="md">Medium</Button>
+        <Button variant="primary" size="lg">Large</Button>
+        <Button variant="secondary" disabled>Disabled</Button>
+      </div>
+      <div className="row">
+        <span className="lbl">Icon</span>
+        <IconButton icon={I("plus")} label="Novo" variant="primary" />
+        <IconButton icon={I("settings")} label="Config" variant="outline" />
+        <IconButton icon={I("bell")} label="Alertas" variant="ghost" />
+        <IconButton icon={I("more-horizontal")} label="Mais" variant="ghost" round />
+        <Button variant="primary" trailingIcon={I("arrow-right")}>Avançar</Button>
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<Demo/>);
+requestAnimationFrame(()=> window.lucide && window.lucide.createIcons());
+setTimeout(()=> window.lucide && window.lucide.createIcons(), 60);
+</script>
+</body>
+</html>

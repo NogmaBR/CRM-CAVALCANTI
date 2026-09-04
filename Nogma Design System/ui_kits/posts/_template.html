@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<!-- TOKENS primeiro, SISTEMA depois. Caminhos relativos a ui_kits/posts/. -->
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="system.css">
+<style>
+  /* Overrides SÓ deste slide (fontes, posição de glow/stroke). */
+  .h1{font-size:64px; max-width:900px;}
+  .bg .glow-lime{top:-260px; left:-180px;}
+  .bg .glow-teal{right:-260px; bottom:-200px;}
+  .bg .stroke{width:1180px; top:-320px; right:-240px; opacity:.15;}   /* pontas fora do quadro */
+</style>
+</head>
+<body class="on-black">
+  <div class="slide">
+    <div class="bg">
+      <div class="grid"></div>          <!-- ou <div class="dots"></div> (varie entre slides) -->
+      <div class="glow-lime"></div>
+      <div class="glow-teal"></div>
+      <img class="stroke" src="../../assets/intersecoes/9.png" alt="">
+    </div>
+
+    <div class="content">
+      <header class="top">
+        <img class="wordmark" src="../../assets/logo-nogma-lime.png" alt="nogma">
+        <span class="counter">01 / 07</span>
+      </header>
+
+      <div class="eyebrow sq">Eyebrow em caixa-alta</div>
+      <h1 class="h1">Título forte com uma<br><span class="lm">palavra em lime</span>.</h1>
+      <p class="sub">Subtítulo em cinza. Uma ideia por slide, <b>sem hífen</b> nas frases (use vírgula), e sem estatística inventada.</p>
+
+      <!-- (Opcional) painel: .card / .band / .amb / .row / .pc / .cta — ver system.css -->
+
+      <footer class="foot">
+        <span class="site">nogma.br</span>
+        <span class="drag">→</span>
+      </footer>
+    </div>
+  </div>
+</body>
+</html>

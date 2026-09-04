@@ -1,0 +1,72 @@
+/* ==========================================================================
+   Nogma — Spacing & layout tokens
+   4px base grid. Mobile-first: primary breakpoint 375px.
+   Generous whitespace is a brand signature — bias toward larger steps.
+   ========================================================================== */
+
+:root {
+  /* ---- Space scale (4px base) ---- */
+  --space-0:   0;
+  --space-1:   0.25rem;   /* 4  */
+  --space-2:   0.5rem;    /* 8  */
+  --space-3:   0.75rem;   /* 12 */
+  --space-4:   1rem;      /* 16 */
+  --space-5:   1.25rem;   /* 20 */
+  --space-6:   1.5rem;    /* 24 */
+  --space-8:   2rem;      /* 32 */
+  --space-10:  2.5rem;    /* 40 */
+  --space-12:  3rem;      /* 48 */
+  --space-16:  4rem;      /* 64 */
+  --space-20:  5rem;      /* 80 */
+  --space-24:  6rem;      /* 96 */
+  --space-32:  8rem;      /* 128 */
+
+  /* ---- Container widths ---- */
+  --container-xs:   375px;   /* mobile design target        */
+  --container-sm:   640px;
+  --container-md:   768px;
+  --container-lg:   1024px;
+  --container-xl:   1200px;
+  --container-2xl:  1440px;
+
+  /* ---- Section rhythm ---- */
+  --gutter-mobile:  1.25rem;  /* 20px page gutter @375        */
+  --gutter-desktop: 2rem;
+  --section-y:      clamp(3.5rem, 2rem + 7vw, 7rem); /* @kind spacing */
+
+  /* ---- Radii — "cantos sutis": subtle, not pill-round ---- */
+  --radius-none: 0;
+  --radius-xs:   4px;
+  --radius-sm:   6px;
+  --radius-md:   10px;    /* default control / card radius   */
+  --radius-lg:   14px;
+  --radius-xl:   20px;
+  --radius-2xl:  28px;
+  --radius-pill: 999px;   /* chips, avatars only             */
+
+  /* ---- Border widths ---- */
+  --border-hair: 1px;
+  --border-thin: 1.5px;
+  --border-thick:2px;
+
+  /* ---- Elevation — soft, cool-tinted shadows ---- */
+  --shadow-xs:  0 1px 2px rgba(4, 31, 37, 0.06);
+  --shadow-sm:  0 1px 3px rgba(4, 31, 37, 0.08), 0 1px 2px rgba(4, 31, 37, 0.05);
+  --shadow-md:  0 4px 12px rgba(4, 31, 37, 0.08), 0 2px 4px rgba(4, 31, 37, 0.05);
+  --shadow-lg:  0 12px 28px rgba(4, 31, 37, 0.12), 0 4px 8px rgba(4, 31, 37, 0.06);
+  --shadow-xl:  0 24px 56px rgba(4, 31, 37, 0.16), 0 8px 16px rgba(4, 31, 37, 0.08);
+  --shadow-lime:0 8px 24px rgba(163, 204, 0, 0.35);   /* lime glow on CTAs */
+
+  /* ---- Motion ---- */
+  --ease-out:   cubic-bezier(0.22, 1, 0.36, 1);   /* @kind other */
+  --ease-in-out:cubic-bezier(0.65, 0, 0.35, 1);   /* @kind other */
+  --dur-fast:   120ms;   /* @kind other */
+  --dur-base:   200ms;   /* @kind other */
+  --dur-slow:   360ms;   /* @kind other */
+
+  /* ---- Z ---- */
+  --z-sticky:   100;   /* @kind other */
+  --z-overlay:  200;   /* @kind other */
+  --z-modal:    300;   /* @kind other */
+  --z-toast:    400;   /* @kind other */
+}

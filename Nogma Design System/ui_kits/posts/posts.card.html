@@ -1,0 +1,38 @@
+<!-- @dsCard group="Ui kits" viewport="840x540" name="Posts / carrossel" subtitle="Modelo dark-tech: preto + lime, grid/glows, intersecção (o nó)" -->
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<style>
+  body{margin:0; padding:24px; background:#111; font-family:var(--font-sans);}
+  .mini{position:relative; width:390px; height:488px; margin:0 auto; overflow:hidden;
+    background:#0A0B0C; border-radius:14px; color:#fff; box-sizing:border-box;
+    padding:30px; display:flex; flex-direction:column;}
+  .g{position:absolute; inset:0;
+    background-image:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px);
+    background-size:32px 32px; -webkit-mask-image:radial-gradient(120% 90% at 50% 30%,#000 55%,transparent); mask-image:radial-gradient(120% 90% at 50% 30%,#000 55%,transparent);}
+  .glow{position:absolute; top:-120px; left:-90px; width:360px; height:360px;
+    background:radial-gradient(circle,rgba(204,255,0,.20),transparent 60%); filter:blur(20px);}
+  .stroke{position:absolute; right:-70px; top:20px; width:300px; opacity:.5;
+    filter:drop-shadow(0 0 24px rgba(204,255,0,.3));}
+  .c{position:relative; z-index:1; margin-top:auto;}
+  .eye{font-family:var(--font-display); font-weight:700; text-transform:uppercase; letter-spacing:.14em;
+    color:#CCFF00; font-size:14px; display:flex; gap:9px; align-items:center;}
+  .eye::before{content:""; width:11px; height:11px; background:#CCFF00; border-radius:3px;}
+  .h{font-family:var(--heading-family); font-weight:800; font-size:36px; line-height:1.04; letter-spacing:-.02em; margin-top:12px;}
+  .h .lm{color:#CCFF00;}
+  .s{color:rgba(255,255,255,.72); font-size:15px; line-height:1.5; margin-top:12px; max-width:300px;}
+  .foot{position:relative; z-index:1; display:flex; justify-content:space-between; align-items:center; margin-top:20px;}
+  .foot .site{color:rgba(255,255,255,.6); font-size:13px;}
+  .foot .a{color:#CCFF00; font-family:var(--font-display); font-weight:700; font-size:24px;}
+</style></head>
+<body>
+  <div class="mini">
+    <div class="g"></div><div class="glow"></div>
+    <img class="stroke" src="../../assets/intersecoes/10.png" alt="">
+    <div class="c">
+      <div class="eye">Modelo de post</div>
+      <div class="h">Preto + <span class="lm">lime</span>,<br>dark-tech.</div>
+      <div class="s">Grid/glows, intersecção (o nó) com pontas fora do quadro, tipografia Agency/Raleway. Ver deck 01–07 e README.</div>
+    </div>
+    <div class="foot"><span class="site">nogma.br</span><span class="a">→</span></div>
+  </div>
+</body></html>

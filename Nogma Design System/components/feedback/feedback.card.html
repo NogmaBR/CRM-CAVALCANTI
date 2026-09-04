@@ -1,0 +1,48 @@
+<!-- @dsCard group="Components" viewport="700x380" name="Feedback" subtitle="Alert · Progress · Tooltip · Dialog" -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+  body{ margin:0; padding:26px; background:var(--bg-subtle); font-family:var(--font-sans); }
+  .wrap{ display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:start; max-width:660px; }
+  .stack{ display:flex; flex-direction:column; gap:12px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { Alert, Progress, Tooltip, Dialog, Button, IconButton } = window.NogmaDesignSystem_54b71f;
+function Demo(){
+  const [open,setOpen] = React.useState(false);
+  return (
+    <div className="wrap">
+      <div className="stack">
+        <Alert variant="success" title="Automação ativada">O fluxo roda no próximo ciclo.</Alert>
+        <Alert variant="warning" title="Revisar integração">Token expira em 3 dias.</Alert>
+        <Alert variant="danger" title="Falha no envio">2 documentos não processados.</Alert>
+      </div>
+      <div className="stack">
+        <Progress value={72} label="Migração de dados" showValue />
+        <Progress value={40} label="Treinamento do agente" showValue tone="lime" />
+        <div style={{display:"flex",gap:12,alignItems:"center",marginTop:4}}>
+          <Tooltip label="Copiar link"><Button variant="secondary" size="sm">Hover: tooltip</Button></Tooltip>
+          <Button variant="primary" size="sm" onClick={()=>setOpen(true)}>Abrir dialog</Button>
+        </div>
+      </div>
+      <Dialog open={open} onClose={()=>setOpen(false)} title="Excluir automação?"
+        description="Esta ação não pode ser desfeita. Os históricos serão mantidos por 30 dias."
+        footer={<><Button variant="ghost" onClick={()=>setOpen(false)}>Cancelar</Button>
+                   <Button variant="danger" onClick={()=>setOpen(false)}>Excluir</Button></>} />
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<Demo/>);
+</script>
+</body>
+</html>

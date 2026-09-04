@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="_sys.css">
+<style>
+  .h1{font-size:56px; max-width:940px;}
+  .bg .glow-lime{top:auto; bottom:-300px; left:-200px;}
+  .bg .glow-teal{top:-220px; bottom:auto; right:-240px;}
+  /* textura de fundo (swirl da intersecção), como no slide 1 e 2 */
+  .bg .stroke{width:1180px; top:-320px; right:-240px; opacity:.15;}
+
+  .content{display:flex; flex-direction:column;}
+  .body{flex:1; display:flex; flex-direction:column; justify-content:center;}
+
+  .lifecycle{margin-top:52px;}
+  .lc-cap{font-family:var(--font-mono); font-size:16px; letter-spacing:.4px; color:var(--ink-2); margin-bottom:34px;}
+
+  .stages{display:flex; align-items:flex-start;}
+  .stage{display:flex; flex-direction:column; align-items:center; gap:18px; flex:none; width:176px;}
+  .node{width:74px; height:74px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-display); font-weight:var(--fw-bold); font-size:34px;}
+  .stage.on .node{background:var(--lime-500); color:#0A0B0C;
+    box-shadow:0 0 34px color-mix(in srgb,var(--lime-500) 50%,transparent);}
+  .stage.off .node{border:2px dashed var(--hair-2); color:var(--ink-2); background:transparent;}
+  .s-lbl{font-weight:700; font-size:22px; color:#fff; text-align:center; line-height:1.2;}
+  .stage.off .s-lbl{color:var(--ink-2);}
+
+  .conn{flex:1; margin-top:37px; position:relative; height:0;}
+  .conn::before{content:""; position:absolute; left:-6px; right:-6px; top:0; border-top:3px solid var(--hair-2);}
+  .conn.brk::before{border-top:3px dashed color-mix(in srgb,var(--lime-500) 55%,transparent);}
+  .conn.brk .x{position:absolute; left:50%; top:0; transform:translate(-50%,-50%);
+    font-size:30px; line-height:1; color:var(--lime-500); background:var(--base); padding:0 8px;}
+  .conn.brk em{position:absolute; left:50%; top:26px; transform:translateX(-50%); white-space:nowrap;
+    font-family:var(--font-mono); font-style:normal; font-size:15px; color:var(--lime-500); font-weight:700; letter-spacing:.3px;}
+
+  .studies{font-size:24px; line-height:1.55; color:var(--ink-2); margin-top:64px; max-width:980px;}
+  .studies b{color:#fff; font-weight:var(--fw-bold);}
+  .studies .lm{color:var(--lime-500); font-weight:var(--fw-semibold);}
+</style>
+</head>
+<body class="on-black">
+  <div class="slide">
+    <div class="bg">
+      <div class="grid"></div>
+      <div class="glow-lime"></div>
+      <div class="glow-teal"></div>
+      <img class="stroke" src="../../assets/intersecoes/9.png" alt="">
+    </div>
+
+    <div class="content">
+      <header class="top">
+        <img class="wordmark" src="../../assets/logo-nogma-lime.png" alt="nogma">
+        <span class="counter">03 / 07</span>
+      </header>
+
+      <div class="body">
+        <div class="eyebrow sq">O dado</div>
+        <h1 class="h1">E não é <span class="lm">achismo nosso</span>.</h1>
+
+        <div class="lifecycle">
+          <div class="lc-cap">o ciclo de um projeto de IA</div>
+          <div class="stages">
+            <div class="stage on">
+              <div class="node">1</div>
+              <div class="s-lbl">Escolher<br>o que fazer</div>
+            </div>
+            <div class="conn brk"><span class="x">✕</span><em>a maioria trava aqui</em></div>
+            <div class="stage off">
+              <div class="node">2</div>
+              <div class="s-lbl">Executar</div>
+            </div>
+            <div class="conn"></div>
+            <div class="stage off">
+              <div class="node">3</div>
+              <div class="s-lbl">Resultado</div>
+            </div>
+          </div>
+        </div>
+
+        <p class="studies">Estudos com centenas de implementações mostram que a maioria dos projetos de IA <span class="lm">falha antes de começar</span>, na hora de <b>escolher o que fazer</b>, não na hora de fazer.</p>
+      </div>
+
+      <footer class="foot">
+        <span class="site">nogma.br</span>
+        <span class="drag">→</span>
+      </footer>
+    </div>
+  </div>
+</body>
+</html>

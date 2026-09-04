@@ -1,0 +1,35 @@
+<!-- @dsCard group="Colors" viewport="700x120" name="Escala lime + status" subtitle="Lime accent e cores semânticas de status" -->
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css">
+<style>
+  body{margin:0;padding:20px;background:#fff;font-family:var(--font-sans);}
+  .grid{display:flex;gap:16px;}
+  .col{flex:1;}
+  .ramp{display:flex;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border-subtle);}
+  .c{flex:1;height:40px;}
+  .t{margin-top:6px;font-size:11px;color:var(--text-secondary);font-weight:600;}
+  .status{display:flex;gap:8px;}
+  .st{flex:1;height:40px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;}
+</style></head>
+<body>
+  <div class="grid">
+    <div class="col">
+      <div class="ramp">
+        <div class="c" style="background:#A3CC00"></div>
+        <div class="c" style="background:#CCFF00"></div>
+        <div class="c" style="background:#E0FF66"></div>
+        <div class="c" style="background:#F2FFB8"></div>
+        <div class="c" style="background:#FAFFE0"></div>
+      </div>
+      <div class="t">Lime 600 → 050</div>
+    </div>
+    <div class="col">
+      <div class="status">
+        <div class="st" style="background:#E7F5EE;color:#2FA36B">Success</div>
+        <div class="st" style="background:#FBF1DC;color:#8a5d00">Warning</div>
+        <div class="st" style="background:#FBE9E7;color:#D6483B">Danger</div>
+      </div>
+      <div class="t">Semânticas · fundo tint + texto</div>
+    </div>
+  </div>
+</body></html>

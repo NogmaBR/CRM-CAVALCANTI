@@ -1,0 +1,437 @@
+/* ==========================================================================
+   Nogma Design System — tokens (cópia verbatim de "Nogma Design System/")
+   Ordem de import preservada: fonts → colors → typography → spacing → base.
+   Única alteração: caminho das fontes (../fonts/ → ../fonts/).
+   Não editar aqui. Editar no design system e recopiar.
+   ========================================================================== */
+
+/* ==========================================================================
+   Nogma — Webfonts
+   Agency  → display / logo / headlines
+   Raleway → UI, body, hierarchy (weights 300–900)
+   ========================================================================== */
+
+@font-face {
+  font-family: "Agency";
+  src: url("../fonts/Agency.otf") format("opentype");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Raleway";
+  src: url("../fonts/Raleway-Light.ttf") format("truetype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Raleway";
+  src: url("../fonts/Raleway-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Raleway";
+  src: url("../fonts/Raleway-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Raleway";
+  src: url("../fonts/Raleway-SemiBold.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Raleway";
+  src: url("../fonts/Raleway-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Raleway";
+  src: url("../fonts/Raleway-ExtraBold.ttf") format("truetype");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Raleway";
+  src: url("../fonts/Raleway-Black.ttf") format("truetype");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ==========================================================================
+   Nogma — Color tokens
+   Primary:  Verde petróleo #0C4651 (base escura) · Lime #CCFF00 (accent)
+   Neutrals: Preto #000000 · Cinza #A1A1A1 · Branco #FFFFFF
+   Rule: Lime is accent/highlight only — never a base for long text.
+   ========================================================================== */
+
+:root {
+  /* ---- Brand primitives ---- */
+  --petroleum:        #0C4651;   /* verde petróleo — base dark surface */
+  --lime:             #CCFF00;   /* accent / energy / attitude        */
+  --black:            #000000;
+  --gray:             #A1A1A1;   /* cinza — muted / secondary         */
+  --white:            #FFFFFF;
+
+  /* ---- Petroleum scale (derived, harmonic) ---- */
+  --petroleum-950:    #041F25;   /* deepest — near-black petroleum     */
+  --petroleum-900:    #072C34;
+  --petroleum-800:    #0C4651;   /* = brand petroleum (base)           */
+  --petroleum-700:    #115965;
+  --petroleum-600:    #196E7C;
+  --petroleum-500:    #2A8797;
+  --petroleum-300:    #7FB9C3;   /* tints for on-dark dividers/labels  */
+  --petroleum-200:    #B4D7DD;
+  --petroleum-100:    #E1EEF0;
+  --petroleum-050:    #F1F7F8;   /* faintest petroleum wash on light   */
+
+  /* ---- Lime scale ---- */
+  --lime-600:         #A3CC00;   /* pressed / hover-dark               */
+  --lime-500:         #CCFF00;   /* = brand lime                       */
+  --lime-300:         #E0FF66;
+  --lime-100:         #F2FFB8;
+  --lime-050:         #FAFFE0;   /* faint lime tint background          */
+
+  /* ---- Neutral ramp (cool-leaning grays) ---- */
+  --neutral-0:        #FFFFFF;
+  --neutral-50:       #F7F8F8;
+  --neutral-100:      #EEF0F0;
+  --neutral-200:      #E1E4E4;
+  --neutral-300:      #C9CDCD;
+  --neutral-400:      #A1A1A1;   /* = brand cinza                      */
+  --neutral-500:      #767B7B;
+  --neutral-600:      #565B5B;
+  --neutral-700:      #3B3F3F;
+  --neutral-800:      #232626;
+  --neutral-900:      #121414;
+  --neutral-950:      #000000;
+
+  /* ---- Semantic status ---- */
+  --success:          #2FA36B;
+  --success-bg:       #E7F5EE;
+  --warning:          #E8A317;
+  --warning-bg:       #FBF1DC;
+  --danger:           #D6483B;
+  --danger-bg:        #FBE9E7;
+  --info:             var(--petroleum-600);
+  --info-bg:          var(--petroleum-050);
+
+  /* =========================================================
+     SEMANTIC ALIASES — light context (default)
+     ========================================================= */
+  --bg-canvas:        var(--neutral-0);
+  --bg-subtle:        var(--neutral-50);
+  --bg-muted:         var(--neutral-100);
+  --surface-card:     var(--neutral-0);
+  --surface-raised:   var(--neutral-0);
+  --surface-sunken:   var(--neutral-50);
+
+  --text-primary:     var(--petroleum-950);
+  --text-secondary:   var(--neutral-600);
+  --text-muted:       var(--neutral-400);
+  --heading-color:    var(--text-primary);   /* headings — lime under .on-black */
+  --text-on-dark:     var(--white);
+  --text-on-lime:     var(--petroleum-950);
+  --text-on-petroleum:var(--white);
+
+  --border-subtle:    var(--neutral-200);
+  --border-default:   var(--neutral-300);
+  --border-strong:    var(--neutral-400);
+  --border-focus:     var(--petroleum-600);
+
+  --accent:           var(--lime-500);
+  --accent-hover:     var(--lime-600);
+  --accent-text:      var(--petroleum-950);   /* text on lime accent  */
+
+  --brand:            var(--petroleum-800);
+  --brand-hover:      var(--petroleum-700);
+  --brand-text:       var(--white);
+
+  --ring:             color-mix(in srgb, var(--petroleum-600) 45%, transparent);
+  --overlay:          color-mix(in srgb, var(--petroleum-950) 55%, transparent);
+}
+
+/* =========================================================
+   BLACK CONTEXT — PRIMARY dark surface.
+   Preto no fundo · títulos em lime · texto em branco.
+   Apply .on-black (or data-theme="black") — this is the
+   brand's preferred/primary dark treatment.
+   ========================================================= */
+.on-black,
+[data-theme="black"] {
+  --bg-canvas:        var(--black);
+  --bg-subtle:        #0A0A0A;
+  --bg-muted:         var(--neutral-900);
+  --surface-card:     #0E0E0E;
+  --surface-raised:   var(--neutral-900);
+  --surface-sunken:   var(--black);
+
+  --text-primary:     var(--white);
+  --text-secondary:   var(--neutral-300);
+  --text-muted:       var(--neutral-400);
+  --heading-color:    var(--lime-500);   /* títulos em lime */
+
+  --border-subtle:    color-mix(in srgb, var(--white) 10%, transparent);
+  --border-default:   color-mix(in srgb, var(--white) 18%, transparent);
+  --border-strong:    color-mix(in srgb, var(--white) 32%, transparent);
+  --border-focus:     var(--lime-500);
+
+  --accent:           var(--lime-500);
+  --accent-hover:     var(--lime-300);
+  --accent-text:      var(--black);
+
+  --brand:            var(--lime-500);
+  --brand-hover:      var(--lime-300);
+  --brand-text:       var(--black);
+
+  --ring:             color-mix(in srgb, var(--lime-500) 55%, transparent);
+  --overlay:          color-mix(in srgb, var(--black) 72%, transparent);
+}
+
+/* =========================================================
+   DARK CONTEXT — petroleum base ("on-dark" surfaces)
+   Apply .on-dark (or data-theme="dark") to flip semantics.
+   ========================================================= */
+.on-dark,
+[data-theme="dark"] {
+  --bg-canvas:        var(--petroleum-800);
+  --bg-subtle:        var(--petroleum-900);
+  --bg-muted:         var(--petroleum-700);
+  --surface-card:     var(--petroleum-700);
+  --surface-raised:   var(--petroleum-600);
+  --surface-sunken:   var(--petroleum-900);
+
+  --text-primary:     var(--white);
+  --text-secondary:   var(--petroleum-200);
+  --text-muted:       var(--petroleum-300);
+  --heading-color:    var(--white);
+
+  --border-subtle:    color-mix(in srgb, var(--white) 12%, transparent);
+  --border-default:   color-mix(in srgb, var(--white) 20%, transparent);
+  --border-strong:    color-mix(in srgb, var(--white) 34%, transparent);
+  --border-focus:     var(--lime-500);
+
+  --accent:           var(--lime-500);
+  --accent-hover:     var(--lime-300);
+  --accent-text:      var(--petroleum-950);
+
+  --brand:            var(--lime-500);
+  --brand-hover:      var(--lime-300);
+  --brand-text:       var(--petroleum-950);
+
+  --ring:             color-mix(in srgb, var(--lime-500) 55%, transparent);
+  --overlay:          color-mix(in srgb, var(--black) 60%, transparent);
+}
+
+/* ==========================================================================
+   Nogma — Typography tokens
+   Agency  → display, logo-adjacent headlines, numerals & labels (uppercase)
+   Raleway → everything else: headings hierarchy, UI, body
+   Mobile-first (375px). Strong hierarchy, generous whitespace.
+   ========================================================================== */
+
+:root {
+  /* ---- Families ---- */
+  --font-display: "Agency", "Raleway", system-ui, sans-serif;   /* titles/impact */
+  --font-sans:    "Raleway", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-body:    var(--font-sans);
+  --font-mono:    ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  /* ---- Weights (Raleway) ---- */
+  --fw-light:     300;  /* @kind other */
+  --fw-regular:   400;  /* @kind other */
+  --fw-medium:    500;  /* @kind other */
+  --fw-semibold:  600;  /* @kind other */
+  --fw-bold:      700;  /* @kind other */
+  --fw-extrabold: 800;  /* @kind other */
+  --fw-black:     900;  /* @kind other */
+
+  /* ---- Fluid type scale (mobile-first, clamps to desktop) ---- */
+  --text-2xs:   0.6875rem;  /* 11px — micro labels                    */
+  --text-xs:    0.75rem;    /* 12px — captions, meta                  */
+  --text-sm:    0.875rem;   /* 14px — secondary UI                    */
+  --text-base:  1rem;       /* 16px — body                            */
+  --text-lg:    1.125rem;   /* 18px — lead body                       */
+  --text-xl:    1.25rem;    /* 20px — card titles                     */
+  --text-2xl:   clamp(1.5rem, 1.2rem + 1.4vw, 1.75rem); /* @kind spacing */
+  --text-3xl:   clamp(1.875rem, 1.5rem + 1.9vw, 2.25rem); /* @kind spacing */
+  --text-4xl:   clamp(2.25rem, 1.7rem + 2.8vw, 3rem); /* @kind spacing */
+  --text-5xl:   clamp(2.75rem, 1.9rem + 4.3vw, 4rem); /* @kind spacing */
+  --text-6xl:   clamp(3.25rem, 2.1rem + 6vw, 5.5rem); /* @kind spacing */
+
+  /* ---- Line heights ---- */
+  --leading-none:    1;
+  --leading-tight:   1.1;
+  --leading-snug:    1.25;
+  --leading-normal:  1.5;
+  --leading-relaxed: 1.65;
+
+  /* ---- Letter spacing ---- */
+  --tracking-tighter: -0.03em;
+  --tracking-tight:   -0.015em;
+  --tracking-normal:  0em;
+  --tracking-wide:    0.04em;
+  --tracking-wider:   0.08em;   /* Agency uppercase eyebrows/labels    */
+  --tracking-widest:  0.16em;
+
+  /* ---- Semantic roles ---- */
+  --display-family:  var(--font-display);
+  --display-weight:  var(--fw-bold);
+  --display-tracking:var(--tracking-tight);
+
+  --heading-family:  var(--font-sans);
+  --heading-weight:  var(--fw-extrabold);
+  --heading-tracking:var(--tracking-tight);
+
+  --eyebrow-family:  var(--font-display);
+  --eyebrow-weight:  var(--fw-bold);
+  --eyebrow-tracking:var(--tracking-wider);
+
+  --body-family:     var(--font-sans);
+  --body-weight:     var(--fw-regular);
+  --body-leading:    var(--leading-relaxed);
+}
+
+/* ==========================================================================
+   Nogma — Spacing & layout tokens
+   4px base grid. Mobile-first: primary breakpoint 375px.
+   Generous whitespace is a brand signature — bias toward larger steps.
+   ========================================================================== */
+
+:root {
+  /* ---- Space scale (4px base) ---- */
+  --space-0:   0;
+  --space-1:   0.25rem;   /* 4  */
+  --space-2:   0.5rem;    /* 8  */
+  --space-3:   0.75rem;   /* 12 */
+  --space-4:   1rem;      /* 16 */
+  --space-5:   1.25rem;   /* 20 */
+  --space-6:   1.5rem;    /* 24 */
+  --space-8:   2rem;      /* 32 */
+  --space-10:  2.5rem;    /* 40 */
+  --space-12:  3rem;      /* 48 */
+  --space-16:  4rem;      /* 64 */
+  --space-20:  5rem;      /* 80 */
+  --space-24:  6rem;      /* 96 */
+  --space-32:  8rem;      /* 128 */
+
+  /* ---- Container widths ---- */
+  --container-xs:   375px;   /* mobile design target        */
+  --container-sm:   640px;
+  --container-md:   768px;
+  --container-lg:   1024px;
+  --container-xl:   1200px;
+  --container-2xl:  1440px;
+
+  /* ---- Section rhythm ---- */
+  --gutter-mobile:  1.25rem;  /* 20px page gutter @375        */
+  --gutter-desktop: 2rem;
+  --section-y:      clamp(3.5rem, 2rem + 7vw, 7rem); /* @kind spacing */
+
+  /* ---- Radii — "cantos sutis": subtle, not pill-round ---- */
+  --radius-none: 0;
+  --radius-xs:   4px;
+  --radius-sm:   6px;
+  --radius-md:   10px;    /* default control / card radius   */
+  --radius-lg:   14px;
+  --radius-xl:   20px;
+  --radius-2xl:  28px;
+  --radius-pill: 999px;   /* chips, avatars only             */
+
+  /* ---- Border widths ---- */
+  --border-hair: 1px;
+  --border-thin: 1.5px;
+  --border-thick:2px;
+
+  /* ---- Elevation — soft, cool-tinted shadows ---- */
+  --shadow-xs:  0 1px 2px rgba(4, 31, 37, 0.06);
+  --shadow-sm:  0 1px 3px rgba(4, 31, 37, 0.08), 0 1px 2px rgba(4, 31, 37, 0.05);
+  --shadow-md:  0 4px 12px rgba(4, 31, 37, 0.08), 0 2px 4px rgba(4, 31, 37, 0.05);
+  --shadow-lg:  0 12px 28px rgba(4, 31, 37, 0.12), 0 4px 8px rgba(4, 31, 37, 0.06);
+  --shadow-xl:  0 24px 56px rgba(4, 31, 37, 0.16), 0 8px 16px rgba(4, 31, 37, 0.08);
+  --shadow-lime:0 8px 24px rgba(163, 204, 0, 0.35);   /* lime glow on CTAs */
+
+  /* ---- Motion ---- */
+  --ease-out:   cubic-bezier(0.22, 1, 0.36, 1);   /* @kind other */
+  --ease-in-out:cubic-bezier(0.65, 0, 0.35, 1);   /* @kind other */
+  --dur-fast:   120ms;   /* @kind other */
+  --dur-base:   200ms;   /* @kind other */
+  --dur-slow:   360ms;   /* @kind other */
+
+  /* ---- Z ---- */
+  --z-sticky:   100;   /* @kind other */
+  --z-overlay:  200;   /* @kind other */
+  --z-modal:    300;   /* @kind other */
+  --z-toast:    400;   /* @kind other */
+}
+
+/* ==========================================================================
+   Nogma — Base layer (resets + a few brand helpers)
+   ========================================================================== */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-weight: var(--body-weight);
+  font-size: var(--text-base);
+  line-height: var(--body-leading);
+  color: var(--text-primary);
+  background: var(--bg-canvas);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  font-family: var(--heading-family);
+  font-weight: var(--heading-weight);
+  letter-spacing: var(--heading-tracking);
+  line-height: var(--leading-tight);
+  color: var(--heading-color);
+  text-wrap: balance;
+}
+
+p { margin: 0; text-wrap: pretty; }
+
+a { color: inherit; text-decoration: none; }
+
+button { font-family: inherit; }
+
+::selection { background: var(--lime-500); color: var(--petroleum-950); }
+
+/* ---- Brand helpers ---- */
+.font-display { font-family: var(--font-display); }
+.eyebrow {
+  font-family: var(--eyebrow-family);
+  font-weight: var(--eyebrow-weight);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+.text-lime      { color: var(--lime-500); }
+.text-petroleum { color: var(--petroleum-800); }
+.bg-petroleum   { background: var(--petroleum-800); color: var(--white); }
+.bg-lime        { background: var(--lime-500); color: var(--petroleum-950); }
+
+/* Lime underline flourish (brand motif) */
+.mark-lime {
+  background: linear-gradient(transparent 62%, var(--lime-500) 62%);
+  padding: 0 0.04em;
+}

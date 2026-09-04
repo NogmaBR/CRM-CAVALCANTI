@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="_sys.css">
+<style>
+  .h1{font-size:58px; max-width:900px;}
+  .sub{font-size:26px; margin-top:20px; max-width:900px;}
+  /* continuação da emenda que vem do slide 6 (mesmo width+top; left = 457 − 1080). */
+  .bg .stroke{width:1640px; top:-260px; left:-623px; right:auto; opacity:.22;}
+
+  /* texto de cima + card de comentário centralizados juntos na vertical */
+  .content{display:flex; flex-direction:column;}
+  .mid{flex:1; display:flex; flex-direction:column; justify-content:center; gap:56px;}
+
+  /* CTA lime card (referência: capa "tarefas manuais") */
+  .cta{position:relative; background:var(--lime-500); color:var(--petroleum-950);
+    border-radius:var(--radius-2xl); padding:36px 40px; display:flex; align-items:center; gap:26px; overflow:hidden;}
+  .cta__tx{position:relative; z-index:2;}
+  .cta__k{font-family:var(--font-display); font-weight:var(--fw-bold); text-transform:uppercase; letter-spacing:var(--tracking-wider); font-size:19px; color:var(--petroleum-800);}
+  .cta__h{font-family:var(--heading-family); font-weight:var(--fw-extrabold); font-size:42px; line-height:1.08; letter-spacing:-.02em; margin-top:10px;}
+  .cta__h .u{background:var(--petroleum-950); color:var(--lime-500); padding:0 12px; border-radius:8px;}
+  .cta__s{font-size:22px; font-weight:var(--fw-semibold); color:var(--petroleum-800); margin-top:14px;}
+  .cta__btn{position:relative; z-index:2; margin-left:auto; flex:none; width:100px; height:100px; border-radius:26px;
+    background:var(--petroleum-950); display:flex; align-items:center; justify-content:center;}
+  .cta__btn svg{width:46px; height:46px; stroke:var(--lime-500); fill:none; stroke-width:2.4;}
+
+  /* rodapé só com @nogma.br à direita (slide 7) */
+  .foot{justify-content:flex-end;}
+  .foot .handle{font-family:var(--font-display); font-weight:var(--fw-bold); text-transform:uppercase;
+    letter-spacing:var(--tracking-wider); font-size:21px; color:var(--lime-500);}
+</style>
+</head>
+<body class="on-black">
+  <div class="slide">
+    <div class="bg">
+      <div class="grid"></div>
+      <div class="glow-lime"></div>
+      <div class="glow-teal"></div>
+      <img class="stroke" src="../../assets/intersecoes/11.png" alt="">
+    </div>
+
+    <div class="content">
+      <header class="top">
+        <img class="wordmark" src="../../assets/logo-nogma-lime.png" alt="nogma">
+        <span class="counter">07 / 07</span>
+      </header>
+
+      <main class="mid">
+        <div>
+          <div class="eyebrow sq">O próximo passo</div>
+          <h1 class="h1">Esse mapeamento é o<br><span class="lm">diagnóstico da Nogma</span>.</h1>
+          <p class="sub">Com os números da sua operação na mesa e o retorno metrificado. A gente te mostra <b>por onde começar</b>, e quanto vale.</p>
+        </div>
+
+        <div class="cta">
+          <div class="cta__tx">
+            <div class="cta__k">Comenta aqui embaixo</div>
+            <div class="cta__h"><span class="u">RETORNO</span></div>
+            <div class="cta__s">e a nossa equipe te chama pra montar o seu.</div>
+          </div>
+          <div class="cta__btn"><svg viewBox="0 0 24 24"><path d="M6 18L18 6"/><path d="M8 6h10v10"/></svg></div>
+        </div>
+      </main>
+
+      <footer class="foot">
+        <span class="handle">@nogma.br</span>
+      </footer>
+    </div>
+  </div>
+</body>
+</html>

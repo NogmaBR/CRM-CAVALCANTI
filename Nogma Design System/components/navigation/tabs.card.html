@@ -1,0 +1,33 @@
+<!-- @dsCard group="Components" viewport="700x200" name="Navigation — Tabs" subtitle="Line + pill tab variants" -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+  body{ margin:0; padding:26px; background:var(--bg-canvas); font-family:var(--font-sans); }
+  .stack{ display:flex; flex-direction:column; gap:26px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { Tabs } = window.NogmaDesignSystem_54b71f;
+function Demo(){
+  return (
+    <div className="stack">
+      <Tabs variant="line" defaultValue="ativos"
+        items={[{value:"ativos",label:"Ativos",count:12},{value:"pausados",label:"Pausados",count:3},{value:"todos",label:"Todos"}]} />
+      <Tabs variant="pill" defaultValue="mes"
+        items={[{value:"mes",label:"Mês"},{value:"tri",label:"Trimestre"},{value:"ano",label:"Ano"}]} />
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<Demo/>);
+</script>
+</body>
+</html>

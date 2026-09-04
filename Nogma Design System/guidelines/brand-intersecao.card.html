@@ -1,0 +1,24 @@
+<!-- @dsCard group="Brand" viewport="760x280" name="Intersecção (o nó)" subtitle="Pontas fora do quadro + emenda entre slides" -->
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css">
+<style>
+  body{margin:0; padding:22px; background:#0A0B0C; font-family:var(--font-sans); color:#fff;}
+  .pair{display:flex; align-items:stretch;}
+  .sl{position:relative; width:340px; height:158px; overflow:hidden; background:#0A0B0C; border:1px solid rgba(255,255,255,.12);}
+  .sl.a{border-right:none; border-radius:8px 0 0 8px;}
+  .sl.b{border-left:none; border-radius:0 8px 8px 0;}
+  .seam{width:1px; background:rgba(255,255,255,.28);}
+  .sl img{position:absolute; top:-46px; width:380px; filter:drop-shadow(0 0 20px rgba(204,255,0,.35));}
+  .sl.a img{left:120px;}
+  .sl.b img{left:-220px;}   /* mesma imagem: left(b) = left(a) − largura do slide → emenda */
+  .cap{margin-top:14px; font-size:12.5px; color:rgba(255,255,255,.62); line-height:1.55; max-width:700px;}
+  .cap b{color:#CCFF00; font-weight:700;}
+</style></head>
+<body>
+  <div class="pair">
+    <div class="sl a"><img src="../assets/intersecoes/10.png" alt=""></div>
+    <div class="seam"></div>
+    <div class="sl b"><img src="../assets/intersecoes/10.png" alt=""></div>
+  </div>
+  <div class="cap"><b>Pontas sempre fora do quadro</b> — amplie o traço até o término sair (nada de gancho visível). <b>Emenda entre slides:</b> a mesma imagem, mesmo width+top; no slide da direita, left = left(esquerda) − largura do slide. Metade num, metade no outro, e o corte bate na virada.</div>
+</body></html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="_sys.css">
+<style>
+  /* emenda 6→7: elemento novo (11.png) atravessando a virada; pontas fora do quadro.
+     no slide 6 fica de fundo (baixa opacidade) pro texto centralizado ler por cima. */
+  .bg .stroke{width:1640px; top:-260px; left:457px; right:auto; opacity:.26;}
+
+  .content{display:flex; flex-direction:column;}
+  .mid{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;}
+  .eyebrow{justify-content:center; margin-top:0;}
+  .h1{font-size:50px; max-width:900px; margin-top:26px;}
+  .msub{font-size:23px; line-height:1.5; color:var(--ink-2); margin-top:22px; max-width:780px;}
+  .msub b{color:#fff; font-weight:var(--fw-bold);}
+  .rule{width:60px; height:4px; background:var(--lime-500); border-radius:3px; margin:46px 0;
+    box-shadow:0 0 22px color-mix(in srgb,var(--lime-500) 55%,transparent);}
+  .h2{font-family:var(--heading-family); font-weight:var(--fw-extrabold); font-size:44px;
+    line-height:1.08; letter-spacing:-.02em; color:#fff; max-width:860px;}
+  .h2 .lm{color:var(--lime-500);}
+  .msub2{font-size:23px; line-height:1.5; color:var(--ink-2); margin-top:22px; max-width:780px;}
+  .msub2 b{color:#fff; font-weight:var(--fw-bold);}
+</style>
+</head>
+<body class="on-black">
+  <div class="slide">
+    <div class="bg">
+      <div class="grid"></div>
+      <div class="glow-lime"></div>
+      <div class="glow-teal"></div>
+      <img class="stroke" src="../../assets/intersecoes/11.png" alt="">
+    </div>
+
+    <div class="content">
+      <header class="top">
+        <img class="wordmark" src="../../assets/logo-nogma-lime.png" alt="nogma">
+        <span class="counter">06 / 07</span>
+      </header>
+
+      <main class="mid">
+        <h1 class="h1">Com os três respondidos,<br>a <span class="lm">ordem se resolve</span>.</h1>
+        <p class="msub">Impacto alto, retorno alto, esforço baixo. Começa por aqui. O resto não é descartado, <b>só entra depois</b>, quando a primeira entrega já provou que funciona.</p>
+
+        <div class="rule"></div>
+
+        <h2 class="h2">E nada disso é sobre <span class="lm">tecnologia</span>.</h2>
+        <p class="msub2">São três perguntas sobre a <b>sua operação</b>.<br>Por isso a ferramenta é sempre a <b>última</b> decisão, nunca a primeira.</p>
+      </main>
+
+      <footer class="foot">
+        <span class="site">nogma.br</span>
+        <span class="drag">→</span>
+      </footer>
+    </div>
+  </div>
+</body>
+</html>

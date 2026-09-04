@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="_sys.css">
+<style>
+  /* emenda 1→2: mesmo PNG grande atravessando a virada; pontas fora do quadro.
+     No slide 1 vira fundo (opacidade menor) pra o texto centralizado ler por cima. */
+  .bg .stroke{width:1640px; top:-260px; left:457px; right:auto; opacity:.28;}
+
+  .content{display:flex; flex-direction:column;}
+  .mid{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;}
+  .eyebrow{justify-content:center; margin-top:0;}
+  .h1{font-size:78px; max-width:900px; margin-top:30px;}
+  .capa-sub{font-size:29px; line-height:1.5; color:var(--ink-2); margin-top:32px; max-width:680px;}
+  .capa-sub b{color:#fff; font-weight:var(--fw-bold);}
+  .capa-sub .lm{color:var(--lime-500); font-weight:var(--fw-semibold);}
+  /* linha discreta lá embaixo, distante do texto central, sem número */
+  .tagline{text-align:center; font-family:var(--font-mono); font-size:16px; letter-spacing:.3px;
+    color:color-mix(in srgb,#fff 40%,transparent); margin-bottom:42px;}
+</style>
+</head>
+<body class="on-black">
+  <div class="slide">
+    <div class="bg">
+      <div class="grid"></div>
+      <div class="glow-lime"></div>
+      <div class="glow-teal"></div>
+      <img class="stroke" src="../../assets/intersecoes/10.png" alt="">
+    </div>
+
+    <div class="content">
+      <header class="top">
+        <img class="wordmark" src="../../assets/logo-nogma-lime.png" alt="nogma">
+        <span class="live"><i class="pulse"></i>guia · <b>nogma</b></span>
+      </header>
+
+      <main class="mid">
+        <div class="eyebrow">Primeiros passos com IA</div>
+        <h1 class="h1">Como eu começo a usar <span class="lm">IA</span> na minha empresa?</h1>
+        <p class="capa-sub">Essa é a pergunta que os <span class="lm">líderes de empresa</span><br>mais fazem hoje.</p>
+      </main>
+
+      <p class="tagline">O método Nogma pra desenhar a prioridade de cada projeto.</p>
+
+      <footer class="foot">
+        <span class="site">nogma.br</span>
+        <span class="drag">→</span>
+      </footer>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,195 @@
+/* ============================================================================
+   NOGMA · SISTEMA DE ARTE (dark-tech)  —  camada canônica de componentes
+   ----------------------------------------------------------------------------
+   Este é o MODELO oficial pra posts, site e apresentações da Nogma.
+   Linke SEMPRE depois de styles.css (que traz os tokens):
+
+     <link rel="stylesheet" href="styles.css">      (ajuste o caminho relativo)
+     <link rel="stylesheet" href="system.css">
+
+   Direção da marca (fixa):
+   • Base PRETA (#0A0B0C) — o design system é preto (.on-black). NÃO usar petróleo/
+     teal como fundo de arte: teal é cor de SISTEMA INTERNO (produto), uso mínimo.
+   • Acento LIME (#CCFF00) sempre. Texto branco/cinza.
+   • Tipografia: Agency (display/numerais/eyebrows caixa-alta) + Raleway (títulos/corpo).
+   • Fundo "dark-tech": blueprint grid OU constelação de pontos + glows lime.
+   • Intersecção (o "nó" lime) como motivo recorrente — ver regras abaixo.
+
+   Post de referência (modelo vivo): posts/diagnostico/ (slides 01–07).
+   Formato feed = 1080×1350. Para story/reels use .slide{height:1920px}. Para site/
+   deck, reaproveite tokens + componentes num container próprio.
+   ============================================================================ */
+:root{
+  --base:      #0A0B0C;          /* PRETO — base de toda arte externa                */
+  --base-2:    #101216;          /* leve alívio p/ superfícies lerem no preto         */
+  --teal:      #3FB7C9;          /* cor de SISTEMA INTERNO — evitar na arte           */
+  --hair:      color-mix(in srgb,#fff 8%, transparent);
+  --hair-2:    color-mix(in srgb,#fff 14%, transparent);
+  --ink-2:     color-mix(in srgb,#fff 72%, transparent);  /* corpo secundário        */
+  --card:      color-mix(in srgb,#fff 5%, var(--base));    /* card = leve acima do preto */
+  --card-2:    color-mix(in srgb,#fff 8%, var(--base));
+}
+
+html,body{margin:0;background:#05171C;}
+
+/* Canvas do post (feed 4:5). Story/reels: sobrescreva height:1920px no post. */
+.slide{
+  position:relative; width:1080px; height:1350px; overflow:hidden;
+  background:var(--base); color:#fff; font-family:var(--font-sans);
+  box-sizing:border-box; padding:72px;
+  display:flex; flex-direction:column;
+}
+
+/* ---------- CAMADAS DE FUNDO (dark-tech) ----------
+   Combine: .grid OU .dots  +  .glow-lime + .glow-teal(lime)  +  .stroke (intersecção).
+   Varie a textura entre slides (grid num, dots noutro) e a posição dos glows
+   pra não ficar tudo igual. */
+.bg{position:absolute; inset:0; z-index:0; pointer-events:none;}
+.bg .grid{position:absolute; inset:0;
+  background-image:linear-gradient(var(--hair) 1px,transparent 1px),
+                   linear-gradient(90deg,var(--hair) 1px,transparent 1px);
+  background-size:60px 60px; opacity:.6;
+  -webkit-mask-image:radial-gradient(130% 90% at 50% 30%,#000 52%,transparent 100%);
+          mask-image:radial-gradient(130% 90% at 50% 30%,#000 52%,transparent 100%);}
+.bg .glow-lime{position:absolute; top:-320px; left:-220px; width:860px; height:860px;
+  background:radial-gradient(circle,color-mix(in srgb,var(--lime-500) 20%,transparent) 0%,transparent 60%); filter:blur(26px);}
+/* "glow-teal" mantém o nome por compatibilidade, mas a cor é LIME (teal é interno) */
+.bg .glow-teal{position:absolute; right:-300px; bottom:-160px; width:820px; height:820px;
+  background:radial-gradient(circle,color-mix(in srgb,var(--lime-500) 9%,transparent) 0%,transparent 62%); filter:blur(26px);}
+
+/* constelação de pontos: textura alternativa ao grid */
+.bg .dots{position:absolute; inset:0;
+  background-image:radial-gradient(color-mix(in srgb,#fff 12%,transparent) 1.4px, transparent 1.6px);
+  background-size:44px 44px;
+  -webkit-mask-image:radial-gradient(125% 95% at 50% 42%,#000 52%,transparent 100%);
+          mask-image:radial-gradient(125% 95% at 50% 42%,#000 52%,transparent 100%);}
+
+/* ---------- INTERSECÇÃO (o "nó" lime) — motivo de marca ----------
+   PNGs transparentes em assets/intersecoes/ (8,9,10,11). Regras:
+   1) As PONTAS ficam SEMPRE fora do quadro (amplie o traço até o término sair). Nada
+      de ponta/gancho aparecendo dentro do slide.
+   2) Como textura de fundo: opacidade baixa (~.14–.28) atrás do conteúdo.
+   3) EMENDA entre dois slides (continuidade ao deslizar): use o MESMO width+top nos
+      dois; no slide da direita, left = left(esquerda) − 1080. Metade do traço fica
+      num, metade no outro — e o corte bate no pixel da virada.
+   Posicione por slide (width/top/left/right/opacity). */
+.bg .stroke{position:absolute; opacity:.9;
+  filter:drop-shadow(0 0 44px color-mix(in srgb,var(--lime-500) 34%,transparent));}
+.bg .stroke.faint{opacity:.16; filter:none;}
+
+/* alternativa vetorial da emenda (SVG num canvas 2160×1350; a=esq left:0, b=dir left:-1080) */
+.bg .span{position:absolute; top:0; height:1350px; width:2160px; z-index:0; pointer-events:none;
+  filter:drop-shadow(0 0 26px color-mix(in srgb,var(--lime-500) 26%,transparent));}
+.bg .span.a{left:0;}
+.bg .span.b{left:-1080px;}
+.bg .span path{fill:none; stroke:var(--lime-500); stroke-width:52; stroke-linecap:round; stroke-linejoin:round;}
+
+/* campo de micro-nós espalhados (opcional) */
+.bg .scatter img{position:absolute; opacity:.10;
+  filter:drop-shadow(0 0 10px color-mix(in srgb,var(--lime-500) 18%,transparent));}
+
+/* ---------- CONTEÚDO ---------- */
+.content{position:relative; z-index:1; height:100%; display:flex; flex-direction:column;}
+
+/* topo: logo (grande) à esquerda + contador "0X / 0N" OU chip .live à direita */
+.top{display:flex; justify-content:space-between; align-items:center;}
+.wordmark{height:88px; width:auto;}
+.counter{font-family:var(--font-mono); font-size:18px; letter-spacing:4px; color:var(--ink-2);}
+.live{display:inline-flex; align-items:center; gap:10px; padding:8px 15px; border-radius:999px;
+  border:1px solid var(--hair-2); background:color-mix(in srgb,#fff 4%,transparent);
+  font-family:var(--font-mono); font-size:15px; color:var(--neutral-300);}
+.live .pulse{width:9px; height:9px; border-radius:50%; background:var(--lime-500);}
+.live b{color:var(--lime-500); font-weight:700;}
+
+/* eyebrow — Agency caixa-alta + traço/quadrado lime (use .sq para o quadrado) */
+.eyebrow{display:inline-flex; align-items:center; gap:13px; margin-top:56px;
+  font-family:var(--font-display); font-weight:var(--fw-bold);
+  text-transform:uppercase; letter-spacing:var(--tracking-wider);
+  font-size:22px; color:var(--lime-500);}
+.eyebrow::before{content:""; width:30px; height:3px; background:var(--lime-500); border-radius:2px;}
+.eyebrow.sq::before{width:15px; height:15px; border-radius:3px;}
+
+/* headline + corpo. .lm = destaque lime (uma frase-chave por bloco). */
+.h1{font-family:var(--heading-family); font-weight:var(--fw-extrabold);
+  line-height:1.04; letter-spacing:var(--tracking-tight); color:#fff; margin-top:22px; font-size:66px;}
+.h1 .lm{color:var(--lime-500);}
+.sub{font-family:var(--font-sans); font-weight:var(--fw-regular);
+  font-size:27px; line-height:1.5; color:var(--ink-2); margin-top:22px; max-width:900px;}
+.sub b{color:#fff; font-weight:var(--fw-bold);}
+.sub .lm{color:var(--lime-500); font-weight:var(--fw-semibold);}
+
+/* rodapé: nogma.br (esq) + seta grande → (dir). Último slide: @nogma.br na direita. */
+.foot{display:flex; justify-content:space-between; align-items:center; margin-top:auto; padding-top:26px;}
+.foot .site{font-family:var(--font-sans); font-weight:var(--fw-semibold); font-size:20px; color:var(--ink-2);}
+.foot .drag{font-family:var(--font-display); font-weight:var(--fw-bold); text-transform:uppercase;
+  letter-spacing:var(--tracking-wider); font-size:34px; color:var(--lime-500); display:flex; align-items:center; gap:11px; line-height:1;}
+.foot .handle{font-family:var(--font-display); font-weight:var(--fw-bold); text-transform:uppercase;
+  letter-spacing:var(--tracking-wider); font-size:21px; color:var(--lime-500);}
+
+/* ---------- COMPONENTES DE PAINEL ---------- */
+/* card bento (superfície no preto lê pela borda hairline); --accent = topo lime */
+.card{position:relative; overflow:hidden; background:var(--card);
+  border:1px solid var(--hair); border-radius:var(--radius-xl);}
+.card--accent{border-top:3px solid var(--lime-500);}
+
+/* numeral fantasma (marca d'água tipográfica gigante, bem apagada) */
+.ghost{position:absolute; font-family:var(--font-display); font-weight:var(--fw-bold);
+  color:rgba(255,255,255,.035); line-height:.8; letter-spacing:-4px; user-select:none; z-index:0;}
+.tele{font-family:var(--font-mono); font-size:13px; letter-spacing:.3px; color:var(--ink-2);}
+.tele b{color:var(--lime-500); font-weight:700;}
+
+/* chip de telemetria (mono, borda hairline) */
+.chip{display:inline-flex; align-items:center; gap:8px; font-family:var(--font-mono); font-size:14px;
+  color:var(--neutral-300); background:color-mix(in srgb,#fff 4%,transparent);
+  border:1px solid var(--hair); border-radius:var(--radius-sm); padding:6px 10px;}
+.chip b{color:var(--lime-500); font-weight:700;}
+
+/* medidor ALTO · MÉDIO · BAIXO — alto = lime; médio/baixo = cinza (nunca teal) */
+.amb{display:flex; flex-direction:column; gap:9px;}
+.amb__track{display:flex; gap:6px;}
+.amb__seg{flex:1; height:12px; border-radius:3px; background:color-mix(in srgb,#fff 9%,transparent);}
+.amb__seg.on{background:var(--lime-500);}
+.amb__lbls{display:flex; justify-content:space-between; font-family:var(--font-mono);
+  font-size:13px; letter-spacing:.4px; color:var(--ink-2); text-transform:uppercase;}
+.amb__lbls span.act{color:var(--lime-500); font-weight:700;}
+
+/* linha genérica de painel (ícone + nome + meta + tag) */
+.row{display:flex; align-items:center; gap:16px; padding:16px 0; border-bottom:1px solid var(--hair);}
+.row:last-child{border-bottom:none;}
+.row__ic{width:44px; height:44px; border-radius:12px; flex:none; display:flex; align-items:center; justify-content:center;
+  background:color-mix(in srgb,#fff 6%,transparent); border:1px solid var(--hair);}
+.row__ic svg{width:23px; height:23px; stroke:var(--lime-500); fill:none; stroke-width:1.9;}
+.row__tx{min-width:0;}
+.row__name{font-weight:700; font-size:23px; color:#fff;}
+.row__meta{font-family:var(--font-mono); font-size:15px; color:var(--ink-2); margin-top:3px;}
+.row__tag{margin-left:auto; flex:none;}
+
+/* tag de prioridade / valor (hi = lime, mid/lo = cinza) */
+.pc{font-family:var(--font-mono); font-size:14px; letter-spacing:.3px; padding:6px 11px; border-radius:999px;
+  border:1px solid var(--hair-2); color:var(--neutral-300); white-space:nowrap;}
+.pc.hi{color:var(--lime-500); border-color:color-mix(in srgb,var(--lime-500) 45%,transparent);
+  background:color-mix(in srgb,var(--lime-500) 10%,transparent); font-weight:700;}
+.pc.mid{color:var(--neutral-300); border-color:var(--hair-2);}
+.pc.lo{color:var(--ink-2);}
+
+/* faixa horizontal (padrão "os 3 ângulos", slide 05): borda-esq lime + número gigante
+   de leve atrás, à direita, centralizado no EIXO do dígito (não pela borda). */
+.band{position:relative; overflow:hidden; display:flex; align-items:center; gap:30px;
+  border:1px solid var(--hair); border-left:3px solid var(--lime-500); border-radius:var(--radius-lg);
+  background:var(--card); padding:22px 40px;}
+.band .gnum{position:absolute; right:115px; top:calc(50% + 30px); transform:translate(50%,-50%); z-index:0;
+  font-family:var(--font-display); font-weight:var(--fw-bold); font-size:225px; line-height:1;
+  color:rgba(255,255,255,.055); user-select:none;}   /* +30px compensa o descendente da Agency */
+
+/* card de CTA lime (o "comenta X") — fundo lime, texto petróleo, caixa escura no destaque */
+.cta{position:relative; background:var(--lime-500); color:var(--petroleum-950);
+  border-radius:var(--radius-2xl); padding:36px 40px; display:flex; align-items:center; gap:26px; overflow:hidden;}
+.cta__k{font-family:var(--font-display); font-weight:var(--fw-bold); text-transform:uppercase; letter-spacing:var(--tracking-wider); font-size:19px; color:var(--petroleum-800);}
+.cta__h{font-family:var(--heading-family); font-weight:var(--fw-extrabold); font-size:42px; line-height:1.08; letter-spacing:-.02em; margin-top:10px;}
+.cta__h .u{background:var(--petroleum-950); color:var(--lime-500); padding:0 12px; border-radius:8px;}
+.cta__s{font-size:22px; font-weight:var(--fw-semibold); color:var(--petroleum-800); margin-top:14px;}
+.cta__btn{flex:none; margin-left:auto; width:100px; height:100px; border-radius:26px;
+  background:var(--petroleum-950); display:flex; align-items:center; justify-content:center;}
+.cta__btn svg{width:46px; height:46px; stroke:var(--lime-500); fill:none; stroke-width:2.4;}
+
+.mono{font-family:var(--font-mono);}

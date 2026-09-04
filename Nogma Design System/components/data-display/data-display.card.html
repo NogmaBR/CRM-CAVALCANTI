@@ -1,0 +1,68 @@
+<!-- @dsCard group="Components" viewport="700x360" name="Data display" subtitle="Card · Badge · Tag · Avatar · Stat" -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+  body{ margin:0; padding:26px; background:var(--bg-subtle); font-family:var(--font-sans); }
+  .wrap{ display:grid; grid-template-columns:1.1fr 1fr; gap:20px; align-items:start; max-width:660px; }
+  .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
+  .stackcards{ display:flex; flex-direction:column; gap:14px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { Card, Badge, Tag, Avatar, Stat } = window.NogmaDesignSystem_54b71f;
+function Demo(){
+  return (
+    <div className="wrap">
+      <div className="stackcards">
+        <Card title="Automação de faturas" subtitle="Ativa desde março" accent>
+          <Stat label="Horas economizadas / mês" value="128h" delta="+18%" caption="vs. trimestre anterior" />
+        </Card>
+        <Card interactive>
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            <Avatar name="Ana Prado" status="online" size="lg" />
+            <div>
+              <div style={{fontWeight:700}}>Ana Prado</div>
+              <div style={{color:"var(--text-muted)",fontSize:14}}>Head de Operações</div>
+            </div>
+          </div>
+        </Card>
+      </div>
+      <div>
+        <div className="row">
+          <Badge variant="solid-lime" dot>Ativo</Badge>
+          <Badge variant="petroleum">Automação</Badge>
+          <Badge variant="success">Concluído</Badge>
+          <Badge variant="warning">Pendente</Badge>
+          <Badge variant="danger">Erro</Badge>
+          <Badge variant="outline">Rascunho</Badge>
+        </div>
+        <div className="row">
+          <Tag onRemove={()=>{}}>Financeiro</Tag>
+          <Tag onRemove={()=>{}}>Vendas</Tag>
+          <Tag outline>+3</Tag>
+        </div>
+        <div className="row" style={{gap:14}}>
+          <Avatar name="Ana Prado" size="sm" />
+          <Avatar name="João Reis" size="md" status="away" />
+          <Avatar name="MK" size="lg" square />
+        </div>
+        <Card padded>
+          <Stat label="Processos ativos" value="24" delta="+3" direction="up" />
+        </Card>
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<Demo/>);
+</script>
+</body>
+</html>
