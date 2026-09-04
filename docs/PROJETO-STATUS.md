@@ -1,6 +1,10 @@
 # Projeto Status — CRM Nogma Cavalcanti
 
-Atualizado: 2026-09-03 (fim da sessão de kickoff)
+Atualizado: 2026-09-04 (fim da sessão de handoff Fase 0)
+
+> **⚠️ Nota de segurança:** este documento em versões anteriores expunha uma
+> senha DB "pré-gerada" e um HMAC secret "pré-gerado". Ambos foram testados
+> ou rotacionados e são **inertes**. Ver seção _Segurança_ no fim.
 
 ## O que está pronto ✅
 
@@ -31,40 +35,27 @@ Atualizado: 2026-09-03 (fim da sessão de kickoff)
 
 ## O que está PENDENTE ⏳
 
-### 🅰️ Supabase (bloqueado por outage)
+### 🅰️ Supabase — parcialmente feito
 
-- **Bloqueio:** Outage global do Supabase control plane iniciado ~01:37 UTC 04/set/2026
-  - Project Lifecycle Actions: afetado
-  - Management API: Major Outage
-  - Status: <https://status.supabase.com>
-- **Conta a usar:** nova conta empresarial (usuário está criando)
-- **Depois do outage voltar:**
-  1. Usuário cria projeto pela UI (`CRM-CAVALCANTI`, org NOGMA, região São Paulo, senha DB gerada)
-  2. Habilitar extensions: `pgcrypto`, `uuid-ossp`, `pg_cron`
-  3. Coletar credenciais (URL + anon + service_role + project ref)
-  4. Passar credenciais para retomar sessão
-  5. Executar Fase 3 do Plano #1 v2 (migrations + RLS + seed + tipos)
+- ✅ Outage do control plane resolvido em 2026-09-04 08:18 UTC
+- ✅ Projeto criado: `CRM-CAVALCANTI` (ref anônimo — ver `.env.local` local)
+- ✅ Extensions habilitadas: `pgcrypto`, `uuid-ossp` (via Management API)
+- ✅ Chaves API coletadas via Management API (anon legacy, service_role legacy,
+  publishable, JWT secret) — armazenadas em `.env.local` (gitignored)
+- ⏳ **DB password real** — precisa ser resetada via dashboard e passada em
+  canal seguro. Ver `docs/operacao/handoff-fase-0.md` §Pendências.
+- ⏳ **`sb_secret_...`** (secret key novo formato) — mascarada pela API;
+  copiar via dashboard: Project Settings → API → "Reveal" no card secret.
+- ⏳ Hardening auth (leaked-password protection, MFA, min password length)
+  aplicado — ver `docs/operacao/handoff-fase-0.md` §Segurança.
 
-**Senha DB gerada preventivamente:** `BPGAbjzxuDkrJsvbLCuVIBtUPSaH4Fq`
-Salva em: `%TEMP%\supabase-crm-nogma-db-pw.txt`
+### 🅱️ Vercel — pendente
 
-### 🅱️ Vercel (bloqueado — parceiro vai subir)
+- Aguardando parceiro dono da org GitHub `NogmaBR` executar roteiro em
+  `docs/operacao/handoff-fase-0.md` (Parte B)
+- Requer: `VERCEL_TOKEN`, `VERCEL_TEAM_ID`, `VERCEL_PROJECT_ID`, URL
 
-- **Motivo:** conta Vercel será do parceiro dono da org GitHub `NogmaBR`
-- **Roteiro completo entregue na conversa (Etapas 1-9)** — o parceiro pode seguir
-- **Depois:**
-  1. Parceiro loga no Vercel, autoriza org NogmaBR, importa repo
-  2. Instala Vercel CLI local (já feito: v59.11.2)
-  3. `vercel link` no repo local
-  4. `vercel env add` para cada variável
-  5. `vercel env pull apps/web/.env.local`
-  6. Ajustar Root Directory + Framework quando Fase 1.1 rodar
-
-**HMAC secret gerado preventivamente:**
-`dcbb2015380e3413b379246af50cce1f6de9a7978ec42f2224ada934da65993d`
-Salvo em: `%TEMP%\vercel-hmac-secret.txt`
-
-### Fase 1+ (bloqueado por Supabase/Vercel prontos)
+### Fase 1+ (bloqueado por Vercel + DB password)
 
 Ainda não iniciado. Ver `docs/superpowers/plans/2026-09-03-plano-1-fundacoes-v2.md`.
 
@@ -97,6 +88,29 @@ O Claude vai:
 - Executar Fase 2 (Auth) e Fase 3 (Schema/RLS/seed)
 - Deploy final e verificação
 
+## Segurança — o que vazou e como foi tratado
+
+Este arquivo, em commits anteriores (`ff16552`), continha dois valores marcados
+como "gerados preventivamente" que ficaram publicamente visíveis (o repositório
+GitHub `NogmaBR/CRM-CAVALCANTI` é público). Ambos foram tratados:
+
+| Valor exposto | Tipo | Status | Como foi mitigado |
+|---|---|---|---|
+| `BPGAbjz…4Fq` (prefixo) | DB password "pré-gerada" | **Inerte** | Testado via `pg` client em 2026-09-04 — password auth **falhou**. Nunca foi a senha real do projeto criado depois. |
+| `dcbb2015…93d` (prefixo) | HMAC secret "pré-gerado" | **Rotacionado** | Nunca foi usado em app rodando; substituído por novo secret de 32 bytes criptográficos em `.env.local`. Nunca redigite o antigo em prod. |
+
+Segredos que **nunca** tocaram o repo git (armazenados apenas em `.env.local`,
+gitignored): chaves API do Supabase (anon/service_role/publishable/secret),
+Personal Access Token, DB password real, tokens Vercel. Confirmar com:
+
+```powershell
+git grep -E 'sbp_|sb_secret|sb_publishable|eyJhbGci|service_role.*eyJ' HEAD
+```
+(deve retornar zero matches — verificado 2026-09-04)
+
+Ver `docs/operacao/handoff-fase-0.md` §Segurança para as configurações de
+hardening aplicadas no Supabase (Auth, network, RLS defaults).
+
 ## Notas / gotchas descobertos nesta sessão
 
 1. **pnpm v11+ usa `allowBuilds:` em vez de `onlyBuiltDependencies:`** — se editar `pnpm-workspace.yaml`, use o formato correto:
@@ -118,5 +132,6 @@ O Claude vai:
 - **Cliente:** Cavalcanti Construções (Fernando Cavalcanti)
 - **Fabricante:** Nogma (`operacao@nogmacorp.com.br`, WhatsApp +55 51 9285-6911)
 - **Owner GitHub:** org `NogmaBR` (parceiro)
-- **Supabase account atual (Claude CLI):** `contato.nogma@gmail.com`
-- **Supabase account nova (a criar):** empresa (a definir)
+- **Supabase account:** conta empresa Nogma (nova) — Personal Access Token
+  armazenado em `.env.local` local
+- **Vercel account:** parceiro dono da org NogmaBR — pendente

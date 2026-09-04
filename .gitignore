@@ -12,9 +12,10 @@ build/
 
 # Env
 .env
+.env.*
+!.env.example
 .env.local
 .env.*.local
-!.env.example
 
 # Editors
 .vscode/*
