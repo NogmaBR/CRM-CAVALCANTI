@@ -17,7 +17,15 @@ Status Supabase em 04/set 08:18 UTC: **outage resolvido**, Project Lifecycle Act
 
 ---
 
-## Parte A — Supabase (você faz)
+## Parte A — Supabase
+
+> ✅ **Já concluído em 2026-09-04.** Projeto `CRM-CAVALCANTI` criado
+> (ref `bbtejxugeeccywwhfpoc`, região `sa-east-1`, Postgres 17.6), extensions
+> `pgcrypto` + `uuid-ossp` habilitadas, chaves API coletadas e salvas em
+> `.env.local` (gitignored). Ver §Segurança para hardening aplicado.
+> As seções A.1–A.5 abaixo estão preservadas como **runbook** para
+> reprovisionar em caso de disaster recovery. Pule para Parte B ou para
+> §"Falta pegar" da Parte D se estiver retomando trabalho normal.
 
 ### A.1 · Criar/entrar na conta empresa
 
@@ -37,15 +45,11 @@ Status Supabase em 04/set 08:18 UTC: **outage resolvido**, Project Lifecycle Act
    | Campo | Valor |
    |---|---|
    | **Name** | `crm-cavalcanti` |
-   | **Database Password** | Cole a senha pré-gerada abaixo¹ |
+   | **Database Password** | Clique **"Generate a password"** e cole em local seguro¹ |
    | **Region** | `South America (São Paulo)` — `sa-east-1` |
    | **Pricing Plan** | Free |
 
-   ¹ **Senha DB pré-gerada** (sessão anterior; se ainda for válida, use):
-   ```
-   BPGAbjzxuDkrJsvbLCuVIBtUPSaH4Fq
-   ```
-   Também está em `%TEMP%\supabase-crm-nogma-db-pw.txt` na sua máquina. Se preferir, gere nova ali no botão "Generate a password" — **mas salve antes de clicar Create**, o Supabase não mostra de novo.
+   ¹ **Salve a senha DB no seu password manager ANTES de clicar "Create new project"** — o Supabase mostra a senha só uma vez. Se perder, tem que resetar em Settings → Database → Reset database password.
 
 3. Clique **"Create new project"**. Aguarde ~2min até status **"Healthy"**.
 
@@ -94,7 +98,7 @@ No dashboard do projeto `crm-cavalcanti`:
 
 Copie a URI e **substitua `[YOUR-PASSWORD]` pela senha DB do passo A.2**. Fica algo tipo:
 ```
-postgresql://postgres.<PROJECT_REF>:BPGAbjzxuDkrJsvbLCuVIBtUPSaH4Fq@aws-0-sa-east-1.pooler.supabase.com:5432/postgres
+postgresql://postgres.<PROJECT_REF>:<DB_PASSWORD>@aws-0-sa-east-1.pooler.supabase.com:5432/postgres
 ```
 
 > 💡 Prefira o "Session pooler" (5432) ao "Transaction pooler" (6543) para migrations — algumas migrations do Supabase precisam de session mode.
