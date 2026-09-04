@@ -254,36 +254,31 @@ Estado em 2026-09-04 (final da sessão de handoff):
 | `SUPABASE_ACCESS_TOKEN` | user forneceu | 🔒 Personal Access Token para MCP + Management API |
 | `WEBHOOK_HMAC_SECRET` | regerado nesta sessão | 🔒 novo valor de 32 bytes; o antigo (`dcbb2015…`) foi queimado |
 
-### ⏳ Falta pegar (manual, no dashboard)
+### ✅ Adicionadas em 2026-09-04 (sessão follow-up)
 
-| Chave | Como pegar | Por quê |
+- `SUPABASE_DB_PASSWORD` — testada via `pg` client, autentica em pg17.6. ⚠️ Fraca (11 chars, palavra+num) — recomendável rotacionar via dashboard pra 32+ chars random.
+- `SUPABASE_DB_URL` / `SUPABASE_DB_POOLER_URL` — connection strings prontas, `#` URL-encoded como `%23`, com `?sslmode=require`
+- `supabase/` inicializado no repo (`config.toml` com `project_id="crm-cavalcanti"`, `migrations/` vazio)
+- CLI linkado: `supabase projects list` mostra `● CRM-CAVALCANTI`
+
+### ⏳ Opcional: pegar depois
+
+| Chave | Onde | Motivo |
 |---|---|---|
-| `SUPABASE_DB_PASSWORD` | Dashboard → Project Settings → **Database** → botão **"Reset database password"** → copie a nova senha | A senha atual não é conhecida (Management API não a expõe); resetar dá senha nova e conhecida em 30s |
-| `SUPABASE_SECRET_KEY` (novo formato `sb_secret_...`) | Dashboard → Project Settings → **API** → card "Secret key" → botão **"Reveal"** | Management API retorna a chave mascarada; só o dashboard reveia |
+| `SUPABASE_SECRET_KEY` (novo formato `sb_secret_...`) | Dashboard → Project Settings → **API** → card "Secret key" → **"Reveal"** | JWT `service_role` legacy cobre tudo por ora; só precisa se usar API v2 no futuro |
 
 ### ⏳ Vercel — parceiro NogmaBR ainda não subiu
 
-| Chave | Como pegar |
-|---|---|
-| `VERCEL_TOKEN` | Parceiro faz Parte B.5 e me manda |
-| `VERCEL_TEAM_ID` | <https://vercel.com/nogmabr/settings> após criar team |
-| `VERCEL_PROJECT_ID` | <https://vercel.com/nogmabr/crm-cavalcanti/settings> após import |
-| `VERCEL_PROJECT_URL` | Vercel gera após primeiro import |
-
-### Como me passar os pendentes
-
-Numa próxima mensagem, cola só o que faltou:
+Roteiro standalone para repassar ao parceiro: **`docs/operacao/handoff-vercel-parceiro.md`**. Quando ele fizer, retorna 4 valores:
 
 ```
-SUPABASE_DB_PASSWORD=<a senha que você resetou>
-SUPABASE_SECRET_KEY=<sb_secret_...>
-VERCEL_TOKEN=<vercel_...>
-VERCEL_TEAM_ID=<team_...>
-VERCEL_PROJECT_ID=<prj_...>
-VERCEL_PROJECT_URL=<https://crm-cavalcanti.vercel.app>
+VERCEL_TOKEN=vercel_...
+VERCEL_TEAM_ID=team_...
+VERCEL_PROJECT_ID=prj_...
+VERCEL_PROJECT_URL=https://...
 ```
 
-Eu completo o `.env.local`, monto as connection strings, provisionio env vars na Vercel, e sigo pra Fase 1.
+Eu completo `.env.local`, provisionio 7 env vars via `vercel env add`, sincronizo `SITE_URL` no Supabase, e sigo pra Fase 1.
 
 ---
 
@@ -444,9 +439,36 @@ Aplicar quando/se subirmos para Pro (US$ 25/mês/projeto):
    - Dashboard projeto → Settings → Database → **Reset database password**
    - Copie a nova, cole em `.env.local` no campo `SUPABASE_DB_PASSWORD` e nos `SUPABASE_DB_URL`/`SUPABASE_DB_POOLER_URL`
 
-## Segurança do repositório público
+## Segurança do repositório GitHub (aplicado 2026-09-04)
 
-Repo `NogmaBR/CRM-CAVALCANTI` é público. O que **NÃO** vai pro git:
+Repo `NogmaBR/CRM-CAVALCANTI` é público. Endurecido via `gh api`:
+
+| Feature | Antes | Depois |
+|---|---|---|
+| Secret scanning | disabled | **enabled** |
+| Secret scanning push protection | disabled | **enabled** (bloqueia commits com segredos) |
+| Dependabot security updates | disabled | **enabled** (PRs automáticos p/ CVEs) |
+| Branch protection `main` | nenhuma | **PR obrigatório (1 review), no force-push, no delete, conversation resolution** |
+| `enforce_admins` na branch protection | — | `false` (admins podem push direto pra hotfix) |
+| Auto-delete head branches | disabled | **enabled** |
+| Merge methods | 3 permitidos | **squash-only** (histórico linear) |
+| `has_wiki` / `has_projects` | true | **false** (superfície reduzida) |
+
+Ainda **fora do meu alcance** (só um org admin pode fazer no GitHub):
+
+- **Enforce 2FA na org `NogmaBR`** — hoje `two_factor_requirement_enabled: false`. Fazer em:
+  <https://github.com/organizations/NogmaBR/settings/security> → "Require two-factor authentication for everyone in this organization"
+- **Revisar colaboradores do repo:**
+  - `Tarsis59` — admin ✅
+  - `Hugo6404` — admin
+  - `guilbmarcon` — admin
+  - `ArthurSanturio` — read
+  - Confirmar se todos ainda precisam desse nível de acesso.
+- **Secret scanning custom patterns** — Free plan de repo público não expõe todos os toggles via API (`secret_scanning_non_provider_patterns`, `secret_scanning_validity_checks` seguem `disabled`); habilitar em <https://github.com/NogmaBR/CRM-CAVALCANTI/settings/security_analysis>.
+
+## Segurança do repositório — segredos no código
+
+O que **NÃO** vai pro git:
 
 - `.env.local` (raiz e por-app) — `.gitignore` cobre `.env` e `.env.*`
 - `apps/web/.env.local` — populado por `vercel env pull`

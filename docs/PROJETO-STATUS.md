@@ -35,29 +35,42 @@ Atualizado: 2026-09-04 (fim da sessão de handoff Fase 0)
 
 ## O que está PENDENTE ⏳
 
-### 🅰️ Supabase — parcialmente feito
+### 🅰️ Supabase — 100% pronto ✅
 
-- ✅ Outage do control plane resolvido em 2026-09-04 08:18 UTC
-- ✅ Projeto criado: `CRM-CAVALCANTI` (ref anônimo — ver `.env.local` local)
-- ✅ Extensions habilitadas: `pgcrypto`, `uuid-ossp` (via Management API)
-- ✅ Chaves API coletadas via Management API (anon legacy, service_role legacy,
-  publishable, JWT secret) — armazenadas em `.env.local` (gitignored)
-- ⏳ **DB password real** — precisa ser resetada via dashboard e passada em
-  canal seguro. Ver `docs/operacao/handoff-fase-0.md` §Pendências.
-- ⏳ **`sb_secret_...`** (secret key novo formato) — mascarada pela API;
-  copiar via dashboard: Project Settings → API → "Reveal" no card secret.
-- ⏳ Hardening auth (leaked-password protection, MFA, min password length)
-  aplicado — ver `docs/operacao/handoff-fase-0.md` §Segurança.
+- Projeto: `CRM-CAVALCANTI` (ref `bbtejxugeeccywwhfpoc`, região `sa-east-1`, Postgres 17.6)
+- Extensions: `pgcrypto`, `uuid-ossp`, `pg_stat_statements`, `supabase_vault`, `plpgsql`
+- Chaves API coletadas: anon legacy JWT, service_role legacy JWT, publishable
+  `sb_publishable_...`, JWT secret — em `.env.local` (gitignored)
+- DB password (`SUPABASE_DB_PASSWORD`) testada via `pg` — autentica em Postgres
+  17.6. ⚠️ Fraca (11 chars) — recomendável rotacionar via dashboard eventualmente.
+- Connection strings prontas em `.env.local` (`?sslmode=require`, `#` → `%23`)
+- `supabase/` inicializado no repo (`config.toml`, `migrations/`), CLI linkado
+- Hardening Auth aplicado via Management API (`disable_signup`, `password_min_length=12`,
+  `password_required_characters`, reauth-on-password-change, SSL enforcement)
+- Advisor de segurança: 0 lints
 
-### 🅱️ Vercel — pendente
+### 🅱️ GitHub — 100% pronto ✅
 
-- Aguardando parceiro dono da org GitHub `NogmaBR` executar roteiro em
-  `docs/operacao/handoff-fase-0.md` (Parte B)
-- Requer: `VERCEL_TOKEN`, `VERCEL_TEAM_ID`, `VERCEL_PROJECT_ID`, URL
+- Secret scanning + push protection + Dependabot security updates: **enabled**
+- Branch protection `main`: PR obrigatório (1 review), no force-push, no delete,
+  conversation resolution required
+- Merge: squash-only (histórico linear)
+- Auto-delete head branches após merge
+- Wiki/Projects desabilitados
 
-### Fase 1+ (bloqueado por Vercel + DB password)
+Pendente (só org admin pode fazer):
+- Enforce 2FA na org `NogmaBR`
+- Revisar colaboradores admin (`Tarsis59`, `Hugo6404`, `guilbmarcon`)
 
-Ainda não iniciado. Ver `docs/superpowers/plans/2026-09-03-plano-1-fundacoes-v2.md`.
+### 🅲 Vercel — pendente parceiro
+
+- Roteiro standalone: `docs/operacao/handoff-vercel-parceiro.md`
+- Parceiro retorna: `VERCEL_TOKEN`, `VERCEL_TEAM_ID`, `VERCEL_PROJECT_ID`, URL
+
+### Fase 1+ (bloqueado só pela Vercel)
+
+Todos os ingredientes Supabase + GitHub prontos. Ao chegar o token Vercel,
+executo Fase 1 direto. Ver `docs/superpowers/plans/2026-09-03-plano-1-fundacoes-v2.md`.
 
 ## Estado do toolchain (verificado)
 
