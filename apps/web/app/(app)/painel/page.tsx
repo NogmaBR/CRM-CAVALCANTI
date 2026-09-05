@@ -3,17 +3,12 @@ import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
 import { Stat } from '@/components/nogma/Stat';
 import { Sparkline } from '@/components/nogma/Sparkline';
+import { createClient } from '@/lib/supabase/server';
 
-/**
- * Painel — Landing page do CRM. Enquanto Fase 3 não plugar dados reais,
- * exibimos mocks representativos com sparklines para mostrar o layout
- * final. A troca para dados vivos é uma substituição das constantes MOCK_*.
- */
-
-const MOCK_OBRAS = { value: '10', delta: '+2', trend: [3, 4, 5, 4, 6, 7, 8, 10] };
-const MOCK_GASTO = { value: 'R$ 128k', delta: '+18%', trend: [80, 92, 88, 105, 118, 121, 125, 128] };
-const MOCK_TOTAL = { value: 'R$ 453k', delta: '+9%', trend: [280, 315, 350, 380, 400, 425, 445, 453] };
-const MOCK_PEND = { value: '4', delta: '-2', trend: [12, 11, 9, 8, 7, 6, 5, 4] };
+const MOCK_TREND_OBRAS = [3, 4, 5, 4, 6, 7, 8, 10];
+const MOCK_TREND_GASTO = [80, 92, 88, 105, 118, 121, 125, 128];
+const MOCK_TREND_TOTAL = [280, 315, 350, 380, 400, 425, 445, 453];
+const MOCK_TREND_PEND = [12, 11, 9, 8, 7, 6, 5, 4];
 
 const MOCK_ACTIVITY: Array<{
   icon: 'obra' | 'doc' | 'msg';
@@ -47,11 +42,33 @@ const MOCK_ACTIVITY: Array<{
   },
 ];
 
-export default function PainelPage() {
+export default async function PainelPage() {
+  const supabase = await createClient();
+  const [obrasR, pagsR, msgsR, userR] = await Promise.all([
+    supabase.from('obras').select('id', { count: 'exact', head: true }).is('deleted_at', null),
+    supabase
+      .from('pagamentos')
+      .select('valor')
+      .is('deleted_at', null)
+      .eq('status_pagto', 'confirmado'),
+    supabase
+      .from('mensagens_whats')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'recebida'),
+    supabase.auth.getUser(),
+  ]);
+
+  const totalGasto = (pagsR.data ?? []).reduce((s, p) => s + Number(p.valor ?? 0), 0);
+  const brl = (v: number) =>
+    v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+
+  const email = userR.data.user?.email ?? 'você';
+  const primeiroNomeRaw = email.split('@')[0]?.split('.')[0] ?? 'você';
+  const primeiroNome = primeiroNomeRaw[0]!.toUpperCase() + primeiroNomeRaw.slice(1);
+
   const hoje = new Date()
     .toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
     .toUpperCase();
-  const primeiroNome = 'Fernando';
 
   return (
     <>
@@ -75,53 +92,53 @@ export default function PainelPage() {
           <div className="nos-stat-wrap nos-fade-up" style={{ ['--i' as string]: 0 }}>
             <Stat
               label="Obras Ativas"
-              value={MOCK_OBRAS.value}
-              delta={MOCK_OBRAS.delta}
+              value={String(obrasR.count ?? 0)}
+              delta="+0"
               direction="up"
-              caption="12 total · 2 novas este mês"
+              caption="ativas + arquivadas"
             />
             <div className="nos-stat-spark">
-              <Sparkline data={MOCK_OBRAS.trend} ariaLabel="Tendência obras últimos 8 meses" />
+              <Sparkline data={MOCK_TREND_OBRAS} ariaLabel="Tendência obras últimos 8 meses" />
             </div>
           </div>
 
           <div className="nos-stat-wrap nos-fade-up" style={{ ['--i' as string]: 1 }}>
             <Stat
               label="Gasto no Mês"
-              value={MOCK_GASTO.value}
-              delta={MOCK_GASTO.delta}
+              value={brl(totalGasto)}
+              delta="+0%"
               direction="up"
-              caption="34 pagamentos confirmados"
+              caption="pagamentos confirmados"
             />
             <div className="nos-stat-spark">
-              <Sparkline data={MOCK_GASTO.trend} ariaLabel="Tendência gasto mensal" />
+              <Sparkline data={MOCK_TREND_GASTO} ariaLabel="Tendência gasto mensal" />
             </div>
           </div>
 
           <div className="nos-stat-wrap nos-fade-up" style={{ ['--i' as string]: 2 }}>
             <Stat
               label="Total Acumulado"
-              value={MOCK_TOTAL.value}
-              delta={MOCK_TOTAL.delta}
+              value={brl(totalGasto)}
+              delta="+0%"
               direction="up"
               caption="todas as obras"
             />
             <div className="nos-stat-spark">
-              <Sparkline data={MOCK_TOTAL.trend} ariaLabel="Total acumulado" />
+              <Sparkline data={MOCK_TREND_TOTAL} ariaLabel="Total acumulado" />
             </div>
           </div>
 
           <div className="nos-stat-wrap nos-fade-up" style={{ ['--i' as string]: 3 }}>
             <Stat
               label="Pendentes NF"
-              value={MOCK_PEND.value}
-              delta={MOCK_PEND.delta}
+              value={String(msgsR.count ?? 0)}
+              delta="+0"
               direction="down"
-              caption="pagamentos sem comprovante"
+              caption="mensagens aguardando classificação"
             />
             <div className="nos-stat-spark">
               <Sparkline
-                data={MOCK_PEND.trend}
+                data={MOCK_TREND_PEND}
                 stroke="var(--warning, #eab308)"
                 fill="color-mix(in srgb, var(--warning, #eab308) 18%, transparent)"
                 ariaLabel="Pendências ao longo do tempo"
