@@ -7,14 +7,14 @@ export default function FornecedoresPage() {
       <TopBar title="Fornecedores" subtitle="Cadastro e apelidos usados no WhatsApp" />
       <div className="nos-page-body">
         <ComingSoon
-          eyebrow="PRÓXIMA FASE · CRUD BASE"
-          title="Fornecedores"
-          lead="Cadastro central de fornecedores da Cavalcanti, com histórico de compras, apelidos usados nos comprovantes de WhatsApp e status de conformidade fiscal."
+          title="Em construção"
+          phase="Fase 5 · CRUD Base"
+          lead="Cadastro central de fornecedores da Cavalcanti — histórico de compras, apelidos usados nos comprovantes de WhatsApp e status fiscal."
           items={[
-            { label: 'CNPJ + razão social + apelidos', hint: ' — matching flexível na IA' },
-            { label: 'Histórico de pagamentos', hint: ' — total gasto, categorias mais compradas' },
-            { label: 'Status de NF', hint: ' — alerta se fornecedor deixou de mandar' },
-            { label: 'Contatos', hint: ' — WhatsApp, email, endereço' },
+            { label: 'CNPJ + razão social + apelidos', hint: 'matching flexível na IA' },
+            { label: 'Histórico de pagamentos', hint: 'total gasto e categorias mais compradas' },
+            { label: 'Status de NF', hint: 'alerta se fornecedor parou de mandar' },
+            { label: 'Contatos', hint: 'WhatsApp, email, endereço' },
           ]}
         />
       </div>

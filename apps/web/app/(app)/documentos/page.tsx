@@ -7,14 +7,14 @@ export default function DocumentosPage() {
       <TopBar title="Documentos" subtitle="Notas fiscais, comprovantes e contratos" />
       <div className="nos-page-body">
         <ComingSoon
-          eyebrow="PRÓXIMA FASE · CRUD BASE"
-          title="Documentos"
-          lead="Todos os documentos anexados a pagamentos e obras — NFs, comprovantes de transferência, contratos — em um único acervo pesquisável, com preview inline."
+          title="Em construção"
+          phase="Fase 4 · CRUD Base"
+          lead="NFs, comprovantes e contratos em um acervo pesquisável com preview inline."
           items={[
-            { label: 'Upload direto', hint: ' — arraste imagens/PDFs no Painel' },
-            { label: 'Classificação automática', hint: ' — IA identifica NF vs comprovante' },
-            { label: 'Vinculação a pagamento', hint: ' — 1 doc pode virar 1 pagamento no clique' },
-            { label: 'Busca por CNPJ / fornecedor / obra', hint: '' },
+            { label: 'Upload direto', hint: 'arraste imagens/PDFs no Painel' },
+            { label: 'Classificação automática', hint: 'IA identifica NF vs comprovante' },
+            { label: 'Vinculação a pagamento', hint: '1 doc vira 1 pagamento no clique' },
+            { label: 'Busca por CNPJ / fornecedor / obra' },
           ]}
         />
       </div>

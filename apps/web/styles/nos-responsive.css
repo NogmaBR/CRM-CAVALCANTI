@@ -287,21 +287,40 @@
   height: 3px;
   background: linear-gradient(90deg, var(--lime-500) 0%, var(--lime-300) 60%, transparent 100%);
 }
-.nos-coming__eyebrow {
+/* Phase badge sits INLINE below the title (not eyebrow — per Impeccable craft-floor
+   which bans kickers above headings). Functional label, not decorative kicker. */
+.nos-coming__phase {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 20px;
+  padding: 4px 10px;
+  background: color-mix(in srgb, var(--lime-500) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--lime-500) 32%, transparent);
+  border-radius: 999px;
+  color: var(--lime-500);
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.nos-coming__phase svg {
+  color: var(--lime-500);
+}
+.nos-coming__hint {
   color: var(--text-muted);
-  font-family: var(--font-display, var(--font-sans));
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  font-size: 11.5px;
+  margin-left: 6px;
 }
 .nos-coming__title {
   font-family: var(--font-sans);
   font-weight: 800;
-  letter-spacing: -0.01em;
-  font-size: clamp(2rem, 4vw, 2.75rem);
+  letter-spacing: -0.015em;
+  font-size: clamp(1.75rem, 3.6vw, 2.5rem);
   line-height: 1.05;
-  margin: 8px 0 12px;
+  margin: 0 0 12px;
+  color: var(--text-primary);
 }
 .nos-coming__lead {
   color: var(--text-secondary);
@@ -460,4 +479,159 @@ body {
   color: var(--text-muted);
   font-family: var(--font-mono);
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
+
+/* =============================================================================
+   POLISH PASS — Emil Kowalski + Impeccable craft-floor guidance
+   Added 2026-09-05. Applied after the Fase 1 responsive pass; every rule below
+   traces to a specific principle from those design skills.
+   ========================================================================== */
+
+/* --- Custom easings (Emil: built-in easings are too weak) --- */
+:root {
+  --ease-out-strong:   cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-strong:cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer:       cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* --- Pressed state on ANY interactive element with .ng-btn / .ng-iconbtn --- */
+/* Emil: buttons must feel like the interface is listening. */
+.ng-btn,
+.ng-iconbtn {
+  will-change: transform;
+  transition:
+    background var(--dur-base) var(--ease-out-strong),
+    color var(--dur-base) var(--ease-out-strong),
+    box-shadow var(--dur-base) var(--ease-out-strong),
+    transform 120ms var(--ease-out-strong);
+}
+.ng-btn:active:not(:disabled):not([aria-disabled='true']),
+.ng-iconbtn:active:not(:disabled):not([aria-disabled='true']) {
+  transform: scale(0.97);
+}
+.nos-navitem:active {
+  transform: scale(0.985);
+}
+
+/* --- Focus-visible from palette (Emil/Impeccable: theme browser surfaces) --- */
+:where(button, [role='button'], a, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--lime-500);
+  outline-offset: 2px;
+  border-radius: var(--radius-md);
+}
+
+/* --- ::selection: never leave browser defaults (Impeccable craft-floor) --- */
+::selection {
+  background: color-mix(in srgb, var(--lime-500) 40%, transparent);
+  color: var(--text-primary);
+}
+:root[data-theme='black'] ::selection,
+:root[data-theme='dark'] ::selection {
+  background: color-mix(in srgb, var(--lime-500) 55%, transparent);
+  color: #000;
+}
+
+/* --- Custom scrollbar: cheap tell "this was built, not assembled" --- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--text-muted) 40%, transparent) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--text-muted) 30%, transparent);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--text-muted) 55%, transparent);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+
+/* --- Caret color follows the palette --- */
+:where(input, textarea, [contenteditable]) {
+  caret-color: var(--lime-500);
+}
+
+/* --- Tabular numerals on financial / metric data --- */
+/* Nothing shifts sideways when a digit changes. */
+.ng-stat__value,
+.ng-stat__delta {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1, 'cv11' 1;
+}
+
+/* --- Sparkline: subtle glow adds depth without shadow costume --- */
+.nos-stat-spark svg path[fill='none'] {
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--lime-500) 45%, transparent));
+}
+:root[data-theme='black'] .nos-stat-spark svg path[fill='none'],
+:root[data-theme='dark'] .nos-stat-spark svg path[fill='none'] {
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--lime-500) 55%, transparent));
+}
+/* Warning-tone sparklines (down-trending): keep the amber glow instead of lime */
+.nos-stat-spark svg path[stroke*='warning'] {
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--warning, #eab308) 45%, transparent));
+}
+
+/* --- Search input: theme the placeholder from the palette, not browser gray --- */
+.nos-search input::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+.nos-search input {
+  color: var(--text-primary);
+}
+
+/* --- Topbar title: use lime accent only on dark themes; primary text on light --- */
+.nos-topbar__title {
+  color: var(--text-primary);
+}
+:root[data-theme='black'] .nos-topbar__title,
+:root[data-theme='dark'] .nos-topbar__title {
+  color: var(--lime-500);
+}
+
+/* --- Improve drawer entrance easing to Emil's drawer curve --- */
+@keyframes nos-drawer-in {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+.nos-drawer {
+  animation: nos-drawer-in 320ms var(--ease-drawer);
+}
+
+/* --- Coming soon list items: proper contrast in every theme --- */
+.nos-coming__list li {
+  transition: border-color var(--dur-base) var(--ease-out-strong);
+}
+.nos-coming__list li:hover {
+  border-color: color-mix(in srgb, var(--lime-500) 40%, var(--border-subtle));
+}
+
+/* --- Activity card: refined hover (no border-color flash) --- */
+.nos-activity__item {
+  transition:
+    border-color var(--dur-base) var(--ease-out-strong),
+    transform 180ms var(--ease-out-strong),
+    box-shadow var(--dur-base) var(--ease-out-strong);
+}
+.nos-activity__item:hover {
+  box-shadow: 0 4px 12px -6px color-mix(in srgb, var(--lime-500) 20%, transparent);
+}
+
+/* --- Painel greeting: color respects theme cleanly --- */
+.nos-greeting {
+  color: var(--text-primary);
+}
+
+/* --- Dev-only: hide Next.js dev tools button from screenshots (prod is unaffected) --- */
+/* Note: only visible in `next dev`, never in prod build. */
