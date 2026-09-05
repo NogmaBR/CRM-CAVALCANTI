@@ -1,0 +1,17 @@
+
+.ng-card{
+  background:var(--surface-card); border:var(--border-hair) solid var(--border-subtle);
+  border-radius:var(--radius-lg); box-shadow:var(--shadow-sm);
+  transition:box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), border-color var(--dur-base);
+  overflow:hidden;
+}
+.ng-card--pad{ padding:var(--space-6); }
+.ng-card--interactive{ cursor:pointer; }
+.ng-card--interactive:hover{ box-shadow:var(--shadow-lg); transform:translateY(-2px); border-color:var(--border-default); }
+.ng-card--flat{ box-shadow:none; }
+.ng-card--accent{ border-top:3px solid var(--lime-500); }
+.on-dark .ng-card,[data-theme="dark"] .ng-card{ box-shadow:none; }
+.ng-card__header{ display:flex; flex-direction:column; gap:4px; margin-bottom:var(--space-4); }
+.ng-card__title{ font-family:var(--font-sans); font-weight:var(--fw-extrabold); font-size:var(--text-xl);
+  letter-spacing:var(--tracking-tight); color:var(--text-primary); }
+.ng-card__subtitle{ font-size:var(--text-sm); color:var(--text-secondary); }
