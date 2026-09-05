@@ -1,4 +1,5 @@
 import { Plus, Building2, FileText, MessageSquare, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
 import { Stat } from '@/components/nogma/Stat';
@@ -76,9 +77,11 @@ export default async function PainelPage() {
         title="Painel"
         subtitle="Visão geral da operação"
         actions={
-          <Button variant="primary" leadingIcon={<Plus size={16} />}>
-            Nova Obra
-          </Button>
+          <Link href="/obras/novo" style={{ textDecoration: 'none' }}>
+            <Button variant="primary" leadingIcon={<Plus size={16} />}>
+              Nova Obra
+            </Button>
+          </Link>
         }
       />
 
