@@ -1,0 +1,17 @@
+{
+  "name": "@nogma/db",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./src/types.ts"
+  },
+  "scripts": {
+    "gen-types": "supabase gen types typescript --linked > src/types.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@supabase/supabase-js": "^2"
+  }
+}
