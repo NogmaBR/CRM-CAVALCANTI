@@ -635,3 +635,28 @@ body {
 
 /* --- Dev-only: hide Next.js dev tools button from screenshots (prod is unaffected) --- */
 /* Note: only visible in `next dev`, never in prod build. */
+
+/* --- Login error banner + disabled link ---------------------------- */
+.nos-login__error {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  margin: 0 0 16px;
+  background: color-mix(in srgb, var(--danger, #ef4444) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger, #ef4444) 35%, transparent);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+.nos-login__error svg {
+  color: var(--danger, #ef4444);
+  flex: none;
+  margin-top: 1px;
+}
+.nos-login__link--disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  color: var(--text-muted);
+}
