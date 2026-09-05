@@ -693,3 +693,52 @@ body {
   outline: 2px solid var(--lime-500);
   outline-offset: 2px;
 }
+
+/* ============================================================================
+   OBRAS — filter tabs + row link + orcamento
+   ============================================================================ */
+
+.obras-filter-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 12px;
+}
+
+.obras-filter-tab {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: all 120ms ease;
+}
+
+.obras-filter-tab:hover {
+  color: var(--text-primary);
+  background: var(--surface-2);
+}
+
+.obras-filter-tab.is-active {
+  color: var(--text-primary);
+  background: var(--surface-2);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.obras-row-link {
+  color: var(--text-primary);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 120ms ease;
+}
+
+.obras-row-link:hover {
+  color: var(--accent);
+}
+
+.obras-orcamento {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}

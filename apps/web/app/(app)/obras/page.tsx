@@ -1,22 +1,66 @@
+import Link from 'next/link';
+import { Plus } from 'lucide-react';
 import { TopBar } from '@/components/layout/topbar';
-import { ComingSoon } from '@/components/layout/coming-soon';
+import { Button } from '@/components/nogma/Button';
+import { listObras, type Obra } from '@/lib/data/obras';
+import { ObrasTable } from './obras-table';
 
-export default function ObrasPage() {
+const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: '', label: 'Todas' },
+  { value: 'ativa', label: 'Ativas' },
+  { value: 'pausada', label: 'Pausadas' },
+  { value: 'concluida', label: 'Concluídas' },
+  { value: 'arquivada', label: 'Arquivadas' },
+];
+
+export default async function ObrasPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>;
+}) {
+  const params = await searchParams;
+  const status = (params.status ?? '') as '' | 'ativa' | 'pausada' | 'concluida' | 'arquivada';
+
+  const obras: Obra[] = await listObras({
+    status: status === '' ? undefined : status,
+    includeArchived: status === 'arquivada',
+  });
+
   return (
     <>
-      <TopBar title="Obras" subtitle="Cadastro, orçamento e acompanhamento" />
+      <TopBar
+        title="Obras"
+        subtitle="Cadastro, orçamento e acompanhamento"
+        actions={
+          <Link href="/obras/novo" style={{ textDecoration: 'none' }}>
+            <Button variant="primary" leadingIcon={<Plus size={16} />}>
+              Nova Obra
+            </Button>
+          </Link>
+        }
+      />
+
       <div className="nos-page-body">
-        <ComingSoon
-          title="Em construção"
-          phase="Fase 4 · CRUD Base"
-          lead="A gestão das obras da Cavalcanti — nome, endereço, orçamento inicial, responsável, categorias autorizadas e histórico de execução."
-          items={[
-            { label: 'CRUD de obras', hint: 'criar, editar, arquivar, restaurar' },
-            { label: 'Orçamento vs. realizado', hint: 'gráfico por categoria' },
-            { label: 'Autorizados por obra', hint: 'quem envia comprovantes no WhatsApp' },
-            { label: 'Cronograma físico', hint: 'fases da construção com % concluído' },
-          ]}
-        />
+        <nav className="obras-filter-tabs" aria-label="Filtrar por status">
+          {STATUS_OPTIONS.map((opt) => {
+            const href = opt.value === '' ? '/obras' : `/obras?status=${opt.value}`;
+            const active = opt.value === status;
+            return (
+              <Link
+                key={opt.value || 'todas'}
+                href={href}
+                className={active ? 'obras-filter-tab is-active' : 'obras-filter-tab'}
+                aria-current={active ? 'page' : undefined}
+              >
+                {opt.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div style={{ marginTop: 24 }}>
+          <ObrasTable obras={obras} />
+        </div>
       </div>
     </>
   );
