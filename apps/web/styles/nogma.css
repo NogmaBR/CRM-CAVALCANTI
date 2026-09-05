@@ -1,0 +1,6 @@
+/* Nogma DS entry — mimics Nogma Design System/styles.css */
+@import "./tokens/fonts.css";
+@import "./tokens/colors.css";
+@import "./tokens/typography.css";
+@import "./tokens/spacing.css";
+@import "./tokens/base.css";

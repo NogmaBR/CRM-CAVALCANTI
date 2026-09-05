@@ -1,0 +1,68 @@
+/* ==========================================================================
+   Nogma — Typography tokens
+   Agency  → display, logo-adjacent headlines, numerals & labels (uppercase)
+   Raleway → everything else: headings hierarchy, UI, body
+   Mobile-first (375px). Strong hierarchy, generous whitespace.
+   ========================================================================== */
+
+:root {
+  /* ---- Families ---- */
+  --font-display: "Agency", "Raleway", system-ui, sans-serif;   /* titles/impact */
+  --font-sans:    "Raleway", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-body:    var(--font-sans);
+  --font-mono:    ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  /* ---- Weights (Raleway) ---- */
+  --fw-light:     300;  /* @kind other */
+  --fw-regular:   400;  /* @kind other */
+  --fw-medium:    500;  /* @kind other */
+  --fw-semibold:  600;  /* @kind other */
+  --fw-bold:      700;  /* @kind other */
+  --fw-extrabold: 800;  /* @kind other */
+  --fw-black:     900;  /* @kind other */
+
+  /* ---- Fluid type scale (mobile-first, clamps to desktop) ---- */
+  --text-2xs:   0.6875rem;  /* 11px — micro labels                    */
+  --text-xs:    0.75rem;    /* 12px — captions, meta                  */
+  --text-sm:    0.875rem;   /* 14px — secondary UI                    */
+  --text-base:  1rem;       /* 16px — body                            */
+  --text-lg:    1.125rem;   /* 18px — lead body                       */
+  --text-xl:    1.25rem;    /* 20px — card titles                     */
+  --text-2xl:   clamp(1.5rem, 1.2rem + 1.4vw, 1.75rem); /* @kind spacing */
+  --text-3xl:   clamp(1.875rem, 1.5rem + 1.9vw, 2.25rem); /* @kind spacing */
+  --text-4xl:   clamp(2.25rem, 1.7rem + 2.8vw, 3rem); /* @kind spacing */
+  --text-5xl:   clamp(2.75rem, 1.9rem + 4.3vw, 4rem); /* @kind spacing */
+  --text-6xl:   clamp(3.25rem, 2.1rem + 6vw, 5.5rem); /* @kind spacing */
+
+  /* ---- Line heights ---- */
+  --leading-none:    1;
+  --leading-tight:   1.1;
+  --leading-snug:    1.25;
+  --leading-normal:  1.5;
+  --leading-relaxed: 1.65;
+
+  /* ---- Letter spacing ---- */
+  --tracking-tighter: -0.03em;
+  --tracking-tight:   -0.015em;
+  --tracking-normal:  0em;
+  --tracking-wide:    0.04em;
+  --tracking-wider:   0.08em;   /* Agency uppercase eyebrows/labels    */
+  --tracking-widest:  0.16em;
+
+  /* ---- Semantic roles ---- */
+  --display-family:  var(--font-display);
+  --display-weight:  var(--fw-bold);
+  --display-tracking:var(--tracking-tight);
+
+  --heading-family:  var(--font-sans);
+  --heading-weight:  var(--fw-extrabold);
+  --heading-tracking:var(--tracking-tight);
+
+  --eyebrow-family:  var(--font-display);
+  --eyebrow-weight:  var(--fw-bold);
+  --eyebrow-tracking:var(--tracking-wider);
+
+  --body-family:     var(--font-sans);
+  --body-weight:     var(--fw-regular);
+  --body-leading:    var(--leading-relaxed);
+}

@@ -1,0 +1,11 @@
+@import "tailwindcss";
+@import "./nogma.css";
+
+@layer base {
+  html {
+    color-scheme: light dark;
+  }
+  html[data-theme="black"], html[data-theme="dark"], .on-black, .on-dark {
+    color-scheme: dark;
+  }
+}

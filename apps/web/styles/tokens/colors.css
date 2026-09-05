@@ -1,0 +1,164 @@
+/* ==========================================================================
+   Nogma — Color tokens
+   Primary:  Verde petróleo #0C4651 (base escura) · Lime #CCFF00 (accent)
+   Neutrals: Preto #000000 · Cinza #A1A1A1 · Branco #FFFFFF
+   Rule: Lime is accent/highlight only — never a base for long text.
+   ========================================================================== */
+
+:root {
+  /* ---- Brand primitives ---- */
+  --petroleum:        #0C4651;   /* verde petróleo — base dark surface */
+  --lime:             #CCFF00;   /* accent / energy / attitude        */
+  --black:            #000000;
+  --gray:             #A1A1A1;   /* cinza — muted / secondary         */
+  --white:            #FFFFFF;
+
+  /* ---- Petroleum scale (derived, harmonic) ---- */
+  --petroleum-950:    #041F25;   /* deepest — near-black petroleum     */
+  --petroleum-900:    #072C34;
+  --petroleum-800:    #0C4651;   /* = brand petroleum (base)           */
+  --petroleum-700:    #115965;
+  --petroleum-600:    #196E7C;
+  --petroleum-500:    #2A8797;
+  --petroleum-300:    #7FB9C3;   /* tints for on-dark dividers/labels  */
+  --petroleum-200:    #B4D7DD;
+  --petroleum-100:    #E1EEF0;
+  --petroleum-050:    #F1F7F8;   /* faintest petroleum wash on light   */
+
+  /* ---- Lime scale ---- */
+  --lime-600:         #A3CC00;   /* pressed / hover-dark               */
+  --lime-500:         #CCFF00;   /* = brand lime                       */
+  --lime-300:         #E0FF66;
+  --lime-100:         #F2FFB8;
+  --lime-050:         #FAFFE0;   /* faint lime tint background          */
+
+  /* ---- Neutral ramp (cool-leaning grays) ---- */
+  --neutral-0:        #FFFFFF;
+  --neutral-50:       #F7F8F8;
+  --neutral-100:      #EEF0F0;
+  --neutral-200:      #E1E4E4;
+  --neutral-300:      #C9CDCD;
+  --neutral-400:      #A1A1A1;   /* = brand cinza                      */
+  --neutral-500:      #767B7B;
+  --neutral-600:      #565B5B;
+  --neutral-700:      #3B3F3F;
+  --neutral-800:      #232626;
+  --neutral-900:      #121414;
+  --neutral-950:      #000000;
+
+  /* ---- Semantic status ---- */
+  --success:          #2FA36B;
+  --success-bg:       #E7F5EE;
+  --warning:          #E8A317;
+  --warning-bg:       #FBF1DC;
+  --danger:           #D6483B;
+  --danger-bg:        #FBE9E7;
+  --info:             var(--petroleum-600);
+  --info-bg:          var(--petroleum-050);
+
+  /* =========================================================
+     SEMANTIC ALIASES — light context (default)
+     ========================================================= */
+  --bg-canvas:        var(--neutral-0);
+  --bg-subtle:        var(--neutral-50);
+  --bg-muted:         var(--neutral-100);
+  --surface-card:     var(--neutral-0);
+  --surface-raised:   var(--neutral-0);
+  --surface-sunken:   var(--neutral-50);
+
+  --text-primary:     var(--petroleum-950);
+  --text-secondary:   var(--neutral-600);
+  --text-muted:       var(--neutral-400);
+  --heading-color:    var(--text-primary);   /* headings — lime under .on-black */
+  --text-on-dark:     var(--white);
+  --text-on-lime:     var(--petroleum-950);
+  --text-on-petroleum:var(--white);
+
+  --border-subtle:    var(--neutral-200);
+  --border-default:   var(--neutral-300);
+  --border-strong:    var(--neutral-400);
+  --border-focus:     var(--petroleum-600);
+
+  --accent:           var(--lime-500);
+  --accent-hover:     var(--lime-600);
+  --accent-text:      var(--petroleum-950);   /* text on lime accent  */
+
+  --brand:            var(--petroleum-800);
+  --brand-hover:      var(--petroleum-700);
+  --brand-text:       var(--white);
+
+  --ring:             color-mix(in srgb, var(--petroleum-600) 45%, transparent);
+  --overlay:          color-mix(in srgb, var(--petroleum-950) 55%, transparent);
+}
+
+/* =========================================================
+   BLACK CONTEXT — PRIMARY dark surface.
+   Preto no fundo · títulos em lime · texto em branco.
+   Apply .on-black (or data-theme="black") — this is the
+   brand's preferred/primary dark treatment.
+   ========================================================= */
+.on-black,
+[data-theme="black"] {
+  --bg-canvas:        var(--black);
+  --bg-subtle:        #0A0A0A;
+  --bg-muted:         var(--neutral-900);
+  --surface-card:     #0E0E0E;
+  --surface-raised:   var(--neutral-900);
+  --surface-sunken:   var(--black);
+
+  --text-primary:     var(--white);
+  --text-secondary:   var(--neutral-300);
+  --text-muted:       var(--neutral-400);
+  --heading-color:    var(--lime-500);   /* títulos em lime */
+
+  --border-subtle:    color-mix(in srgb, var(--white) 10%, transparent);
+  --border-default:   color-mix(in srgb, var(--white) 18%, transparent);
+  --border-strong:    color-mix(in srgb, var(--white) 32%, transparent);
+  --border-focus:     var(--lime-500);
+
+  --accent:           var(--lime-500);
+  --accent-hover:     var(--lime-300);
+  --accent-text:      var(--black);
+
+  --brand:            var(--lime-500);
+  --brand-hover:      var(--lime-300);
+  --brand-text:       var(--black);
+
+  --ring:             color-mix(in srgb, var(--lime-500) 55%, transparent);
+  --overlay:          color-mix(in srgb, var(--black) 72%, transparent);
+}
+
+/* =========================================================
+   DARK CONTEXT — petroleum base ("on-dark" surfaces)
+   Apply .on-dark (or data-theme="dark") to flip semantics.
+   ========================================================= */
+.on-dark,
+[data-theme="dark"] {
+  --bg-canvas:        var(--petroleum-800);
+  --bg-subtle:        var(--petroleum-900);
+  --bg-muted:         var(--petroleum-700);
+  --surface-card:     var(--petroleum-700);
+  --surface-raised:   var(--petroleum-600);
+  --surface-sunken:   var(--petroleum-900);
+
+  --text-primary:     var(--white);
+  --text-secondary:   var(--petroleum-200);
+  --text-muted:       var(--petroleum-300);
+  --heading-color:    var(--white);
+
+  --border-subtle:    color-mix(in srgb, var(--white) 12%, transparent);
+  --border-default:   color-mix(in srgb, var(--white) 20%, transparent);
+  --border-strong:    color-mix(in srgb, var(--white) 34%, transparent);
+  --border-focus:     var(--lime-500);
+
+  --accent:           var(--lime-500);
+  --accent-hover:     var(--lime-300);
+  --accent-text:      var(--petroleum-950);
+
+  --brand:            var(--lime-500);
+  --brand-hover:      var(--lime-300);
+  --brand-text:       var(--petroleum-950);
+
+  --ring:             color-mix(in srgb, var(--lime-500) 55%, transparent);
+  --overlay:          color-mix(in srgb, var(--black) 60%, transparent);
+}
