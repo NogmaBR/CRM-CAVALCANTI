@@ -1,0 +1,463 @@
+/* =============================================================================
+   Nogma CRM — Responsive + Mobile Drawer + Motion
+   Layered on top of nos-chrome.css (which stays desktop-first).
+   Breakpoints:
+     - mobile   < 768px
+     - tablet   ≥ 768px  (md)
+     - desktop  ≥ 1280px (xl)
+   ========================================================================== */
+
+/* --- Sidebar: hide on mobile, show on tablet+ ----------------------------- */
+@media (max-width: 767.98px) {
+  .nos-sidebar {
+    display: none;
+  }
+}
+
+/* --- Mobile drawer trigger: shown only on mobile ------------------------- */
+/* Higher specificity than .ng-iconbtn (single class) — chain two classes  */
+.ng-iconbtn.nos-mobile-nav-trigger {
+  display: none;
+}
+@media (max-width: 767.98px) {
+  .ng-iconbtn.nos-mobile-nav-trigger {
+    display: inline-flex;
+  }
+}
+
+/* --- Radix Dialog: backdrop + drawer sheet ------------------------------- */
+.nos-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: color-mix(in srgb, var(--petroleum-950) 60%, transparent);
+  backdrop-filter: blur(6px);
+  animation: nos-fade-in var(--dur-base) var(--ease-out);
+}
+
+.nos-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 50;
+  width: min(86vw, 320px);
+  background: var(--petroleum-800);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 14px;
+  gap: 8px;
+  box-shadow: 0 24px 64px -12px rgba(0, 0, 0, 0.55);
+  animation: nos-drawer-in 280ms var(--ease-out);
+  overflow-y: auto;
+}
+
+.nos-drawer__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 18px;
+  position: relative;
+}
+.nos-drawer__brand .nos-brand__mark img {
+  width: 26px;
+  height: auto;
+  display: block;
+}
+.nos-drawer__brand .nos-brand__word {
+  height: 20px;
+  width: auto;
+}
+
+.nos-drawer__close {
+  margin-left: auto;
+  color: var(--petroleum-200);
+}
+.nos-drawer__close:hover {
+  color: #fff;
+}
+
+.nos-drawer__foot {
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+@keyframes nos-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes nos-drawer-in {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nos-drawer-overlay,
+  .nos-drawer {
+    animation: none;
+  }
+}
+
+/* --- TopBar: adjust for mobile ------------------------------------------ */
+.nos-topbar {
+  gap: 12px;
+  padding: 12px 16px;
+}
+@media (min-width: 768px) {
+  .nos-topbar {
+    padding: 16px 28px;
+  }
+}
+.nos-topbar__heading {
+  min-width: 0;
+}
+.nos-topbar__title {
+  font-size: 17px;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (min-width: 768px) {
+  .nos-topbar__title {
+    font-size: 20px;
+  }
+}
+.nos-topbar__sub {
+  display: none;
+}
+@media (min-width: 768px) {
+  .nos-topbar__sub {
+    display: block;
+  }
+}
+
+.nos-topbar__right {
+  gap: 8px;
+}
+@media (min-width: 768px) {
+  .nos-topbar__right {
+    gap: 12px;
+  }
+}
+
+.nos-topbar__actions {
+  display: none;
+}
+@media (min-width: 900px) {
+  .nos-topbar__actions {
+    display: inline-flex;
+  }
+}
+
+/* --- Search: swap between full input (desktop) and icon (mobile) -------- */
+.nos-search.nos-search--desktop {
+  display: none;
+  height: 36px;
+  width: clamp(180px, 32vw, 320px);
+}
+.ng-iconbtn.nos-search-trigger {
+  display: inline-flex;
+}
+@media (min-width: 900px) {
+  .nos-search.nos-search--desktop {
+    display: flex;
+  }
+  .ng-iconbtn.nos-search-trigger {
+    display: none;
+  }
+}
+.nos-search input {
+  min-width: 0;
+}
+
+/* --- Sidebar/desktop: reserve space via layout only, not media query ---- */
+/* Ensures main content scrolls independently on any viewport */
+.nos-app-shell {
+  display: flex;
+  height: 100dvh;
+  overflow: hidden;
+}
+.nos-app-shell > main {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  background: var(--bg-canvas);
+}
+
+/* --- Painel grid: responsive columns ------------------------------------ */
+.nos-kpi-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 640px) {
+  .nos-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+}
+@media (min-width: 1024px) {
+  .nos-kpi-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+}
+
+/* --- Painel content padding responsive --------------------------------- */
+.nos-page-body {
+  padding: 20px 16px;
+}
+@media (min-width: 768px) {
+  .nos-page-body {
+    padding: 32px 28px;
+  }
+}
+@media (min-width: 1280px) {
+  .nos-page-body {
+    padding: 40px 40px;
+  }
+}
+
+/* --- Painel greeting scales down on mobile ----------------------------- */
+.nos-greeting {
+  font-family: var(--font-sans);
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  font-size: clamp(1.75rem, 4.5vw, 3rem);
+  line-height: 1.05;
+  margin: 4px 0 0;
+}
+
+.nos-eyebrow-date {
+  margin-bottom: 8px;
+}
+
+/* --- Painel Stat card polish (Stat card is inside Nogma DS but we tweak wrappers) --- */
+.nos-stat-wrap {
+  position: relative;
+  border-radius: var(--radius-lg);
+  transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+}
+.nos-stat-wrap:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.nos-stat-spark {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  width: 96px;
+  height: 28px;
+  opacity: 0.8;
+  pointer-events: none;
+}
+@media (max-width: 639.98px) {
+  .nos-stat-spark {
+    right: 10px;
+    bottom: 10px;
+    width: 72px;
+    height: 22px;
+  }
+}
+
+/* --- Coming Soon (placeholder pages) card ----------------------------- */
+.nos-coming {
+  max-width: 640px;
+  margin: 0;
+  padding: 32px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  position: relative;
+  overflow: hidden;
+}
+@media (min-width: 768px) {
+  .nos-coming {
+    padding: 40px;
+  }
+}
+.nos-coming::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--lime-500) 0%, var(--lime-300) 60%, transparent 100%);
+}
+.nos-coming__eyebrow {
+  color: var(--text-muted);
+  font-family: var(--font-display, var(--font-sans));
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 11.5px;
+}
+.nos-coming__title {
+  font-family: var(--font-sans);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  line-height: 1.05;
+  margin: 8px 0 12px;
+}
+.nos-coming__lead {
+  color: var(--text-secondary);
+  font-size: 15px;
+  line-height: 1.55;
+  margin: 0 0 20px;
+  max-width: 52ch;
+}
+.nos-coming__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+.nos-coming__list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--text-primary) 3%, transparent);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.nos-coming__list svg {
+  flex: none;
+  color: var(--lime-500);
+  margin-top: 2px;
+}
+.nos-coming__list strong {
+  color: var(--text-primary);
+  font-weight: 700;
+  margin-right: 6px;
+}
+
+/* --- Focus rings: consistent across everything ----------------------- */
+.nos-navitem:focus-visible,
+.nos-search:focus-within,
+.nos-drawer__close:focus-visible,
+.nos-mobile-nav-trigger:focus-visible {
+  outline: 2px solid var(--lime-500);
+  outline-offset: 2px;
+  border-radius: var(--radius-md);
+}
+
+/* --- Nav item: refined hover microinteraction ----------------------- */
+.nos-navitem {
+  position: relative;
+  transition:
+    background var(--dur-base) var(--ease-out),
+    color var(--dur-base) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+.nos-navitem:active {
+  transform: scale(0.98);
+}
+
+/* --- Theme transition: smooth swap between light/black/dark -------- */
+html {
+  transition: background-color var(--dur-base) var(--ease-out);
+}
+body {
+  transition: color var(--dur-base) var(--ease-out);
+}
+
+/* --- Staggered fade-up entrance (used on Painel stats) ------------- */
+@keyframes nos-fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.nos-fade-up {
+  opacity: 0;
+  animation: nos-fade-up 480ms var(--ease-out) forwards;
+  animation-delay: calc(var(--i, 0) * 90ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .nos-fade-up {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* --- Section header + rhythm --------------------------------------- */
+.nos-section {
+  margin-top: 32px;
+}
+@media (min-width: 768px) {
+  .nos-section {
+    margin-top: 40px;
+  }
+}
+.nos-section__title {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  margin: 0 0 14px;
+}
+.nos-section__hint {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* --- Activity list (Painel bottom section) ------------------------- */
+.nos-activity {
+  display: grid;
+  gap: 8px;
+}
+.nos-activity__item {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  transition: border-color var(--dur-base) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+.nos-activity__item:hover {
+  border-color: color-mix(in srgb, var(--lime-500) 40%, var(--border-subtle));
+  transform: translateX(2px);
+}
+.nos-activity__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--lime-500) 12%, transparent);
+  color: var(--lime-500);
+}
+.nos-activity__body {
+  min-width: 0;
+}
+.nos-activity__title {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nos-activity__meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.nos-activity__time {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}

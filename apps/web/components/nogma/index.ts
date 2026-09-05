@@ -13,3 +13,5 @@ export { Input, type InputProps } from './Input';
 export { Checkbox, type CheckboxProps } from './Checkbox';
 export { Switch, type SwitchProps } from './Switch';
 export { Tabs, type TabsProps, type TabItem } from './Tabs';
+export { Sparkline, type SparklineProps } from './Sparkline';
+export { Skeleton, type SkeletonProps } from './Skeleton';

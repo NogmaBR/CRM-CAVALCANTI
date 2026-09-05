@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "./nogma.css";
 @import "./nos-chrome.css";
+@import "./nos-responsive.css";
 
 @layer base {
   html {

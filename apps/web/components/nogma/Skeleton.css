@@ -1,0 +1,38 @@
+.ng-skeleton {
+  display: inline-block;
+  vertical-align: middle;
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--text-primary) 6%, transparent) 0%,
+      color-mix(in srgb, var(--text-primary) 12%, transparent) 50%,
+      color-mix(in srgb, var(--text-primary) 6%, transparent) 100%
+    );
+  background-size: 200% 100%;
+  animation: ng-skeleton-shimmer 1.4s var(--ease-in-out) infinite;
+  border-radius: var(--radius-sm);
+}
+
+.ng-skeleton--text {
+  border-radius: var(--radius-xs);
+}
+
+.ng-skeleton--circle {
+  border-radius: 50%;
+}
+
+@keyframes ng-skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ng-skeleton {
+    animation: none;
+    background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  }
+}

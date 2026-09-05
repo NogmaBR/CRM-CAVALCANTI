@@ -20,7 +20,11 @@ const SECONDARY = [
   { href: '/config',     label: 'Configurações', icon: Settings },
 ] as const;
 
-export function SidebarNav() {
+interface SidebarNavProps {
+  onNavigate?: () => void;
+}
+
+export function SidebarNav({ onNavigate }: SidebarNavProps = {}) {
   const pathname = usePathname();
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
   return (
@@ -30,6 +34,7 @@ export function SidebarNav() {
           key={href}
           href={href}
           className={'nos-navitem' + (isActive(href) ? ' is-active' : '')}
+          onClick={onNavigate}
         >
           <Icon size={19} />
           <span className="nos-navitem__label">{label}</span>
@@ -41,6 +46,7 @@ export function SidebarNav() {
           key={href}
           href={href}
           className={'nos-navitem' + (isActive(href) ? ' is-active' : '')}
+          onClick={onNavigate}
         >
           <Icon size={19} />
           <span className="nos-navitem__label">{label}</span>
