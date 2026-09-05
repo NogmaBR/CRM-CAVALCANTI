@@ -21,10 +21,19 @@ export default async function ObrasPage({
   const params = await searchParams;
   const status = (params.status ?? '') as '' | 'ativa' | 'pausada' | 'concluida' | 'arquivada';
 
-  const obras: Obra[] = await listObras({
-    status: status === '' ? undefined : status,
-    includeArchived: status === 'arquivada',
-  });
+  let obras: Obra[] = [];
+  let debugError: string | null = null;
+  try {
+    obras = await listObras({
+      status: status === '' ? undefined : status,
+      includeArchived: status === 'arquivada',
+    });
+  } catch (e) {
+    debugError =
+      e instanceof Error
+        ? `${e.name}: ${e.message}\n${e.stack ?? '(no stack)'}`
+        : String(e);
+  }
 
   return (
     <>
@@ -58,9 +67,26 @@ export default async function ObrasPage({
           })}
         </nav>
 
-        <div style={{ marginTop: 24 }}>
-          <ObrasTable obras={obras} />
-        </div>
+        {debugError ? (
+          <pre
+            style={{
+              marginTop: 24,
+              padding: 16,
+              background: '#111',
+              color: '#f88',
+              borderRadius: 8,
+              fontSize: 12,
+              overflow: 'auto',
+            }}
+          >
+            DEBUG listObras error:{'\n'}
+            {debugError}
+          </pre>
+        ) : (
+          <div style={{ marginTop: 24 }}>
+            <ObrasTable obras={obras} />
+          </div>
+        )}
       </div>
     </>
   );
