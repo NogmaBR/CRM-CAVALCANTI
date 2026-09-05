@@ -28,7 +28,7 @@ export function SidebarNav() {
       {NAV.map(({ href, label, icon: Icon }) => (
         <Link
           key={href}
-          href={href as never}
+          href={href}
           className={'nos-navitem' + (isActive(href) ? ' is-active' : '')}
         >
           <Icon size={19} />
@@ -39,7 +39,7 @@ export function SidebarNav() {
       {SECONDARY.map(({ href, label, icon: Icon }) => (
         <Link
           key={href}
-          href={href as never}
+          href={href}
           className={'nos-navitem' + (isActive(href) ? ' is-active' : '')}
         >
           <Icon size={19} />
