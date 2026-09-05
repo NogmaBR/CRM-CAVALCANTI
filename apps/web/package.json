@@ -20,7 +20,7 @@
     "@tanstack/react-table": "^8.21.3",
     "lucide-react": "^0.462.0",
     "motion": "^13.2.0",
-    "next": "15.3.9",
+    "next": "15.5.21",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "sonner": "^1.7.4",
