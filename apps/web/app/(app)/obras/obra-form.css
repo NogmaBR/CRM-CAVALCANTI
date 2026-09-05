@@ -1,0 +1,120 @@
+.obra-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 960px;
+}
+
+.obra-form__error {
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--danger, #ef4444) 12%, transparent);
+  color: var(--danger, #ef4444);
+  font-size: 13px;
+  border: 1px solid color-mix(in srgb, var(--danger, #ef4444) 30%, transparent);
+}
+
+.obra-form__section {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg, 12px);
+  padding: 20px 22px 22px;
+  background: var(--surface-1);
+}
+
+.obra-form__legend {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0 6px;
+  margin-left: -6px;
+}
+
+.obra-form__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.obra-form__field {
+  grid-column: span 2;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.obra-form__field--wide {
+  grid-column: span 4;
+}
+
+.obra-form__field--full {
+  grid-column: 1 / -1;
+}
+
+.obra-form__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.obra-form__select,
+.obra-form__textarea {
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-2, transparent);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.obra-form__select:focus,
+.obra-form__textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.obra-form__textarea {
+  resize: vertical;
+  min-height: 96px;
+}
+
+.obra-form__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+.obra-form__cancel {
+  padding: 10px 16px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+  transition: all 120ms ease;
+}
+
+.obra-form__cancel:hover {
+  color: var(--text-primary);
+  background: var(--surface-2);
+}
+
+@media (max-width: 720px) {
+  .obra-form__grid {
+    grid-template-columns: 1fr;
+  }
+  .obra-form__field,
+  .obra-form__field--wide {
+    grid-column: 1 / -1;
+  }
+}
