@@ -62,15 +62,33 @@ Pendente (só org admin pode fazer):
 - Enforce 2FA na org `NogmaBR`
 - Revisar colaboradores admin (`Tarsis59`, `Hugo6404`, `guilbmarcon`)
 
-### 🅲 Vercel — pendente parceiro
+### 🅲 Vercel — 100% pronto ✅
 
-- Roteiro standalone: `docs/operacao/handoff-vercel-parceiro.md`
-- Parceiro retorna: `VERCEL_TOKEN`, `VERCEL_TEAM_ID`, `VERCEL_PROJECT_ID`, URL
+- Team: `nogma1` (id `team_2A3cAOheq9LYalV1OoxEp47S`)
+- Project: `crm-cavalcanti` (id `prj_z1pt9zxdish8cmqM2oAaFRB0qSM7`)
+- GitHub link ativo (`NogmaBR/CRM-CAVALCANTI`, branch `main`, sourceless)
+- URL prod: `https://crm-cavalcanti.vercel.app`
+- Build config via REST API: `rootDirectory=apps/web`, `buildCommand="cd ../.. && pnpm --filter web build"`, `installCommand="cd ../.. && pnpm install --frozen-lockfile"`, `outputDirectory=.next`, `nodeVersion=22.x`
+- Ignored Build Step: só builda quando `apps/web/ packages/ pnpm-lock.yaml` mudam
+- Env vars provisionadas (7 chaves, todas em production+preview+development):
+  `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+  `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_APP_URL` (valores
+  diferentes por env), `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_URL`,
+  `SUPABASE_JWT_SECRET`, `WEBHOOK_HMAC_SECRET` (secretas marcadas `sensitive`)
+- Deployment Protection: **Vercel Authentication ativa** em preview URLs +
+  prod deployment URLs auto-geradas (`prod_deployment_urls_and_all_previews`);
+  a URL primária `crm-cavalcanti.vercel.app` segue pública para usuários finais
+- Supabase auth sincronizado: `site_url=https://crm-cavalcanti.vercel.app`,
+  `uri_allow_list` cobrindo `.vercel.app`, previews `-*-nogma1.vercel.app`,
+  branch aliases `-git-*-nogma1.vercel.app` e `localhost:3000`
+- `.vercel/project.json` local (linked; gitignored)
+- Access token em `.env.local`, escopo restrito ao team `nogma1`
 
-### Fase 1+ (bloqueado só pela Vercel)
+### Fase 1 — pronto pra começar
 
-Todos os ingredientes Supabase + GitHub prontos. Ao chegar o token Vercel,
-executo Fase 1 direto. Ver `docs/superpowers/plans/2026-09-03-plano-1-fundacoes-v2.md`.
+Todos os ingredientes Supabase + GitHub + Vercel prontos. Nenhum bloqueio.
+Executar `docs/superpowers/plans/2026-09-03-plano-1-fundacoes-v2.md` Task 1.1
+em diante.
 
 ## Estado do toolchain (verificado)
 

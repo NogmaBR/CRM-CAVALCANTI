@@ -267,18 +267,37 @@ Estado em 2026-09-04 (final da sessão de handoff):
 |---|---|---|
 | `SUPABASE_SECRET_KEY` (novo formato `sb_secret_...`) | Dashboard → Project Settings → **API** → card "Secret key" → **"Reveal"** | JWT `service_role` legacy cobre tudo por ora; só precisa se usar API v2 no futuro |
 
-### ⏳ Vercel — parceiro NogmaBR ainda não subiu
+### ✅ Vercel — 100% pronto (2026-09-04)
 
-Roteiro standalone para repassar ao parceiro: **`docs/operacao/handoff-vercel-parceiro.md`**. Quando ele fizer, retorna 4 valores:
+Configurada via REST API `api.vercel.com` (o CLI recusa tokens `vcp_*`
+team-scoped com "User not found", mas API funciona 100%). Detalhes:
 
-```
-VERCEL_TOKEN=vercel_...
-VERCEL_TEAM_ID=team_...
-VERCEL_PROJECT_ID=prj_...
-VERCEL_PROJECT_URL=https://...
-```
+| Item | Valor |
+|---|---|
+| Team | `nogma1` / `team_2A3cAOheq9LYalV1OoxEp47S` |
+| Project | `crm-cavalcanti` / `prj_z1pt9zxdish8cmqM2oAaFRB0qSM7` |
+| URL primária | `https://crm-cavalcanti.vercel.app` |
+| GitHub link | `NogmaBR/CRM-CAVALCANTI` branch `main` |
+| Framework | Next.js |
+| Root Directory | `apps/web` |
+| Node | 22.x |
+| Env vars | 7 chaves × 3 envs, sensitive marcadas |
+| Preview auth | `prod_deployment_urls_and_all_previews` |
+| Supabase `site_url` | sincronizado |
+| `.vercel/project.json` | criado localmente, gitignored |
 
-Eu completo `.env.local`, provisionio 7 env vars via `vercel env add`, sincronizo `SITE_URL` no Supabase, e sigo pra Fase 1.
+Env vars provisionadas (todas em production + preview + development):
+- `NEXT_PUBLIC_SUPABASE_URL` (plain)
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` (plain)
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (plain)
+- `NEXT_PUBLIC_APP_URL` (plain; prod/preview → URL Vercel; dev → localhost:3000)
+- `SUPABASE_SERVICE_ROLE_KEY` (sensitive)
+- `SUPABASE_DB_URL` (sensitive; `#` → `%23`, `?sslmode=require`)
+- `SUPABASE_JWT_SECRET` (sensitive)
+- `WEBHOOK_HMAC_SECRET` (sensitive)
+
+**Único deploy até agora:** falhou 2× em production, esperado — falta código
+`apps/web/`. Após Fase 1 Task 1.1 (skeleton Next), o auto-deploy vai passar.
 
 ---
 

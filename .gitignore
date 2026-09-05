@@ -43,6 +43,9 @@ test-results/
 # Superpowers session
 .superpowers/
 
+# Vercel link (contém projectId/orgId — não secret mas project-specific)
+.vercel/
+
 # Supabase local
 supabase/.branches/
 supabase/.temp/
