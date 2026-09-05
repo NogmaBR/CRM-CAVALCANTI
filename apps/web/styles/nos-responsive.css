@@ -660,3 +660,36 @@ body {
   opacity: 0.55;
   color: var(--text-muted);
 }
+
+/* --- UserMenu (real session + logout) ------------------------------- */
+.nos-userpill--interactive {
+  cursor: default;
+}
+.nos-userpill__logout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--petroleum-300);
+  cursor: pointer;
+  transition:
+    background var(--dur-base) var(--ease-out-strong),
+    color var(--dur-base) var(--ease-out-strong),
+    transform 120ms var(--ease-out-strong);
+}
+.nos-userpill__logout:hover {
+  background: color-mix(in srgb, #fff 8%, transparent);
+  color: #fff;
+}
+.nos-userpill__logout:active {
+  transform: scale(0.92);
+}
+.nos-userpill__logout:focus-visible {
+  outline: 2px solid var(--lime-500);
+  outline-offset: 2px;
+}

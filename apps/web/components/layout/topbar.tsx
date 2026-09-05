@@ -1,6 +1,7 @@
 import { Bell, Search } from 'lucide-react';
 import { IconButton } from '@/components/nogma/IconButton';
 import { MobileNav } from './mobile-nav';
+import { UserMenu } from './user-menu';
 import { ThemeToggle } from './theme-toggle';
 
 export function TopBar({
@@ -15,7 +16,7 @@ export function TopBar({
   return (
     <header className="nos-topbar">
       <div className="nos-topbar__left">
-        <MobileNav />
+        <MobileNav userMenu={<UserMenu />} />
         <div className="nos-topbar__heading">
           <h1 className="nos-topbar__title">{title}</h1>
           {subtitle ? <div className="nos-topbar__sub">{subtitle}</div> : null}

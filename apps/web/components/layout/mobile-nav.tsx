@@ -5,15 +5,18 @@ import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Menu, X } from 'lucide-react';
 import Image from 'next/image';
 import { IconButton } from '@/components/nogma/IconButton';
+import type { ReactNode } from 'react';
 import { SidebarNav } from './sidebar-nav';
-import { UserMenu } from './user-menu';
 
 /**
  * Mobile-only navigation drawer. Renders a hamburger IconButton that opens
  * a full-height sheet from the left containing the same sidebar content.
  * Hidden on md+ via CSS (`.nos-mobile-nav-trigger`).
+ *
+ * Accepts `userMenu` as a ReactNode so the server parent can pass in the
+ * async <UserMenu /> Server Component without violating the client boundary.
  */
-export function MobileNav() {
+export function MobileNav({ userMenu }: { userMenu?: ReactNode }) {
   return (
     <Dialog.Root>
       <Dialog.Trigger asChild>
@@ -49,7 +52,7 @@ export function MobileNav() {
             // Since SidebarNav uses Next Link, adding onClick to close.
           }} />
           <div className="nos-drawer__foot">
-            <UserMenu />
+            {userMenu}
           </div>
         </Dialog.Content>
       </Dialog.Portal>
