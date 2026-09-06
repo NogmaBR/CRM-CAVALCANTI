@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { FornecedorCreateSchema, FornecedorUpdateSchema } from '@/lib/schemas/fornecedor';
+import { mapDbError, mapDbErrorWithContext } from '@/lib/schemas/errors';
 
 function formToRecord(fd: FormData): Record<string, unknown> {
   const rec: Record<string, unknown> = {};
@@ -51,9 +52,13 @@ export async function createFornecedor(formData: FormData) {
     .single();
 
   if (error) {
-    const isDup = error.code === '23505';
-    const msg = isDup ? 'Já existe fornecedor com este CNPJ/CPF' : error.message;
-    redirect(`/fornecedores/novo?error=${encodeURIComponent(msg)}`);
+    redirect(
+      `/fornecedores/novo?error=${encodeURIComponent(
+        mapDbErrorWithContext(error, {
+          '23505': 'Já existe fornecedor com este CNPJ/CPF',
+        }),
+      )}`,
+    );
   }
 
   revalidatePath('/fornecedores');
@@ -90,9 +95,13 @@ export async function updateFornecedor(formData: FormData) {
     .eq('id', id);
 
   if (error) {
-    const isDup = error.code === '23505';
-    const msg = isDup ? 'Já existe outro fornecedor com este CNPJ/CPF' : error.message;
-    redirect(`/fornecedores/${id}/editar?error=${encodeURIComponent(msg)}`);
+    redirect(
+      `/fornecedores/${id}/editar?error=${encodeURIComponent(
+        mapDbErrorWithContext(error, {
+          '23505': 'Já existe outro fornecedor com este CNPJ/CPF',
+        }),
+      )}`,
+    );
   }
 
   revalidatePath('/fornecedores');
@@ -110,7 +119,7 @@ export async function archiveFornecedor(formData: FormData) {
     .update({ ativo: false, deleted_at: new Date().toISOString() })
     .eq('id', id);
 
-  if (error) redirect(`/fornecedores/${id}?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/fornecedores/${id}?error=${encodeURIComponent(mapDbError(error))}`);
   revalidatePath('/fornecedores');
   revalidatePath(`/fornecedores/${id}`);
   redirect(`/fornecedores/${id}`);
@@ -126,7 +135,7 @@ export async function restoreFornecedor(formData: FormData) {
     .update({ ativo: true, deleted_at: null })
     .eq('id', id);
 
-  if (error) redirect(`/fornecedores/${id}?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/fornecedores/${id}?error=${encodeURIComponent(mapDbError(error))}`);
   revalidatePath('/fornecedores');
   revalidatePath(`/fornecedores/${id}`);
   redirect(`/fornecedores/${id}`);

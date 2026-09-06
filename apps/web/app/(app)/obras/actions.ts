@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { ObraCreateSchema, ObraUpdateSchema } from '@/lib/schemas/obra';
+import { mapDbError } from '@/lib/schemas/errors';
 
 function formToRecord(fd: FormData): Record<string, unknown> {
   // Extrai endereco.<field> em objeto aninhado; resto raso.
@@ -49,7 +50,7 @@ export async function createObra(formData: FormData) {
     .single();
 
   if (error) {
-    redirect(`/obras/novo?error=${encodeURIComponent(error.message)}`);
+    redirect(`/obras/novo?error=${encodeURIComponent(mapDbError(error))}`);
   }
 
   revalidatePath('/obras');
@@ -90,7 +91,7 @@ export async function updateObra(formData: FormData) {
     .eq('id', id);
 
   if (error) {
-    redirect(`/obras/${id}/editar?error=${encodeURIComponent(error.message)}`);
+    redirect(`/obras/${id}/editar?error=${encodeURIComponent(mapDbError(error))}`);
   }
 
   revalidatePath('/obras');
@@ -108,7 +109,7 @@ export async function archiveObra(formData: FormData) {
     .update({ status: 'arquivada', deleted_at: new Date().toISOString() })
     .eq('id', id);
 
-  if (error) redirect(`/obras/${id}?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/obras/${id}?error=${encodeURIComponent(mapDbError(error))}`);
   revalidatePath('/obras');
   revalidatePath(`/obras/${id}`);
   redirect(`/obras/${id}`);
@@ -124,7 +125,7 @@ export async function restoreObra(formData: FormData) {
     .update({ status: 'ativa', deleted_at: null })
     .eq('id', id);
 
-  if (error) redirect(`/obras/${id}?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/obras/${id}?error=${encodeURIComponent(mapDbError(error))}`);
   revalidatePath('/obras');
   revalidatePath(`/obras/${id}`);
   redirect(`/obras/${id}`);

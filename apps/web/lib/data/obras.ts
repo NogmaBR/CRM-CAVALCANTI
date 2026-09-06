@@ -2,6 +2,10 @@ import 'server-only';
 import type { Database } from '@nogma/db';
 import { createClient } from '@/lib/supabase/server';
 
+function sanitizeSearchQuery(raw: string): string {
+  return raw.replace(/[,()\\]/gu, ' ').trim();
+}
+
 export type Obra = Database['public']['Tables']['obras']['Row'];
 
 export interface ListObrasFilters {
@@ -23,9 +27,10 @@ export async function listObras(filters: ListObrasFilters = {}): Promise<Obra[]>
   }
 
   if (filters.q && filters.q.trim().length > 0) {
-    const q = filters.q.trim();
-    // busca em nome OR cliente (case-insensitive)
-    query = query.or(`nome.ilike.%${q}%,cliente.ilike.%${q}%`);
+    const q = sanitizeSearchQuery(filters.q);
+    if (q.length > 0) {
+      query = query.or(`nome.ilike.%${q}%,cliente.ilike.%${q}%`);
+    }
   }
 
   const { data, error } = await query;
