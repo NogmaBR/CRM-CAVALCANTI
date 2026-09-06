@@ -5,6 +5,7 @@ import { Button } from '@/components/nogma/Button';
 import { Stat } from '@/components/nogma/Stat';
 import { Sparkline } from '@/components/nogma/Sparkline';
 import { createClient } from '@/lib/supabase/server';
+import { sumPagamentosBy } from '@/lib/data/pagamentos';
 
 const MOCK_TREND_OBRAS = [3, 4, 5, 4, 6, 7, 8, 10];
 const MOCK_TREND_GASTO = [80, 92, 88, 105, 118, 121, 125, 128];
@@ -45,21 +46,19 @@ const MOCK_ACTIVITY: Array<{
 
 export default async function PainelPage() {
   const supabase = await createClient();
-  const [obrasR, pagsR, msgsR, userR] = await Promise.all([
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+  const [obrasR, gastoMes, gastoTotal, msgsR, userR] = await Promise.all([
     supabase.from('obras').select('id', { count: 'exact', head: true }).is('deleted_at', null),
-    supabase
-      .from('pagamentos')
-      .select('valor')
-      .is('deleted_at', null)
-      .eq('status_pagto', 'confirmado'),
+    sumPagamentosBy({ month: currentMonth, status_pagto: 'confirmado' }),
+    sumPagamentosBy({ status_pagto: 'confirmado' }),
     supabase
       .from('mensagens_whats')
       .select('id', { count: 'exact', head: true })
       .eq('status', 'recebida'),
     supabase.auth.getUser(),
   ]);
-
-  const totalGasto = (pagsR.data ?? []).reduce((s, p) => s + Number(p.valor ?? 0), 0);
   const brl = (v: number) =>
     v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 
@@ -108,10 +107,10 @@ export default async function PainelPage() {
           <div className="nos-stat-wrap nos-fade-up" style={{ ['--i' as string]: 1 }}>
             <Stat
               label="Gasto no Mês"
-              value={brl(totalGasto)}
-              delta="+0%"
+              value={brl(gastoMes.total)}
+              delta={gastoMes.count > 0 ? `${gastoMes.count} pgto${gastoMes.count === 1 ? '' : 's'}` : '+0'}
               direction="up"
-              caption="pagamentos confirmados"
+              caption="pagamentos confirmados este mês"
             />
             <div className="nos-stat-spark">
               <Sparkline data={MOCK_TREND_GASTO} ariaLabel="Tendência gasto mensal" />
@@ -121,8 +120,8 @@ export default async function PainelPage() {
           <div className="nos-stat-wrap nos-fade-up" style={{ ['--i' as string]: 2 }}>
             <Stat
               label="Total Acumulado"
-              value={brl(totalGasto)}
-              delta="+0%"
+              value={brl(gastoTotal.total)}
+              delta={gastoTotal.count > 0 ? `${gastoTotal.count} pgto${gastoTotal.count === 1 ? '' : 's'}` : '+0'}
               direction="up"
               caption="todas as obras"
             />
