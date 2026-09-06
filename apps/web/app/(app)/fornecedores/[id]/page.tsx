@@ -13,6 +13,7 @@ import {
 } from '@/lib/data/fornecedores';
 import { formatDocumento } from '@/lib/schemas/fornecedor';
 import { archiveFornecedor, restoreFornecedor } from '../actions';
+import { Section, Row } from '../../_shared/detail-primitives';
 
 function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return '—';
@@ -182,55 +183,5 @@ export default async function FornecedorDetailPage({
         </div>
       </div>
     </>
-  );
-}
-
-function Section({
-  title,
-  span = 1,
-  children,
-}: {
-  title: string;
-  span?: 1 | 2;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className={`detail-layout__section ${span === 2 ? 'detail-layout__section--wide' : ''}`}>
-      <h3 className="detail-layout__legend">{title}</h3>
-      <dl className="detail-layout__rows">{children}</dl>
-    </section>
-  );
-}
-
-function Row({
-  label,
-  value,
-  swatch,
-}: {
-  label: string;
-  value: string;
-  swatch?: string | null;
-}) {
-  return (
-    <div className="detail-layout__row">
-      <dt className="detail-layout__label">{label}</dt>
-      <dd className="detail-layout__value">
-        {swatch ? (
-          <span
-            aria-hidden="true"
-            style={{
-              display: 'inline-block',
-              width: 10,
-              height: 10,
-              borderRadius: 3,
-              background: swatch,
-              marginRight: 8,
-              verticalAlign: 'middle',
-            }}
-          />
-        ) : null}
-        {value}
-      </dd>
-    </div>
   );
 }

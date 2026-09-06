@@ -5,7 +5,7 @@ import type { Categoria } from '@/lib/data/categorias';
 import type { Fornecedor } from '@/lib/data/fornecedores';
 import type { Obra } from '@/lib/data/obras';
 import type { Pagamento } from '@/lib/data/pagamentos';
-import '../obras/obra-form.css';
+import '../_shared/form-layout.css';
 
 function todayISO(): string {
   const d = new Date();
@@ -49,21 +49,21 @@ export function PagamentoForm({
   );
 
   return (
-    <form action={action} className="obra-form">
+    <form action={action} className="form-layout">
       {mode === 'edit' && initial ? <input type="hidden" name="id" value={initial.id} /> : null}
       <input type="hidden" name="origem" value={origemDefault} />
 
       {error ? (
-        <div className="obra-form__error" role="alert">
+        <div className="form-layout__error" role="alert">
           {error}
         </div>
       ) : null}
 
-      <fieldset className="obra-form__section">
-        <legend className="obra-form__legend">Referências</legend>
-        <div className="obra-form__grid">
-          <div className="obra-form__field obra-form__field--wide">
-            <label className="obra-form__label" htmlFor="pag-obra">
+      <fieldset className="form-layout__section">
+        <legend className="form-layout__legend">Referências</legend>
+        <div className="form-layout__grid">
+          <div className="form-layout__field form-layout__field--wide">
+            <label className="form-layout__label" htmlFor="pag-obra">
               Obra <span style={{ color: 'var(--danger, #ef4444)' }}>*</span>
             </label>
             <select
@@ -71,7 +71,7 @@ export function PagamentoForm({
               name="obra_id"
               required
               defaultValue={obraDefault}
-              className="obra-form__select"
+              className="form-layout__select"
             >
               <option value="" disabled>
                 — selecione uma obra —
@@ -84,13 +84,13 @@ export function PagamentoForm({
               ))}
             </select>
           </div>
-          <div className="obra-form__field">
-            <label className="obra-form__label" htmlFor="pag-fornecedor">Fornecedor</label>
+          <div className="form-layout__field">
+            <label className="form-layout__label" htmlFor="pag-fornecedor">Fornecedor</label>
             <select
               id="pag-fornecedor"
               name="fornecedor_id"
               defaultValue={initial?.fornecedor_id ?? ''}
-              className="obra-form__select"
+              className="form-layout__select"
             >
               <option value="">— sem fornecedor —</option>
               {fornecedoresVisiveis.map((f) => (
@@ -101,13 +101,13 @@ export function PagamentoForm({
               ))}
             </select>
           </div>
-          <div className="obra-form__field">
-            <label className="obra-form__label" htmlFor="pag-categoria">Categoria</label>
+          <div className="form-layout__field">
+            <label className="form-layout__label" htmlFor="pag-categoria">Categoria</label>
             <select
               id="pag-categoria"
               name="categoria_id"
               defaultValue={initial?.categoria_id ?? ''}
-              className="obra-form__select"
+              className="form-layout__select"
             >
               <option value="">— sem categoria —</option>
               {categorias.map((c) => (
@@ -120,10 +120,10 @@ export function PagamentoForm({
         </div>
       </fieldset>
 
-      <fieldset className="obra-form__section">
-        <legend className="obra-form__legend">Valores & data</legend>
-        <div className="obra-form__grid">
-          <div className="obra-form__field">
+      <fieldset className="form-layout__section">
+        <legend className="form-layout__legend">Valores & data</legend>
+        <div className="form-layout__grid">
+          <div className="form-layout__field">
             <Input
               label="Valor (R$)"
               name="valor"
@@ -136,7 +136,7 @@ export function PagamentoForm({
               inputMode="decimal"
             />
           </div>
-          <div className="obra-form__field">
+          <div className="form-layout__field">
             <Input
               label="Data do pagamento"
               name="data_pagamento"
@@ -145,13 +145,13 @@ export function PagamentoForm({
               defaultValue={dataDefault}
             />
           </div>
-          <div className="obra-form__field">
-            <label className="obra-form__label" htmlFor="pag-status">Status</label>
+          <div className="form-layout__field">
+            <label className="form-layout__label" htmlFor="pag-status">Status</label>
             <select
               id="pag-status"
               name="status_pagto"
               defaultValue={statusDefault}
-              className="obra-form__select"
+              className="form-layout__select"
             >
               <option value="confirmado">Confirmado</option>
               <option value="aguardando">Aguardando</option>
@@ -161,10 +161,10 @@ export function PagamentoForm({
         </div>
       </fieldset>
 
-      <fieldset className="obra-form__section">
-        <legend className="obra-form__legend">Notas</legend>
-        <div className="obra-form__grid">
-          <div className="obra-form__field obra-form__field--wide">
+      <fieldset className="form-layout__section">
+        <legend className="form-layout__legend">Notas</legend>
+        <div className="form-layout__grid">
+          <div className="form-layout__field form-layout__field--wide">
             <Input
               label="Descrição"
               name="descricao"
@@ -173,23 +173,23 @@ export function PagamentoForm({
               maxLength={500}
             />
           </div>
-          <div className="obra-form__field obra-form__field--full">
-            <label className="obra-form__label" htmlFor="pag-obs">Observações</label>
+          <div className="form-layout__field form-layout__field--full">
+            <label className="form-layout__label" htmlFor="pag-obs">Observações</label>
             <textarea
               id="pag-obs"
               name="observacoes"
               defaultValue={initial?.observacoes ?? ''}
               rows={4}
               maxLength={2000}
-              className="obra-form__textarea"
+              className="form-layout__textarea"
               placeholder="Notas internas sobre este pagamento..."
             />
           </div>
         </div>
       </fieldset>
 
-      <div className="obra-form__actions">
-        <Link href={cancelHref} className="obra-form__cancel">
+      <div className="form-layout__actions">
+        <Link href={cancelHref} className="form-layout__cancel">
           Cancelar
         </Link>
         <Button type="submit" variant="primary">{submitLabel}</Button>

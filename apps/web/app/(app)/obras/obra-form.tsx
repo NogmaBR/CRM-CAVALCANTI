@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Button } from '@/components/nogma/Button';
 import { Input } from '@/components/nogma/Input';
 import type { Obra } from '@/lib/data/obras';
-import './obra-form.css';
+import '../_shared/form-layout.css';
 
 type Endereco = { cep?: string; rua?: string; numero?: string; bairro?: string; cidade?: string; uf?: string };
 
@@ -23,19 +23,19 @@ export function ObraForm({
   const apelidosCsv = Array.isArray(initial?.apelidos) ? initial.apelidos.join(', ') : '';
 
   return (
-    <form action={action} className="obra-form">
+    <form action={action} className="form-layout">
       {mode === 'edit' && initial ? <input type="hidden" name="id" value={initial.id} /> : null}
 
       {error ? (
-        <div className="obra-form__error" role="alert">
+        <div className="form-layout__error" role="alert">
           {error}
         </div>
       ) : null}
 
-      <fieldset className="obra-form__section">
-        <legend className="obra-form__legend">Identificação</legend>
-        <div className="obra-form__grid">
-          <div className="obra-form__field obra-form__field--wide">
+      <fieldset className="form-layout__section">
+        <legend className="form-layout__legend">Identificação</legend>
+        <div className="form-layout__grid">
+          <div className="form-layout__field form-layout__field--wide">
             <Input
               label="Nome"
               name="nome"
@@ -45,7 +45,7 @@ export function ObraForm({
               maxLength={200}
             />
           </div>
-          <div className="obra-form__field">
+          <div className="form-layout__field">
             <Input
               label="Cliente"
               name="cliente"
@@ -54,26 +54,26 @@ export function ObraForm({
               maxLength={200}
             />
           </div>
-          <div className="obra-form__field">
-            <label className="obra-form__label" htmlFor="obra-tipo">Tipo</label>
+          <div className="form-layout__field">
+            <label className="form-layout__label" htmlFor="obra-tipo">Tipo</label>
             <select
               id="obra-tipo"
               name="tipo"
               defaultValue={initial?.tipo ?? ''}
-              className="obra-form__select"
+              className="form-layout__select"
             >
               <option value="">—</option>
               <option value="nova">Nova</option>
               <option value="reforma">Reforma</option>
             </select>
           </div>
-          <div className="obra-form__field">
-            <label className="obra-form__label" htmlFor="obra-status">Status</label>
+          <div className="form-layout__field">
+            <label className="form-layout__label" htmlFor="obra-status">Status</label>
             <select
               id="obra-status"
               name="status"
               defaultValue={initial?.status ?? 'ativa'}
-              className="obra-form__select"
+              className="form-layout__select"
             >
               <option value="ativa">Ativa</option>
               <option value="pausada">Pausada</option>
@@ -84,10 +84,10 @@ export function ObraForm({
         </div>
       </fieldset>
 
-      <fieldset className="obra-form__section">
-        <legend className="obra-form__legend">Financeiro & prazos</legend>
-        <div className="obra-form__grid">
-          <div className="obra-form__field">
+      <fieldset className="form-layout__section">
+        <legend className="form-layout__legend">Financeiro & prazos</legend>
+        <div className="form-layout__grid">
+          <div className="form-layout__field">
             <Input
               label="Orçamento (R$)"
               name="orcamento"
@@ -98,7 +98,7 @@ export function ObraForm({
               placeholder="0"
             />
           </div>
-          <div className="obra-form__field">
+          <div className="form-layout__field">
             <Input
               label="Data início"
               name="data_inicio"
@@ -106,7 +106,7 @@ export function ObraForm({
               defaultValue={initial?.data_inicio ?? ''}
             />
           </div>
-          <div className="obra-form__field">
+          <div className="form-layout__field">
             <Input
               label="Data prevista fim"
               name="data_prevista_fim"
@@ -117,25 +117,25 @@ export function ObraForm({
         </div>
       </fieldset>
 
-      <fieldset className="obra-form__section">
-        <legend className="obra-form__legend">Endereço</legend>
-        <div className="obra-form__grid">
-          <div className="obra-form__field">
+      <fieldset className="form-layout__section">
+        <legend className="form-layout__legend">Endereço</legend>
+        <div className="form-layout__grid">
+          <div className="form-layout__field">
             <Input label="CEP" name="endereco.cep" defaultValue={end.cep ?? ''} placeholder="00000-000" maxLength={9} />
           </div>
-          <div className="obra-form__field obra-form__field--wide">
+          <div className="form-layout__field form-layout__field--wide">
             <Input label="Rua" name="endereco.rua" defaultValue={end.rua ?? ''} maxLength={200} />
           </div>
-          <div className="obra-form__field">
+          <div className="form-layout__field">
             <Input label="Número" name="endereco.numero" defaultValue={end.numero ?? ''} maxLength={20} />
           </div>
-          <div className="obra-form__field">
+          <div className="form-layout__field">
             <Input label="Bairro" name="endereco.bairro" defaultValue={end.bairro ?? ''} maxLength={100} />
           </div>
-          <div className="obra-form__field">
+          <div className="form-layout__field">
             <Input label="Cidade" name="endereco.cidade" defaultValue={end.cidade ?? ''} maxLength={100} />
           </div>
-          <div className="obra-form__field">
+          <div className="form-layout__field">
             <Input
               label="UF"
               name="endereco.uf"
@@ -147,10 +147,10 @@ export function ObraForm({
         </div>
       </fieldset>
 
-      <fieldset className="obra-form__section">
-        <legend className="obra-form__legend">Extras</legend>
-        <div className="obra-form__grid">
-          <div className="obra-form__field obra-form__field--wide">
+      <fieldset className="form-layout__section">
+        <legend className="form-layout__legend">Extras</legend>
+        <div className="form-layout__grid">
+          <div className="form-layout__field form-layout__field--wide">
             <Input
               label="Apelidos (separados por vírgula)"
               name="apelidos"
@@ -159,23 +159,23 @@ export function ObraForm({
               hint="Nomes alternativos usados no WhatsApp"
             />
           </div>
-          <div className="obra-form__field obra-form__field--full">
-            <label className="obra-form__label" htmlFor="obra-obs">Observações</label>
+          <div className="form-layout__field form-layout__field--full">
+            <label className="form-layout__label" htmlFor="obra-obs">Observações</label>
             <textarea
               id="obra-obs"
               name="observacoes"
               defaultValue={initial?.observacoes ?? ''}
               rows={4}
               maxLength={2000}
-              className="obra-form__textarea"
+              className="form-layout__textarea"
               placeholder="Notas internas sobre esta obra..."
             />
           </div>
         </div>
       </fieldset>
 
-      <div className="obra-form__actions">
-        <Link href={cancelHref} className="obra-form__cancel">
+      <div className="form-layout__actions">
+        <Link href={cancelHref} className="form-layout__cancel">
           Cancelar
         </Link>
         <Button type="submit" variant="primary">{submitLabel}</Button>

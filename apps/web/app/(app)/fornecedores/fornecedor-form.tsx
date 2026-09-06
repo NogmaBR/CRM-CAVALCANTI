@@ -4,6 +4,7 @@ import { Input } from '@/components/nogma/Input';
 import type { Categoria } from '@/lib/data/categorias';
 import type { Fornecedor } from '@/lib/data/fornecedores';
 import { formatDocumento } from '@/lib/schemas/fornecedor';
+import '../_shared/form-layout.css';
 
 export function FornecedorForm({
   mode,
@@ -26,19 +27,19 @@ export function FornecedorForm({
   const ativoDefault = mode === 'create' ? true : initial?.ativo ?? true;
 
   return (
-    <form action={action} className="obra-form">
+    <form action={action} className="form-layout">
       {mode === 'edit' && initial ? <input type="hidden" name="id" value={initial.id} /> : null}
 
       {error ? (
-        <div className="obra-form__error" role="alert">
+        <div className="form-layout__error" role="alert">
           {error}
         </div>
       ) : null}
 
-      <fieldset className="obra-form__section">
-        <legend className="obra-form__legend">Identificação</legend>
-        <div className="obra-form__grid">
-          <div className="obra-form__field obra-form__field--wide">
+      <fieldset className="form-layout__section">
+        <legend className="form-layout__legend">Identificação</legend>
+        <div className="form-layout__grid">
+          <div className="form-layout__field form-layout__field--wide">
             <Input
               label="Nome"
               name="nome"
@@ -48,7 +49,7 @@ export function FornecedorForm({
               maxLength={200}
             />
           </div>
-          <div className="obra-form__field obra-form__field--wide">
+          <div className="form-layout__field form-layout__field--wide">
             <Input
               label="Razão social"
               name="razao_social"
@@ -57,7 +58,7 @@ export function FornecedorForm({
               maxLength={200}
             />
           </div>
-          <div className="obra-form__field obra-form__field--wide">
+          <div className="form-layout__field form-layout__field--wide">
             <Input
               label="Documento (CNPJ ou CPF)"
               name="documento"
@@ -70,16 +71,16 @@ export function FornecedorForm({
         </div>
       </fieldset>
 
-      <fieldset className="obra-form__section">
-        <legend className="obra-form__legend">Categorização & status</legend>
-        <div className="obra-form__grid">
-          <div className="obra-form__field obra-form__field--wide">
-            <label className="obra-form__label" htmlFor="forn-categoria">Categoria</label>
+      <fieldset className="form-layout__section">
+        <legend className="form-layout__legend">Categorização & status</legend>
+        <div className="form-layout__grid">
+          <div className="form-layout__field form-layout__field--wide">
+            <label className="form-layout__label" htmlFor="forn-categoria">Categoria</label>
             <select
               id="forn-categoria"
               name="categoria_id"
               defaultValue={initial?.categoria_id ?? ''}
-              className="obra-form__select"
+              className="form-layout__select"
             >
               <option value="">— sem categoria —</option>
               {categorias.map((cat) => (
@@ -89,7 +90,7 @@ export function FornecedorForm({
               ))}
             </select>
           </div>
-          <div className="obra-form__field obra-form__field--wide">
+          <div className="form-layout__field form-layout__field--wide">
             <label
               style={{
                 display: 'inline-flex',
@@ -112,10 +113,10 @@ export function FornecedorForm({
         </div>
       </fieldset>
 
-      <fieldset className="obra-form__section">
-        <legend className="obra-form__legend">Contato</legend>
-        <div className="obra-form__grid">
-          <div className="obra-form__field">
+      <fieldset className="form-layout__section">
+        <legend className="form-layout__legend">Contato</legend>
+        <div className="form-layout__grid">
+          <div className="form-layout__field">
             <Input
               label="Telefone"
               name="telefone"
@@ -125,7 +126,7 @@ export function FornecedorForm({
               maxLength={30}
             />
           </div>
-          <div className="obra-form__field">
+          <div className="form-layout__field">
             <Input
               label="E-mail"
               name="email"
@@ -138,8 +139,8 @@ export function FornecedorForm({
         </div>
       </fieldset>
 
-      <div className="obra-form__actions">
-        <Link href={cancelHref} className="obra-form__cancel">
+      <div className="form-layout__actions">
+        <Link href={cancelHref} className="form-layout__cancel">
           Cancelar
         </Link>
         <Button type="submit" variant="primary">{submitLabel}</Button>

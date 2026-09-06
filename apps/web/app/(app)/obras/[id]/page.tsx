@@ -7,6 +7,7 @@ import { Button } from '@/components/nogma/Button';
 import { getObra, type Obra } from '@/lib/data/obras';
 import { archiveObra, restoreObra } from '../actions';
 import '../../_shared/detail-layout.css';
+import { Section, Row } from '../../_shared/detail-primitives';
 
 type Endereco = { cep?: string; rua?: string; numero?: string; bairro?: string; cidade?: string; uf?: string };
 
@@ -166,33 +167,5 @@ export default async function ObraDetailPage({
         </div>
       </div>
     </>
-  );
-}
-
-function Section({
-  title,
-  span = 1,
-  children,
-}: {
-  title: string;
-  span?: 1 | 2;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className={`detail-layout__section ${span === 2 ? 'detail-layout__section--wide' : ''}`}>
-      <h3 className="detail-layout__legend">{title}</h3>
-      <dl className="detail-layout__rows">{children}</dl>
-    </section>
-  );
-}
-
-function Row({ label, value, multiline }: { label: string; value: string; multiline?: boolean }) {
-  return (
-    <div className="detail-layout__row">
-      <dt className="detail-layout__label">{label}</dt>
-      <dd className={multiline ? 'detail-layout__value detail-layout__value--multiline' : 'detail-layout__value'}>
-        {value}
-      </dd>
-    </div>
   );
 }
