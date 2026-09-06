@@ -98,7 +98,7 @@ function FilterSelect({
         id={`filter-${paramKey}`}
         value={currentValue}
         onChange={(e) => onChange(paramKey, e.target.value)}
-        className="obra-form__select"
+        className="form-layout__select"
       >
         <option value="">— todas —</option>
         {options.map((opt) => (
