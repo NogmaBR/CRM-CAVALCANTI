@@ -1,6 +1,7 @@
 import 'server-only';
 import type { Database } from '@nogma/db';
 import { createClient } from '@/lib/supabase/server';
+import { sanitizeSearchQuery } from '@/lib/util/search';
 
 export type Fornecedor = Database['public']['Tables']['fornecedores']['Row'];
 export type FornecedorApelido = Database['public']['Tables']['fornecedor_apelidos']['Row'];
@@ -10,15 +11,6 @@ export interface ListFornecedoresFilters {
   categoria_id?: string;
   includeArchived?: boolean;
   onlyArchived?: boolean;
-}
-
-/**
- * Remove caracteres que quebram o filter string do PostgREST (`.or(...)`).
- * PostgREST interpreta `,` `(` `)` como separadores/agrupadores; `\` como escape.
- * Sanitiza sem tentar escapar — para search UI, aceitável dropá-los.
- */
-function sanitizeSearchQuery(raw: string): string {
-  return raw.replace(/[,()\\]/gu, ' ').trim();
 }
 
 export async function listFornecedores(filters: ListFornecedoresFilters = {}): Promise<Fornecedor[]> {

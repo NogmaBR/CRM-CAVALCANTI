@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Pencil, Archive, RotateCcw, Sparkles } from 'lucide-react';
-import '../../obras/[id]/obra-detail.css';
+import '../../_shared/detail-layout.css';
 import { TopBar } from '@/components/layout/topbar';
 import { Badge } from '@/components/nogma/Badge';
 import { Button } from '@/components/nogma/Button';
@@ -53,7 +53,7 @@ export default async function FornecedorDetailPage({
         subtitle={fornecedor.razao_social ?? 'Fornecedor sem razão social cadastrada'}
         actions={
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <Link href="/fornecedores" className="obra-detail__back">
+            <Link href="/fornecedores" className="detail-layout__back">
               <ArrowLeft size={15} aria-hidden="true" />
               Voltar
             </Link>
@@ -81,12 +81,12 @@ export default async function FornecedorDetailPage({
 
       <div className="nos-page-body">
         {sp.error ? (
-          <div className="obra-detail__error" role="alert">
+          <div className="detail-layout__error" role="alert">
             {sp.error}
           </div>
         ) : null}
 
-        <div className="obra-detail__header">
+        <div className="detail-layout__header">
           {isArquivado ? (
             <Badge variant="neutral">Arquivado</Badge>
           ) : isAtivo ? (
@@ -95,13 +95,13 @@ export default async function FornecedorDetailPage({
             <Badge variant="warning">Inativo</Badge>
           )}
           {fornecedor.documento_tipo ? (
-            <span className="obra-detail__tipo">
+            <span className="detail-layout__tipo">
               {fornecedor.documento_tipo.toUpperCase()}
             </span>
           ) : null}
         </div>
 
-        <div className="obra-detail__grid">
+        <div className="detail-layout__grid">
           <Section title="Identificação">
             <Row label="Nome" value={fornecedor.nome} />
             <Row label="Razão social" value={fornecedor.razao_social ?? '—'} />
@@ -128,9 +128,9 @@ export default async function FornecedorDetailPage({
 
           <Section title="Apelidos" span={2}>
             {apelidos.length === 0 ? (
-              <div className="obra-detail__row">
-                <dt className="obra-detail__label">Registrados</dt>
-                <dd className="obra-detail__value" style={{ color: 'var(--text-secondary)' }}>
+              <div className="detail-layout__row">
+                <dt className="detail-layout__label">Registrados</dt>
+                <dd className="detail-layout__value" style={{ color: 'var(--text-secondary)' }}>
                   Nenhum apelido registrado. Apelidos são criados automaticamente pela IA quando este fornecedor for mencionado no WhatsApp.
                 </dd>
               </div>
@@ -195,9 +195,9 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className={`obra-detail__section ${span === 2 ? 'obra-detail__section--wide' : ''}`}>
-      <h3 className="obra-detail__legend">{title}</h3>
-      <dl className="obra-detail__rows">{children}</dl>
+    <section className={`detail-layout__section ${span === 2 ? 'detail-layout__section--wide' : ''}`}>
+      <h3 className="detail-layout__legend">{title}</h3>
+      <dl className="detail-layout__rows">{children}</dl>
     </section>
   );
 }
@@ -212,9 +212,9 @@ function Row({
   swatch?: string | null;
 }) {
   return (
-    <div className="obra-detail__row">
-      <dt className="obra-detail__label">{label}</dt>
-      <dd className="obra-detail__value">
+    <div className="detail-layout__row">
+      <dt className="detail-layout__label">{label}</dt>
+      <dd className="detail-layout__value">
         {swatch ? (
           <span
             aria-hidden="true"

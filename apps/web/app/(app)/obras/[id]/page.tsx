@@ -6,7 +6,7 @@ import { Badge, type BadgeVariant } from '@/components/nogma/Badge';
 import { Button } from '@/components/nogma/Button';
 import { getObra, type Obra } from '@/lib/data/obras';
 import { archiveObra, restoreObra } from '../actions';
-import './obra-detail.css';
+import '../../_shared/detail-layout.css';
 
 type Endereco = { cep?: string; rua?: string; numero?: string; bairro?: string; cidade?: string; uf?: string };
 
@@ -92,7 +92,7 @@ export default async function ObraDetailPage({
         subtitle={obra.cliente ?? 'Sem cliente definido'}
         actions={
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <Link href="/obras" className="obra-detail__back">
+            <Link href="/obras" className="detail-layout__back">
               <ArrowLeft size={15} aria-hidden="true" />
               Voltar
             </Link>
@@ -120,17 +120,17 @@ export default async function ObraDetailPage({
 
       <div className="nos-page-body">
         {sp.error ? (
-          <div className="obra-detail__error" role="alert">
+          <div className="detail-layout__error" role="alert">
             {sp.error}
           </div>
         ) : null}
 
-        <div className="obra-detail__header">
+        <div className="detail-layout__header">
           <Badge variant={STATUS_VARIANT[status]}>{STATUS_LABEL[status]}</Badge>
-          {obra.tipo ? <span className="obra-detail__tipo">{TIPO_LABEL[obra.tipo]}</span> : null}
+          {obra.tipo ? <span className="detail-layout__tipo">{TIPO_LABEL[obra.tipo]}</span> : null}
         </div>
 
-        <div className="obra-detail__grid">
+        <div className="detail-layout__grid">
           <Section title="Identificação">
             <Row label="Nome" value={obra.nome} />
             <Row label="Cliente" value={obra.cliente ?? '—'} />
@@ -179,18 +179,18 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className={`obra-detail__section ${span === 2 ? 'obra-detail__section--wide' : ''}`}>
-      <h3 className="obra-detail__legend">{title}</h3>
-      <dl className="obra-detail__rows">{children}</dl>
+    <section className={`detail-layout__section ${span === 2 ? 'detail-layout__section--wide' : ''}`}>
+      <h3 className="detail-layout__legend">{title}</h3>
+      <dl className="detail-layout__rows">{children}</dl>
     </section>
   );
 }
 
 function Row({ label, value, multiline }: { label: string; value: string; multiline?: boolean }) {
   return (
-    <div className="obra-detail__row">
-      <dt className="obra-detail__label">{label}</dt>
-      <dd className={multiline ? 'obra-detail__value obra-detail__value--multiline' : 'obra-detail__value'}>
+    <div className="detail-layout__row">
+      <dt className="detail-layout__label">{label}</dt>
+      <dd className={multiline ? 'detail-layout__value detail-layout__value--multiline' : 'detail-layout__value'}>
         {value}
       </dd>
     </div>

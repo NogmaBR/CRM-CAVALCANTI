@@ -1,10 +1,7 @@
 import 'server-only';
 import type { Database } from '@nogma/db';
 import { createClient } from '@/lib/supabase/server';
-
-function sanitizeSearchQuery(raw: string): string {
-  return raw.replace(/[,()\\]/gu, ' ').trim();
-}
+import { sanitizeSearchQuery } from '@/lib/util/search';
 
 export type Obra = Database['public']['Tables']['obras']['Row'];
 
