@@ -5,8 +5,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="nos-app-shell">
       <Sidebar />
-      <main>{children}</main>
-      <Toaster position="bottom-right" theme="dark" richColors />
+      <main id="main-content">{children}</main>
+      <Toaster
+        richColors
+        position="top-right"
+        closeButton
+        theme="dark"
+        toastOptions={{
+          style: { fontFamily: 'inherit' },
+        }}
+      />
     </div>
   );
 }

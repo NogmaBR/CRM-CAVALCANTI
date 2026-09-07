@@ -1,0 +1,116 @@
+/* =============================================================================
+   Accessibility globals (Fase 20 — WCAG AA)
+   ============================================================================= */
+
+/* ---------- Skip link ----------
+   Aparece só quando focado via Tab — permite pular direto pro main
+   content, evitando tab-through de sidebar+topbar toda vez. */
+.a11y-skip-link {
+  position: absolute;
+  top: -100px;
+  left: 8px;
+  z-index: 1000;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: var(--brand, #0C4651);
+  color: var(--brand-text, #FFFFFF);
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 14px;
+  transition: top 0.15s ease-out;
+}
+.a11y-skip-link:focus,
+.a11y-skip-link:focus-visible {
+  top: 8px;
+  outline: 2px solid var(--accent, #CCFF00);
+  outline-offset: 2px;
+}
+
+/* ---------- Focus visible universal ----------
+   Todos os elementos interativos ganham ring visível quando focados via
+   teclado. `:focus-visible` (não `:focus`) evita ring em cliques mouse. */
+:focus-visible {
+  outline: 2px solid var(--border-focus, var(--accent, #CCFF00));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Overrides pra elementos com border customizado — outline dentro pra
+   não quebrar layout. */
+button:focus-visible,
+[role="button"]:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline-offset: 2px;
+}
+
+/* ---------- Prefers reduced motion ----------
+   Usuário que ativou "reduzir animações" no OS não vê animações longas.
+   Mantemos transitions curtas (< 200ms) por serem essenciais pra
+   feedback de interação. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- Screen reader only ----------
+   Texto visualmente escondido mas lido por leitores de tela.
+   Usado em botões icon-only via <span className="sr-only">. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Min touch target size (WCAG 2.5.5 Level AAA, ~AA recomm) ----------
+   Botões e links interativos devem ter mínimo 24x24 (AA) / 44x44 (AAA).
+   Aplicamos 32 pra icon buttons como compromise. */
+button[aria-label]:not(.no-min-size),
+a[aria-label]:not(.no-min-size) {
+  min-width: 32px;
+  min-height: 32px;
+}
+
+/* ---------- High contrast focus para inputs em erro ----------
+   Combina com aria-invalid="true" — dá visibilidade extra. */
+[aria-invalid="true"]:focus-visible {
+  outline-color: var(--danger, #D6483B);
+}
+
+/* ---------- StatusBanner (role="alert" + aria-live) ----------
+   Feedback visual de ações com ?error= / ?success= em pages.
+   Complementa o Toaster Sonner quando JS não está disponível
+   ou o foco ainda está na page (não no toast). */
+.nos-banner {
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.nos-banner--error {
+  background: color-mix(in srgb, var(--danger, #D6483B) 12%, transparent);
+  color: var(--danger, #D6483B);
+  border: 1px solid color-mix(in srgb, var(--danger, #D6483B) 30%, transparent);
+}
+.nos-banner--success {
+  background: color-mix(in srgb, var(--accent, #CCFF00) 10%, transparent);
+  color: var(--text-primary, #F2F2F0);
+  border: 1px solid color-mix(in srgb, var(--accent, #CCFF00) 25%, transparent);
+}

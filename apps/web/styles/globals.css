@@ -2,6 +2,7 @@
 @import "./nogma.css";
 @import "./nos-chrome.css";
 @import "./nos-responsive.css";
+@import "./a11y.css";
 
 @layer base {
   html {

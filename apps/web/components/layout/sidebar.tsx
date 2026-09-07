@@ -4,7 +4,7 @@ import { UserMenu } from './user-menu';
 
 export function Sidebar() {
   return (
-    <aside className="nos-sidebar on-black">
+    <aside className="nos-sidebar on-black" aria-label="Barra lateral">
       <div className="nos-brand">
         <span className="nos-brand__mark">
           <Image src="/logos/isotype-n-lime.png" alt="Nogma" width={28} height={28} />

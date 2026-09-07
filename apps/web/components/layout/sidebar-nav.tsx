@@ -31,15 +31,16 @@ export function SidebarNav({ onNavigate }: SidebarNavProps = {}) {
   const pathname = usePathname();
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
   return (
-    <nav className="nos-nav">
+    <nav className="nos-nav" aria-label="Navegação principal">
       {NAV.map(({ href, label, icon: Icon }) => (
         <Link
           key={href}
           href={href}
           className={'nos-navitem' + (isActive(href) ? ' is-active' : '')}
           onClick={onNavigate}
+          aria-current={isActive(href) ? 'page' : undefined}
         >
-          <Icon size={19} />
+          <Icon size={19} aria-hidden="true" />
           <span className="nos-navitem__label">{label}</span>
         </Link>
       ))}
@@ -50,8 +51,9 @@ export function SidebarNav({ onNavigate }: SidebarNavProps = {}) {
           href={href}
           className={'nos-navitem' + (isActive(href) ? ' is-active' : '')}
           onClick={onNavigate}
+          aria-current={isActive(href) ? 'page' : undefined}
         >
-          <Icon size={19} />
+          <Icon size={19} aria-hidden="true" />
           <span className="nos-navitem__label">{label}</span>
         </Link>
       ))}

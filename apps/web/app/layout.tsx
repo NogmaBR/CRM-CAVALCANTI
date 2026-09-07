@@ -15,7 +15,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       data-theme={theme === 'light' ? undefined : theme}
       suppressHydrationWarning
     >
-      <body>{children}</body>
+      <body>
+        <a href="#main-content" className="a11y-skip-link">
+          Pular para o conteúdo principal
+        </a>
+        {children}
+      </body>
     </html>
   );
 }
