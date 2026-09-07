@@ -32,7 +32,8 @@ export async function updateSession(request: NextRequest) {
 
   const url = request.nextUrl.clone();
   const isAuthRoute = url.pathname.startsWith('/login') || url.pathname === '/';
-  const isPublicApi = url.pathname.startsWith('/api/webhooks/');
+  const isPublicApi =
+    url.pathname.startsWith('/api/webhooks/') || url.pathname.startsWith('/api/cron/');
 
   if (!user && !isAuthRoute && !isPublicApi) {
     url.pathname = '/login';
