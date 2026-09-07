@@ -5,76 +5,67 @@ import { Button } from '@/components/nogma/Button';
 import { Stat } from '@/components/nogma/Stat';
 import { Sparkline } from '@/components/nogma/Sparkline';
 import { createClient } from '@/lib/supabase/server';
-import { sumPagamentosBy } from '@/lib/data/pagamentos';
+import {
+  getKpisResumo,
+  getSerieMensal,
+  getGastoPorCategoria,
+  getAtividadeRecente,
+  relativeTime,
+  type KpiCard,
+} from '@/lib/data/painel';
+import { BarSerieMensal } from './charts/bar-serie-mensal';
+import { DonutCategoria } from './charts/donut-categoria';
+import { LineAcumulado } from './charts/line-acumulado';
+import './painel.css';
 
-const MOCK_TREND_OBRAS = [3, 4, 5, 4, 6, 7, 8, 10];
-const MOCK_TREND_GASTO = [80, 92, 88, 105, 118, 121, 125, 128];
-const MOCK_TREND_TOTAL = [280, 315, 350, 380, 400, 425, 445, 453];
-const MOCK_TREND_PEND = [12, 11, 9, 8, 7, 6, 5, 4];
+function statDir(dir: 'up' | 'down' | 'flat'): 'up' | 'down' {
+  return dir === 'down' ? 'down' : 'up';
+}
 
-const MOCK_ACTIVITY: Array<{
-  icon: 'obra' | 'doc' | 'msg';
-  title: string;
-  meta: string;
-  time: string;
-}> = [
-  {
-    icon: 'msg',
-    title: 'Nova mensagem no WhatsApp — Fornecedor XYZ',
-    meta: 'Comprovante Obra Bela Vista · aguardando classificação',
-    time: 'agora',
-  },
-  {
-    icon: 'doc',
-    title: 'NF 4592 confirmada — R$ 8.320,00',
-    meta: 'Obra Centro · categoria Material',
-    time: '2h',
-  },
-  {
-    icon: 'obra',
-    title: 'Obra "Residencial Cavalcanti II" criada',
-    meta: 'Início 12/set · orçamento R$ 890k',
-    time: 'ontem',
-  },
-  {
-    icon: 'msg',
-    title: 'Fernando marcou 3 mensagens como resolvidas',
-    meta: 'WhatsApp · Obra Zona Sul',
-    time: 'ontem',
-  },
-];
+function statDelta(kpi: KpiCard): string {
+  if (kpi.delta_pct !== null) {
+    return `${kpi.delta_pct > 0 ? '+' : ''}${kpi.delta_pct.toFixed(1)}%`;
+  }
+  return kpi.caption;
+}
+
+const TIPO_ICON = {
+  pagamento: Building2,
+  documento: FileText,
+  mensagem: MessageSquare,
+} as const;
 
 export default async function PainelPage() {
   const supabase = await createClient();
-  const now = new Date();
-  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-  const [obrasR, gastoMes, gastoTotal, msgsR, userR] = await Promise.all([
-    supabase.from('obras').select('id', { count: 'exact', head: true }).is('deleted_at', null),
-    sumPagamentosBy({ month: currentMonth, status_pagto: 'confirmado' }),
-    sumPagamentosBy({ status_pagto: 'confirmado' }),
-    supabase
-      .from('mensagens_whats')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'recebida'),
+  const [kpis, serieMensal, categorias, atividade, userR] = await Promise.all([
+    getKpisResumo(),
+    getSerieMensal(12),
+    getGastoPorCategoria(5),
+    getAtividadeRecente(10),
     supabase.auth.getUser(),
   ]);
-  const brl = (v: number) =>
-    v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 
-  const email = userR.data.user?.email ?? 'você';
-  const primeiroNomeRaw = email.split('@')[0]?.split('.')[0] ?? 'você';
+  const email = userR.data.user?.email ?? 'voce';
+  const primeiroNomeRaw = email.split('@')[0]?.split('.')[0] ?? 'voce';
   const primeiroNome = primeiroNomeRaw[0]!.toUpperCase() + primeiroNomeRaw.slice(1);
 
   const hoje = new Date()
     .toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
     .toUpperCase();
 
+  // Running sum for area chart — computed server-side
+  let acc = 0;
+  const acumuladoData = serieMensal.map((p) => {
+    acc += p.total;
+    return { label: p.label, total: acc };
+  });
+
   return (
     <>
       <TopBar
         title="Painel"
-        subtitle="Visão geral da operação"
+        subtitle="Visao geral da operacao"
         actions={
           <Link href="/obras/novo" style={{ textDecoration: 'none' }}>
             <Button variant="primary" leadingIcon={<Plus size={16} />}>
@@ -87,69 +78,103 @@ export default async function PainelPage() {
       <div className="nos-page-body">
         <p className="eyebrow nos-eyebrow-date">{hoje}</p>
         <h2 className="nos-greeting">
-          Bom dia, <span className="mark-lime">{primeiroNome} 👋</span>
+          Bom dia, <span className="mark-lime">{primeiroNome}</span>
         </h2>
 
+        {/* KPI Grid */}
         <div className="nos-kpi-grid" style={{ marginTop: 28 }}>
           <div className="nos-stat-wrap nos-fade-up" style={{ ['--i' as string]: 0 }}>
             <Stat
-              label="Obras Ativas"
-              value={String(obrasR.count ?? 0)}
-              delta="+0"
-              direction="up"
-              caption="ativas + arquivadas"
+              label={kpis.obras_ativas.label}
+              value={kpis.obras_ativas.value}
+              delta={statDelta(kpis.obras_ativas)}
+              direction={statDir(kpis.obras_ativas.direction)}
+              caption={kpis.obras_ativas.caption}
             />
             <div className="nos-stat-spark">
-              <Sparkline data={MOCK_TREND_OBRAS} ariaLabel="Tendência obras últimos 8 meses" />
+              <Sparkline
+                data={kpis.obras_ativas.trend8m}
+                ariaLabel="Tendencia obras ultimos 8 meses"
+              />
             </div>
           </div>
 
           <div className="nos-stat-wrap nos-fade-up" style={{ ['--i' as string]: 1 }}>
             <Stat
-              label="Gasto no Mês"
-              value={brl(gastoMes.total)}
-              delta={gastoMes.count > 0 ? `${gastoMes.count} pgto${gastoMes.count === 1 ? '' : 's'}` : '+0'}
-              direction="up"
-              caption="pagamentos confirmados este mês"
+              label={kpis.gasto_mes.label}
+              value={kpis.gasto_mes.value}
+              delta={statDelta(kpis.gasto_mes)}
+              direction={statDir(kpis.gasto_mes.direction)}
+              caption={kpis.gasto_mes.caption}
             />
             <div className="nos-stat-spark">
-              <Sparkline data={MOCK_TREND_GASTO} ariaLabel="Tendência gasto mensal" />
+              <Sparkline
+                data={kpis.gasto_mes.trend8m}
+                ariaLabel="Tendencia gasto mensal"
+              />
             </div>
           </div>
 
           <div className="nos-stat-wrap nos-fade-up" style={{ ['--i' as string]: 2 }}>
             <Stat
-              label="Total Acumulado"
-              value={brl(gastoTotal.total)}
-              delta={gastoTotal.count > 0 ? `${gastoTotal.count} pgto${gastoTotal.count === 1 ? '' : 's'}` : '+0'}
-              direction="up"
-              caption="todas as obras"
+              label={kpis.gasto_total.label}
+              value={kpis.gasto_total.value}
+              delta={statDelta(kpis.gasto_total)}
+              direction={statDir(kpis.gasto_total.direction)}
+              caption={kpis.gasto_total.caption}
             />
             <div className="nos-stat-spark">
-              <Sparkline data={MOCK_TREND_TOTAL} ariaLabel="Total acumulado" />
+              <Sparkline
+                data={kpis.gasto_total.trend8m}
+                ariaLabel="Total acumulado"
+              />
             </div>
           </div>
 
           <div className="nos-stat-wrap nos-fade-up" style={{ ['--i' as string]: 3 }}>
             <Stat
-              label="Pendentes NF"
-              value={String(msgsR.count ?? 0)}
-              delta="+0"
-              direction="down"
-              caption="mensagens aguardando classificação"
+              label={kpis.pendencias.label}
+              value={kpis.pendencias.value}
+              delta={statDelta(kpis.pendencias)}
+              direction={statDir(kpis.pendencias.direction)}
+              caption={kpis.pendencias.caption}
             />
             <div className="nos-stat-spark">
               <Sparkline
-                data={MOCK_TREND_PEND}
+                data={kpis.pendencias.trend8m}
                 stroke="var(--warning, #eab308)"
                 fill="color-mix(in srgb, var(--warning, #eab308) 18%, transparent)"
-                ariaLabel="Pendências ao longo do tempo"
+                ariaLabel="Pendencias ao longo do tempo"
               />
             </div>
           </div>
         </div>
 
+        {/* Analises Section */}
         <section className="nos-section nos-fade-up" style={{ ['--i' as string]: 4 }}>
+          <h3 className="nos-section__title">Analises</h3>
+
+          {/* Bar chart: full width */}
+          <div className="painel-chart-card" style={{ marginBottom: 16 }}>
+            <h3 className="painel-chart-card__title">Gastos mensais — ultimos 12 meses</h3>
+            <BarSerieMensal data={serieMensal} />
+          </div>
+
+          {/* Donut + Line side by side */}
+          <div className="painel-charts-grid">
+            <div className="painel-chart-card">
+              <h3 className="painel-chart-card__title">Gasto por categoria — ultimos 3 meses</h3>
+              <DonutCategoria data={categorias} />
+            </div>
+            <div className="painel-chart-card">
+              <h3 className="painel-chart-card__title">Total acumulado</h3>
+              <LineAcumulado data={acumuladoData} />
+            </div>
+          </div>
+        </section>
+
+        {/* Activity Section */}
+        <section className="nos-section nos-fade-up" style={{ ['--i' as string]: 5 }}>
           <div
             style={{
               display: 'flex',
@@ -159,32 +184,50 @@ export default async function PainelPage() {
             }}
           >
             <h3 className="nos-section__title">Atividade recente</h3>
-            <span className="nos-section__hint">Últimas 24h</span>
+            <span className="nos-section__hint">Ultimas 48h</span>
           </div>
-          <div className="nos-activity">
-            {MOCK_ACTIVITY.map((item, i) => {
-              const Icon =
-                item.icon === 'obra' ? Building2 : item.icon === 'doc' ? FileText : MessageSquare;
-              return (
-                <div key={i} className="nos-activity__item">
-                  <div className="nos-activity__icon">
-                    <Icon size={18} />
+
+          {atividade.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
+              Nenhuma atividade nas ultimas 48h.
+            </p>
+          ) : (
+            <div className="nos-activity">
+              {atividade.map((item) => {
+                const Icon = TIPO_ICON[item.tipo];
+                const content = (
+                  <div className="nos-activity__item">
+                    <div className="nos-activity__icon">
+                      <Icon size={18} />
+                    </div>
+                    <div className="nos-activity__body">
+                      <div className="nos-activity__title">{item.titulo}</div>
+                      <div className="nos-activity__meta">{item.meta}</div>
+                    </div>
+                    <div className="nos-activity__time">
+                      {relativeTime(item.timestamp)}{' '}
+                      <ArrowRight
+                        size={13}
+                        style={{ verticalAlign: 'middle', marginLeft: 4, opacity: 0.5 }}
+                      />
+                    </div>
                   </div>
-                  <div className="nos-activity__body">
-                    <div className="nos-activity__title">{item.title}</div>
-                    <div className="nos-activity__meta">{item.meta}</div>
-                  </div>
-                  <div className="nos-activity__time">
-                    {item.time}{' '}
-                    <ArrowRight
-                      size={13}
-                      style={{ verticalAlign: 'middle', marginLeft: 4, opacity: 0.5 }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+
+                return item.href ? (
+                  <Link
+                    key={item.id}
+                    href={item.href}
+                    style={{ textDecoration: 'none', display: 'block' }}
+                  >
+                    {content}
+                  </Link>
+                ) : (
+                  <div key={item.id}>{content}</div>
+                );
+              })}
+            </div>
+          )}
         </section>
       </div>
     </>

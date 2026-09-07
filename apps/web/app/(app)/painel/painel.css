@@ -1,0 +1,41 @@
+/* Chart section layout — Fase 17 */
+
+/* Full-width bar chart card */
+.painel-chart-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg, 12px);
+  padding: 20px 20px 12px;
+}
+
+.painel-chart-card__title {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  margin: 0 0 12px;
+}
+
+/* Two-column grid: donut + line side by side on desktop, stacked on mobile */
+.painel-charts-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .painel-charts-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Empty state */
+.painel-chart-card__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
