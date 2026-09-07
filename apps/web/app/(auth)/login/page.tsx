@@ -1,9 +1,6 @@
 import Image from 'next/image';
-import { ArrowRight, Mail, Lock, AlertCircle } from 'lucide-react';
-import { Button } from '@/components/nogma/Button';
-import { Input } from '@/components/nogma/Input';
-import { Checkbox } from '@/components/nogma/Checkbox';
-import { login } from './actions';
+import { AlertCircle } from 'lucide-react';
+import { LoginForm } from './login-form';
 
 type SearchParams = Promise<{ error?: string }>;
 
@@ -59,41 +56,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
             </div>
           ) : null}
 
-          <form action={login} className="nos-login__form" noValidate>
-            <Input
-              label="E-mail"
-              type="email"
-              name="email"
-              required
-              autoComplete="email"
-              placeholder="voce@cavalcanti.com.br"
-              leading={<Mail size={16} color="var(--text-muted)" aria-hidden="true" />}
-            />
-            <Input
-              label="Senha"
-              type="password"
-              name="password"
-              required
-              autoComplete="current-password"
-              placeholder="••••••••"
-              leading={<Lock size={16} color="var(--text-muted)" aria-hidden="true" />}
-            />
-            <div className="nos-login__row">
-              <Checkbox label="Manter conectada" name="remember" defaultChecked />
-              <span className="nos-login__link nos-login__link--disabled" title="Em breve">
-                Esqueci a senha
-              </span>
-            </div>
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              block
-              trailingIcon={<ArrowRight size={18} aria-hidden="true" />}
-            >
-              Entrar
-            </Button>
-          </form>
+          <LoginForm />
           <div className="nos-login__foot">Nogma · Gestor de Obras</div>
         </div>
       </main>
