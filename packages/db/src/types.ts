@@ -657,6 +657,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string | null
+          deleted_at: string | null
           nome: string
           papel: Database["public"]["Enums"]["papel_usuario"]
           telefone: string | null
@@ -667,6 +668,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string | null
+          deleted_at?: string | null
           nome: string
           papel?: Database["public"]["Enums"]["papel_usuario"]
           telefone?: string | null
@@ -677,6 +679,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string | null
+          deleted_at?: string | null
           nome?: string
           papel?: Database["public"]["Enums"]["papel_usuario"]
           telefone?: string | null

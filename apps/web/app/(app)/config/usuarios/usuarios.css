@@ -1,0 +1,274 @@
+/* ── Filter tabs (same pattern as notif-filter-tabs) ── */
+.usuarios-filter-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 8px;
+}
+
+.usuarios-filter-tab {
+  padding: 6px 12px;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.usuarios-filter-tab.is-active {
+  background: var(--surface-2, rgba(255, 255, 255, 0.06));
+  color: var(--text-primary);
+}
+
+.usuarios-filter-tab:hover {
+  color: var(--text-primary);
+}
+
+/* ── Banner (success / error) ── */
+.usuarios-banner {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 16px;
+  max-width: 960px;
+}
+
+.usuarios-banner--success {
+  background: color-mix(in srgb, #22c55e 12%, transparent);
+  color: #22c55e;
+  border: 1px solid color-mix(in srgb, #22c55e 30%, transparent);
+}
+
+.usuarios-banner--error {
+  background: color-mix(in srgb, #ef4444 12%, transparent);
+  color: #ef4444;
+  border: 1px solid color-mix(in srgb, #ef4444 30%, transparent);
+}
+
+/* ── Empty state ── */
+.usuarios-empty {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--text-secondary);
+  border: 1px dashed var(--border-subtle);
+  border-radius: 12px;
+  background: var(--surface-2, transparent);
+  margin-top: 16px;
+  max-width: 960px;
+}
+
+/* ── Table wrapper ── */
+.usuarios-table-wrap {
+  margin-top: 16px;
+  max-width: 960px;
+  overflow-x: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+}
+
+/* ── Table ── */
+.usuarios-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.usuarios-table thead {
+  position: sticky;
+  top: 0;
+  background: var(--surface-1);
+  z-index: 1;
+}
+
+.usuarios-table th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+
+.usuarios-table td {
+  padding: 12px 14px;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.usuarios-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.usuarios-table tbody tr:nth-child(even) {
+  background: color-mix(in srgb, var(--surface-2, rgba(255,255,255,0.03)) 50%, transparent);
+}
+
+.usuarios-table tbody tr:hover {
+  background: var(--surface-2, rgba(255, 255, 255, 0.04));
+}
+
+/* ── Avatar circle with initials ── */
+.usuario-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent, #a3e635) 20%, transparent);
+  color: var(--accent, #a3e635);
+  border: 1px solid color-mix(in srgb, var(--accent, #a3e635) 35%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+/* ── User cell (avatar + name) ── */
+.usuarios-user-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.usuarios-user-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+/* ── Email ── */
+.usuarios-email {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* ── Badges (papel + status) ── */
+.usuarios-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.usuarios-badge--warning {
+  background: color-mix(in srgb, #eab308 15%, transparent);
+  color: #eab308;
+  border: 1px solid color-mix(in srgb, #eab308 30%, transparent);
+}
+
+.usuarios-badge--success {
+  background: color-mix(in srgb, #22c55e 15%, transparent);
+  color: #22c55e;
+  border: 1px solid color-mix(in srgb, #22c55e 30%, transparent);
+}
+
+.usuarios-badge--info {
+  background: color-mix(in srgb, #3b82f6 15%, transparent);
+  color: #3b82f6;
+  border: 1px solid color-mix(in srgb, #3b82f6 30%, transparent);
+}
+
+.usuarios-badge--neutral {
+  background: color-mix(in srgb, var(--text-muted, #888) 12%, transparent);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+}
+
+/* ── Row action buttons ── */
+.usuarios-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.usuarios-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  cursor: pointer;
+  line-height: 1;
+  font-family: inherit;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.usuarios-action-btn:hover {
+  color: var(--text-primary);
+  background: var(--surface-2, rgba(255, 255, 255, 0.06));
+}
+
+.usuarios-action-btn--danger {
+  color: var(--danger, #ef4444);
+  border-color: color-mix(in srgb, var(--danger, #ef4444) 30%, transparent);
+}
+
+.usuarios-action-btn--danger:hover {
+  background: color-mix(in srgb, var(--danger, #ef4444) 10%, transparent);
+  color: var(--danger, #ef4444);
+}
+
+/* ── Edit page: current user info card ── */
+.usuario-info-card {
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 18px 20px;
+  background: var(--surface-1);
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px 24px;
+  max-width: 560px;
+}
+
+.usuario-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.usuario-info-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.usuario-info-value {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+@media (max-width: 720px) {
+  .usuarios-table th:nth-child(4),
+  .usuarios-table td:nth-child(4) {
+    display: none;
+  }
+
+  .usuarios-table th:nth-child(5),
+  .usuarios-table td:nth-child(5) {
+    display: none;
+  }
+
+  .usuario-info-card {
+    grid-template-columns: 1fr;
+  }
+}
