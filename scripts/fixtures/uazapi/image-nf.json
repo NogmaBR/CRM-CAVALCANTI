@@ -1,0 +1,13 @@
+{
+  "id": "3EB0IMG1234567890ABCDEF",
+  "type": "image",
+  "timestamp": 1788800100,
+  "from": "5511987654321",
+  "text": "NF do cimento — obra Beta",
+  "media": {
+    "url": "https://uazapi-media.example.com/mock/nf-cimento.jpg",
+    "mimetype": "image/jpeg",
+    "filename": "nf-cimento.jpg",
+    "size": 245678
+  }
+}

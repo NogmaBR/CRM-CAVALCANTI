@@ -1,0 +1,11 @@
+{
+  "id": "3EB0AUDIO000000000ABCDEF",
+  "type": "audio",
+  "timestamp": 1788800300,
+  "from": "5511987654321",
+  "media": {
+    "url": "https://uazapi-media.example.com/mock/nota.ogg",
+    "mimetype": "audio/ogg",
+    "size": 45000
+  }
+}

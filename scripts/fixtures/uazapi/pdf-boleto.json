@@ -1,0 +1,13 @@
+{
+  "id": "3EB0PDF987654321ABCDEF",
+  "type": "document",
+  "timestamp": 1788800200,
+  "from": "5511987654321",
+  "text": "Boleto Cimento Nacional obra Gamma",
+  "media": {
+    "url": "https://uazapi-media.example.com/mock/boleto.pdf",
+    "mimetype": "application/pdf",
+    "filename": "boleto-cimento-gamma.pdf",
+    "size": 88123
+  }
+}
