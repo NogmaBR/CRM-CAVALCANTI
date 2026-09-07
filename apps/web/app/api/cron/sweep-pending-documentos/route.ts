@@ -14,6 +14,8 @@ export const dynamic = 'force-dynamic';
  *
  * Vercel Cron chama esta rota via GET com header
  * `Authorization: Bearer <CRON_SECRET>` — configurado em vercel.json.
+ * Schedule daily 03:00 UTC (limite Hobby: 1x/dia); upgrade Pro pra
+ * */15 * * * * (a cada 15 min) se volume de órfãos justificar.
  * Runtime nodejs porque usa service role key (Node-only).
  */
 export async function GET(request: NextRequest) {
