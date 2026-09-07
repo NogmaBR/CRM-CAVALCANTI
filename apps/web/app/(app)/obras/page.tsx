@@ -16,10 +16,12 @@ const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
 export default async function ObrasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; success?: string; error?: string }>;
 }) {
   const params = await searchParams;
   const status = (params.status ?? '') as '' | 'ativa' | 'pausada' | 'concluida' | 'arquivada';
+  const successMessage = params.success ? decodeURIComponent(params.success) : undefined;
+  const errorMessage = params.error ? decodeURIComponent(params.error) : undefined;
 
   const obras: Obra[] = await listObras({
     status: status === '' ? undefined : status,
@@ -59,7 +61,7 @@ export default async function ObrasPage({
         </nav>
 
         <div style={{ marginTop: 24 }}>
-          <ObrasTable obras={obras} />
+          <ObrasTable obras={obras} successMessage={successMessage} errorMessage={errorMessage} />
         </div>
       </div>
     </>

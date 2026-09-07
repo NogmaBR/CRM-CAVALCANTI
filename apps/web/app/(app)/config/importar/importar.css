@@ -1,0 +1,320 @@
+/* importar.css — scoped styles for /config/importar */
+
+/* ── Page layout ── */
+.importar-how-to-card {
+  max-width: 720px;
+  margin-bottom: 24px;
+}
+
+.importar-how-to-list {
+  margin: 0 0 16px 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.importar-how-to-list li {
+  padding-left: 4px;
+}
+
+/* ── Template download button ── */
+.importar-template-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent, #a3e635);
+  border: 1px solid color-mix(in srgb, var(--accent, #a3e635) 35%, transparent);
+  background: color-mix(in srgb, var(--accent, #a3e635) 8%, transparent);
+  text-decoration: none;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.importar-template-btn:hover {
+  background: color-mix(in srgb, var(--accent, #a3e635) 14%, transparent);
+  border-color: color-mix(in srgb, var(--accent, #a3e635) 50%, transparent);
+}
+
+/* ── Client wrapper ── */
+.importar-client {
+  max-width: 1100px;
+}
+
+/* ── Error banner ── */
+.importar-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.importar-banner--error {
+  background: color-mix(in srgb, #ef4444 12%, transparent);
+  color: #ef4444;
+  border: 1px solid color-mix(in srgb, #ef4444 30%, transparent);
+}
+
+/* ── Upload form ── */
+.importar-upload-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: flex-start;
+  max-width: 480px;
+}
+
+.importar-dropzone {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 32px 24px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: var(--surface-1);
+  position: relative;
+  text-align: center;
+}
+
+.importar-dropzone__label {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.importar-dropzone__hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* visually hidden but accessible */
+.importar-file-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+/* ── Summary badges ── */
+.importar-summary-badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ── Preview section ── */
+.importar-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.importar-preview__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.importar-preview__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── Warning banner ── */
+.importar-aviso {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  background: color-mix(in srgb, #eab308 10%, transparent);
+  color: #eab308;
+  border: 1px solid color-mix(in srgb, #eab308 28%, transparent);
+}
+
+/* ── Preview table ── */
+.importar-preview-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+}
+
+.importar-preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.importar-preview-table thead {
+  position: sticky;
+  top: 0;
+  background: var(--surface-1);
+  z-index: 1;
+}
+
+.importar-preview-table th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+
+.importar-preview-table td {
+  padding: 10px 14px;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.importar-preview-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ── Error row highlight ── */
+.importar-row--erro {
+  background: color-mix(in srgb, #ef4444 6%, transparent) !important;
+}
+
+.importar-row--erro:hover {
+  background: color-mix(in srgb, #ef4444 10%, transparent) !important;
+}
+
+/* ── Match indicators ── */
+.importar-match {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.importar-match--ok {
+  color: #22c55e;
+}
+
+.importar-match--fail {
+  color: #ef4444;
+}
+
+.importar-text--muted {
+  color: var(--text-muted);
+}
+
+/* ── Valor column ── */
+.importar-cell--num {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.importar-cell--valor {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* ── Error badges in table ── */
+.importar-erros-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 200px;
+}
+
+.importar-erro-badge {
+  font-size: 11px;
+  white-space: normal;
+  word-break: break-word;
+  height: auto;
+  line-height: 1.4;
+}
+
+/* ── Done phase ── */
+.importar-done {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 480px;
+}
+
+.importar-done__banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.importar-done__banner--success {
+  background: color-mix(in srgb, #22c55e 12%, transparent);
+  color: #22c55e;
+  border: 1px solid color-mix(in srgb, #22c55e 30%, transparent);
+}
+
+.importar-done__banner--error {
+  background: color-mix(in srgb, #ef4444 12%, transparent);
+  color: #ef4444;
+  border: 1px solid color-mix(in srgb, #ef4444 30%, transparent);
+}
+
+.importar-done__erros {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+}
+
+.importar-done__erro-item {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+/* ── Spin animation for loading icon ── */
+@keyframes importar-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.importar-spin {
+  animation: importar-spin 0.7s linear infinite;
+}
+
+/* ── Responsive ── */
+@media (max-width: 720px) {
+  .importar-preview-table th:nth-child(3),
+  .importar-preview-table td:nth-child(3),
+  .importar-preview-table th:nth-child(4),
+  .importar-preview-table td:nth-child(4) {
+    display: none;
+  }
+}

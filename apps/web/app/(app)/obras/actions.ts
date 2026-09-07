@@ -115,6 +115,35 @@ export async function archiveObra(formData: FormData) {
   redirect(`/obras/${id}`);
 }
 
+export async function bulkArchiveObras(formData: FormData) {
+  const idsRaw = formData.get('ids');
+  if (typeof idsRaw !== 'string') redirect('/obras?error=IDs%20ausentes');
+
+  let ids: string[];
+  try {
+    ids = JSON.parse(idsRaw);
+    if (!Array.isArray(ids) || ids.length === 0 || ids.length > 100) throw new Error();
+  } catch {
+    redirect('/obras?error=IDs%20inv%C3%A1lidos');
+  }
+
+  const supabase = await createClient();
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from('obras')
+    .update({ deleted_at: now, status: 'arquivada' })
+    .in('id', ids)
+    .is('deleted_at', null)
+    .select('id');
+
+  if (error) redirect(`/obras?error=${encodeURIComponent(mapDbError(error))}`);
+
+  const count = data?.length ?? 0;
+  revalidatePath('/obras');
+  revalidatePath('/painel');
+  redirect(`/obras?success=${encodeURIComponent(`${count} obra(s) arquivada(s)`)}`);
+}
+
 export async function restoreObra(formData: FormData) {
   const id = String(formData.get('id') ?? '').trim();
   if (!id) redirect('/obras?error=ID%20inv%C3%A1lido');
