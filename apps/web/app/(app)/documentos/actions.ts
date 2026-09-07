@@ -185,6 +185,9 @@ export async function downloadDocumento(formData: FormData) {
 
   const doc = await getDocumento(id);
   if (!doc) redirect('/documentos?error=Documento%20n%C3%A3o%20encontrado');
+  if (doc.deleted_at != null) {
+    redirect(`/documentos/${id}?error=${encodeURIComponent('Documento arquivado. Restaure antes de baixar.')}`);
+  }
   if (!doc.storage_path || doc.storage_path === 'pending') {
     redirect(`/documentos/${id}?error=Arquivo%20n%C3%A3o%20dispon%C3%ADvel`);
   }
