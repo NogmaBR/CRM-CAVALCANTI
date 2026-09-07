@@ -1,0 +1,169 @@
+/* ─────────────────────────────────────────────────────────────────
+   Relatórios page — local CSS
+   Uses design-system tokens from global theme; dark `[data-theme="black"]`
+   is already the default — no extra specificity needed beyond token use.
+   ───────────────────────────────────────────────────────────────── */
+
+.relatorios-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  max-width: 1100px;
+}
+
+/* ── Card ─────────────────────────────────────────────────────── */
+
+.relatorio-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card, var(--surface-1));
+}
+
+.relatorio-card__icon {
+  color: var(--accent, #84cc16);
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.relatorio-card__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--heading-color, var(--accent, #84cc16));
+  margin: 0 0 4px;
+  line-height: 1.2;
+}
+
+.relatorio-card__desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+
+/* ── Fields inside card ───────────────────────────────────────── */
+
+.relatorio-card__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  margin-bottom: 20px;
+}
+
+.relatorio-card__field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* Reuse form-layout tokens but scoped to card so no leakage */
+.relatorio-card .form-layout__field {
+  grid-column: unset; /* override span-2 default inside grid */
+}
+
+/* native date/month inputs — same look as form-layout__select */
+.relatorio-card__input {
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-2, transparent);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.relatorio-card__input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+/* ── Action buttons ───────────────────────────────────────────── */
+
+.relatorio-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+}
+
+/* Base link-button */
+.relatorios-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: var(--radius-md, 8px);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* PDF — primary (lime) */
+.relatorios-btn--pdf {
+  background: var(--brand, var(--lime-500, #84cc16));
+  color: var(--brand-text, var(--petroleum-950, #0a1a10));
+  border: none;
+}
+
+.relatorios-btn--pdf:hover {
+  background: var(--lime-300, #bef264);
+  box-shadow: var(--shadow-lime, 0 0 12px color-mix(in srgb, var(--brand, #84cc16) 40%, transparent));
+}
+
+/* CSV — outline */
+.relatorios-btn--csv {
+  background: transparent;
+  color: var(--brand, var(--lime-500, #84cc16));
+  border: 1px solid var(--brand, var(--lime-500, #84cc16));
+}
+
+.relatorios-btn--csv:hover {
+  background: color-mix(in srgb, var(--brand, #84cc16) 12%, transparent);
+}
+
+/* Disabled state — links don't have native `disabled`; use aria-disabled */
+.relatorios-btn[aria-disabled='true'] {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: default;
+}
+
+/* ── Responsive ───────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .relatorios-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .relatorio-card__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .relatorios-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .relatorio-card__field-row {
+    grid-template-columns: 1fr;
+  }
+}

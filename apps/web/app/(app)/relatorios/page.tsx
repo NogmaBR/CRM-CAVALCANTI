@@ -1,22 +1,22 @@
 import { TopBar } from '@/components/layout/topbar';
-import { ComingSoon } from '@/components/layout/coming-soon';
+import { listObras } from '@/lib/data/obras';
+import { listFornecedores } from '@/lib/data/fornecedores';
+import { RelatoriosForms } from './relatorios-forms';
 
-export default function RelatoriosPage() {
+export default async function RelatoriosPage() {
+  const [obras, fornecedores] = await Promise.all([
+    listObras({ includeArchived: true }),
+    listFornecedores({ includeArchived: true }),
+  ]);
+
   return (
     <>
-      <TopBar title="Relatórios" subtitle="Análises financeiras e exports" />
+      <TopBar
+        title="Relatórios"
+        subtitle="Exports em PDF e CSV para análise financeira e contabilidade"
+      />
       <div className="nos-page-body">
-        <ComingSoon
-          title="Em construção"
-          phase="Fase 7 · Analytics"
-          lead="Relatórios prontos para o contador, dashboards visuais para decisão e exports em CSV/PDF/XLSX."
-          items={[
-            { label: 'Fechamento mensal', hint: 'por obra e por categoria' },
-            { label: 'Fluxo de caixa', hint: 'previsto vs realizado' },
-            { label: 'Consolidado por fornecedor', hint: 'para negociação de preço' },
-            { label: 'Export CSV/PDF/XLSX', hint: 'pronto para o contador' },
-          ]}
-        />
+        <RelatoriosForms obras={obras} fornecedores={fornecedores} />
       </div>
     </>
   );
