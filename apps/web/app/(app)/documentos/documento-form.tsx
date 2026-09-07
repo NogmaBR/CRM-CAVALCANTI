@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Paperclip } from 'lucide-react';
 import { Button } from '@/components/nogma/Button';
 import { Input } from '@/components/nogma/Input';
 import type { Fornecedor } from '@/lib/data/fornecedores';
@@ -94,7 +95,12 @@ export function DocumentoForm({
           <div className="form-layout__grid">
             <div className="form-layout__field form-layout__field--full">
               <div style={{ fontSize: 14, color: 'var(--text-primary)' }}>
-                📎 <strong>{initial?.nome_arquivo}</strong>
+                <Paperclip
+                  size={14}
+                  aria-hidden="true"
+                  style={{ verticalAlign: 'middle', marginRight: 6, opacity: 0.7 }}
+                />
+                <strong>{initial?.nome_arquivo}</strong>
               </div>
               <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
                 Para trocar o arquivo, arquive este documento e crie um novo.
