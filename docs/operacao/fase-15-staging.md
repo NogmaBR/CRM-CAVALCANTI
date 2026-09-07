@@ -171,9 +171,29 @@ uploadar report se falhar.
 - `.env.staging` no .gitignore (dados nunca commitados)
 - `apps/web/playwright.config.ts` — carrega `.env.staging` quando
   `PLAYWRIGHT_ENV=staging` (override das vars normais)
-- `.github/workflows/e2e.yml` — workflow completo (13 steps)
+- `.github/workflows/e2e.yml` — workflow completo (13 steps) — **existe
+  local mas NÃO commitado** (GitHub OAuth push token do Claude não tem
+  `workflow` scope). Ver seção "Adicionar workflow ao repo" abaixo.
 - Scripts npm root: `test:e2e:staging`, `staging:apply-migrations`,
   `staging:setup-vercel`
+
+## Adicionar workflow ao repo (uma vez)
+
+O arquivo `.github/workflows/e2e.yml` está criado localmente mas GitHub
+Push Protection bloqueia OAuth tokens de escrever em `.github/workflows/`
+sem `workflow` scope. Duas opções:
+
+**Opção A (git com PAT):**
+1. Gere um Personal Access Token em <https://github.com/settings/tokens/new>
+   com scope `workflow` (e `repo` também)
+2. `git remote set-url origin https://<usuario>:<PAT>@github.com/NogmaBR/CRM-CAVALCANTI.git`
+3. `git add .github/workflows/e2e.yml && git commit -m "ci: add e2e workflow" && git push`
+4. Reverte a URL: `git remote set-url origin https://github.com/NogmaBR/CRM-CAVALCANTI.git`
+
+**Opção B (via GitHub web):**
+1. Abre o arquivo local `.github/workflows/e2e.yml` (não vai pro git ainda)
+2. GitHub → Actions → New workflow → set up a workflow yourself
+3. Cola conteúdo → Commit
 
 ## Custos
 
