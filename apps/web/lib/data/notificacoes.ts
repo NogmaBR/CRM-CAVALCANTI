@@ -24,21 +24,31 @@ function serviceRoleClient() {
   });
 }
 
+import { parseEmailPrefs } from '@/lib/data/perfil';
+import type { EmailPrefs } from '@/lib/schemas/perfil';
+
 /**
  * Retorna emails de usuários com os papéis solicitados.
- * Fluxo: `profiles` (papel filter) → JOIN em `auth.users` via Admin API
- * (email não vive em profiles). Cache none — número de usuários é
- * pequeno (< 50 em prod), custo é ~200ms por chamada.
+ * Fluxo: `profiles` (papel filter, active) → JOIN em `auth.users` via
+ * Admin API (email não vive em profiles).
+ *
+ * `prefKey` (Fase 14): se informado, filtra recipients cujo
+ * `email_prefs[prefKey] === true`. Ex: `sendPagamentoAguardando` passa
+ * 'pagamentos_aguardando' e só users com opt-in recebem.
+ *
+ * Também exclui profiles arquivados (deleted_at IS NOT NULL — Fase 13).
  */
 export async function getRecipientsByPapel(
   papeis: PapelUsuario[],
+  prefKey?: keyof EmailPrefs,
 ): Promise<Array<{ user_id: string; nome: string; email: string; papel: PapelUsuario }>> {
   const supabase = serviceRoleClient();
 
   const { data: profiles, error } = await supabase
     .from('profiles')
-    .select('user_id, nome, papel')
-    .in('papel', papeis);
+    .select('user_id, nome, papel, email_prefs, deleted_at')
+    .in('papel', papeis)
+    .is('deleted_at', null);
   if (error || !profiles) return [];
 
   // auth.admin.listUsers pagina de 1000 em 1000 — pra <50 users basta 1 page
@@ -50,6 +60,11 @@ export async function getRecipientsByPapel(
   const emailByUserId = new Map(usersRes.users.map((u) => [u.id, u.email ?? '']));
 
   return profiles
+    .filter((p) => {
+      if (!prefKey) return true;
+      const prefs = parseEmailPrefs(p.email_prefs);
+      return prefs[prefKey] === true;
+    })
     .map((p) => ({
       user_id: p.user_id,
       nome: p.nome,

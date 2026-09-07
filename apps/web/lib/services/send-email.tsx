@@ -95,7 +95,7 @@ async function sendMany(
 export async function sendPagamentoAguardandoEmail(
   props: Omit<PagamentoAguardandoProps, 'nome_gestor' | 'painel_url'>,
 ): Promise<SendManyResult> {
-  const recipients = await getRecipientsByPapel(['admin', 'gestor']);
+  const recipients = await getRecipientsByPapel(['admin', 'gestor'], 'pagamentos_aguardando');
   if (recipients.length === 0) return { ok: true, sent: 0, failed: 0, attempted: 0 };
 
   return sendMany(
@@ -118,7 +118,7 @@ export async function sendPagamentoAguardandoEmail(
 export async function sendPendenciaNovaEmail(
   props: Omit<PendenciaNovaProps, 'nome_gestor' | 'painel_url'>,
 ): Promise<SendManyResult> {
-  const recipients = await getRecipientsByPapel(['admin', 'gestor']);
+  const recipients = await getRecipientsByPapel(['admin', 'gestor'], 'pendencias_novas');
   if (recipients.length === 0) return { ok: true, sent: 0, failed: 0, attempted: 0 };
 
   return sendMany(

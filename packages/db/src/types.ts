@@ -658,10 +658,12 @@ export type Database = {
           avatar_url: string | null
           created_at: string | null
           deleted_at: string | null
+          email_prefs: Json
           nome: string
           papel: Database["public"]["Enums"]["papel_usuario"]
           telefone: string | null
           tema_preferido: Database["public"]["Enums"]["tema_preferido"] | null
+          timezone: string
           updated_at: string | null
           user_id: string
         }
@@ -669,10 +671,12 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           deleted_at?: string | null
+          email_prefs?: Json
           nome: string
           papel?: Database["public"]["Enums"]["papel_usuario"]
           telefone?: string | null
           tema_preferido?: Database["public"]["Enums"]["tema_preferido"] | null
+          timezone?: string
           updated_at?: string | null
           user_id: string
         }
@@ -680,10 +684,12 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           deleted_at?: string | null
+          email_prefs?: Json
           nome?: string
           papel?: Database["public"]["Enums"]["papel_usuario"]
           telefone?: string | null
           tema_preferido?: Database["public"]["Enums"]["tema_preferido"] | null
+          timezone?: string
           updated_at?: string | null
           user_id?: string
         }

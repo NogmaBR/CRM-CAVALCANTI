@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Building2, FileText, MessageSquare,
-  AlertCircle, Users, Settings, FileBarChart, Mail, ShieldCheck,
+  AlertCircle, Users, Settings, FileBarChart, Mail, ShieldCheck, User,
 } from 'lucide-react';
 
 const NAV = [
@@ -18,8 +18,9 @@ const NAV = [
 ] as const;
 
 const SECONDARY = [
-  { href: '/relatorios', label: 'Relatórios',    icon: FileBarChart },
-  { href: '/config',     label: 'Configurações', icon: Settings },
+  { href: '/relatorios',    label: 'Relatórios',    icon: FileBarChart },
+  { href: '/config/perfil', label: 'Meu perfil',    icon: User },
+  { href: '/config',        label: 'Configurações', icon: Settings },
 ] as const;
 
 interface SidebarNavProps {
