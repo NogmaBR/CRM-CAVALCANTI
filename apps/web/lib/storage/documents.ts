@@ -1,8 +1,14 @@
 import 'server-only';
+import { createHash } from 'node:crypto';
 import { createClient as createSbClient } from '@supabase/supabase-js';
 import type { Database } from '@nogma/db';
 
 const BUCKET = 'documents';
+
+/** SHA-256 hex digest de um ArrayBuffer. Usado pra dedup de conteúdo idêntico. */
+export function sha256Hex(buffer: ArrayBuffer): string {
+  return createHash('sha256').update(Buffer.from(buffer)).digest('hex');
+}
 
 /** Client Supabase com SERVICE ROLE (bypass RLS) — só server-side. Uso pra Storage ops. */
 function serviceClient() {
@@ -22,10 +28,19 @@ export function makeStoragePath(obraId: string, documentoId: string, filename: s
 
 /** Upload File pra Storage. Retorna path final. Throw em erro. */
 export async function uploadDocumentFile(path: string, file: File): Promise<void> {
-  const supabase = serviceClient();
   const buffer = await file.arrayBuffer();
+  await uploadDocumentBuffer(path, buffer, file.type);
+}
+
+/** Upload de buffer já materializado (usado quando o buffer também alimenta hash SHA-256). */
+export async function uploadDocumentBuffer(
+  path: string,
+  buffer: ArrayBuffer,
+  contentType: string,
+): Promise<void> {
+  const supabase = serviceClient();
   const { error } = await supabase.storage.from(BUCKET).upload(path, buffer, {
-    contentType: file.type,
+    contentType,
     upsert: false,
   });
   if (error) throw new Error(`Falha no upload: ${error.message}`);

@@ -14,7 +14,8 @@ import {
   deleteDocumentFile,
   getSignedUrl,
   makeStoragePath,
-  uploadDocumentFile,
+  sha256Hex,
+  uploadDocumentBuffer,
 } from '@/lib/storage/documents';
 
 function formToRecord(fd: FormData): Record<string, unknown> {
@@ -43,8 +44,15 @@ export async function createDocumento(formData: FormData) {
   }
   const file = fileCheck.file;
 
-  // 3) Insert do row (obtém id) — storage_path placeholder temporário
+  // 3) Lê buffer 1x → alimenta hash SHA-256 (dedup) + upload
+  const buffer = await file.arrayBuffer();
+  const hash = sha256Hex(buffer);
+
+  // 4) Insert do row (obtém id) — storage_path placeholder temporário
   const supabase = await createClient();
+  const { data: userData } = await supabase.auth.getUser();
+  const criadoPor = userData.user?.id ?? null;
+
   const insertRes = await supabase
     .from('documentos')
     .insert({
@@ -58,16 +66,26 @@ export async function createDocumento(formData: FormData) {
       storage_path: 'pending', // atualizado após upload
       numero_nf: meta.data.numero_nf ?? null,
       chave_acesso_nf: meta.data.chave_acesso_nf ?? null,
+      hash_sha256: hash,
+      criado_por_user_id: criadoPor,
     })
     .select('id')
     .single();
 
   if (insertRes.error) {
+    // Detecta qual constraint disparou 23505 pra dar mensagem targeted
+    const dupMsg = insertRes.error.code === '23505'
+      ? insertRes.error.message?.includes('idx_documentos_hash')
+        ? 'Arquivo idêntico já existe (mesmo conteúdo). Verifique documentos anteriores.'
+        : insertRes.error.message?.includes('idx_documentos_chave_nf')
+          ? 'Já existe documento com esta chave de acesso de NF.'
+          : 'Já existe documento com esta chave de NF ou hash.'
+      : undefined;
     redirect(
       `/documentos/novo?error=${encodeURIComponent(
         mapDbErrorWithContext(insertRes.error, {
           '23503': 'Obra, pagamento ou fornecedor referenciado não existe',
-          '23505': 'Já existe documento com esta chave de NF ou hash',
+          ...(dupMsg ? { '23505': dupMsg } : {}),
         }),
       )}`,
     );
@@ -76,16 +94,16 @@ export async function createDocumento(formData: FormData) {
   const documentoId = insertRes.data.id;
   const path = makeStoragePath(meta.data.obra_id, documentoId, file.name);
 
-  // 4) Upload file to Storage — se falhar, rollback row
+  // 5) Upload buffer to Storage — se falhar, rollback row
   try {
-    await uploadDocumentFile(path, file);
+    await uploadDocumentBuffer(path, buffer, file.type);
   } catch (uploadErr) {
     try { await supabase.from('documentos').delete().eq('id', documentoId); } catch { /* best effort */ }
     const msg = uploadErr instanceof Error ? uploadErr.message : 'Falha no upload';
     redirect(`/documentos/novo?error=${encodeURIComponent(msg)}`);
   }
 
-  // 5) Update storage_path final
+  // 6) Update storage_path final
   const upd = await supabase
     .from('documentos')
     .update({ storage_path: path })

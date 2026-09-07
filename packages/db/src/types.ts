@@ -185,6 +185,7 @@ export type Database = {
         Row: {
           chave_acesso_nf: string | null
           created_at: string | null
+          criado_por_user_id: string | null
           deleted_at: string | null
           fornecedor_id: string | null
           hash_sha256: string | null
@@ -203,6 +204,7 @@ export type Database = {
         Insert: {
           chave_acesso_nf?: string | null
           created_at?: string | null
+          criado_por_user_id?: string | null
           deleted_at?: string | null
           fornecedor_id?: string | null
           hash_sha256?: string | null
@@ -221,6 +223,7 @@ export type Database = {
         Update: {
           chave_acesso_nf?: string | null
           created_at?: string | null
+          criado_por_user_id?: string | null
           deleted_at?: string | null
           fornecedor_id?: string | null
           hash_sha256?: string | null
@@ -237,6 +240,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "documentos_criado_por_user_id_fkey"
+            columns: ["criado_por_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "documentos_fornecedor_id_fkey"
             columns: ["fornecedor_id"]
