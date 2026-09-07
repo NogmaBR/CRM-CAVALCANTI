@@ -39,6 +39,9 @@ coverage/
 playwright-report/
 test-results/
 .playwright/
+e2e-report/
+e2e-results/
+apps/web/e2e/.auth/
 
 # Superpowers session
 .superpowers/
