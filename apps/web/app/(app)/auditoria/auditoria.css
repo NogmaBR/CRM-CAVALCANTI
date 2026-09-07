@@ -1,0 +1,463 @@
+/* --------------------------------------------------------------------------
+   Auditoria — filtros, lista e diff viewer
+   -------------------------------------------------------------------------- */
+
+/* Filter form */
+.audit-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+  padding: 14px 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--surface-card, var(--surface-1));
+  margin-bottom: 16px;
+}
+
+.audit-filters__group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.audit-filters__label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.audit-filters__select,
+.audit-filters__date {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-sunken, rgba(0, 0, 0, 0.15));
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  min-width: 140px;
+  height: 34px;
+}
+
+.audit-filters__select:focus,
+.audit-filters__date:focus {
+  outline: 2px solid var(--accent, #22c55e);
+  outline-offset: 1px;
+}
+
+.audit-filters__actions {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  padding-top: 18px; /* align to inputs */
+}
+
+.audit-filters__submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  background: var(--accent, #22c55e);
+  color: #000;
+  border: none;
+  cursor: pointer;
+  line-height: 1;
+  height: 34px;
+}
+
+.audit-filters__submit:hover {
+  opacity: 0.88;
+}
+
+.audit-filters__clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  cursor: pointer;
+  line-height: 1;
+  height: 34px;
+}
+
+.audit-filters__clear:hover {
+  color: var(--text-primary);
+  background: var(--surface-2, rgba(255, 255, 255, 0.06));
+}
+
+/* Feed list */
+.audit-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 900px;
+}
+
+/* Row card */
+.audit-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--surface-card, var(--surface-1));
+}
+
+.audit-row__main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.audit-row__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.audit-row__ts {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.audit-row__user {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.audit-row__user-papel {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.audit-row__fields {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+  word-break: break-word;
+}
+
+.audit-row__side {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+  justify-content: flex-start;
+  min-width: 130px;
+}
+
+.audit-row__link {
+  color: var(--accent, #22c55e);
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.audit-row__link:hover {
+  text-decoration: underline;
+}
+
+.audit-row__diff-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  white-space: nowrap;
+}
+
+.audit-row__diff-btn:hover {
+  color: var(--text-primary);
+  background: var(--surface-2, rgba(255, 255, 255, 0.06));
+}
+
+/* Empty state */
+.audit-empty {
+  padding: 56px 24px;
+  text-align: center;
+  color: var(--text-secondary);
+  border: 1px dashed var(--border-subtle);
+  border-radius: 12px;
+  background: var(--surface-2, transparent);
+  margin-top: 4px;
+  max-width: 900px;
+}
+
+.audit-empty__icon {
+  opacity: 0.45;
+  margin-bottom: 12px;
+}
+
+.audit-empty__text {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* --------------------------------------------------------------------------
+   Detail page — metadata card + diff viewer
+   -------------------------------------------------------------------------- */
+
+.audit-detail {
+  max-width: 860px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.audit-meta-card {
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card, var(--surface-1));
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.audit-meta-card__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.audit-meta-card__row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.audit-meta-card__label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  min-width: 80px;
+}
+
+.audit-meta-card__value {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.audit-meta-card__ts {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.audit-meta-card__link {
+  color: var(--accent, #22c55e);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.audit-meta-card__link:hover {
+  text-decoration: underline;
+}
+
+/* Diff viewer wrapper */
+.audit-diff-section {
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card, var(--surface-1));
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.audit-diff-section__title {
+  padding: 12px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-sunken, rgba(0, 0, 0, 0.12));
+  margin: 0;
+}
+
+/* Diff table (insert/delete single-pane + update side-by-side) */
+.audit-diff-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.audit-diff-table th {
+  padding: 8px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-sunken, rgba(0, 0, 0, 0.08));
+}
+
+.audit-diff-table td {
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: top;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.audit-diff-table tr:last-child td {
+  border-bottom: none;
+}
+
+.audit-diff-table tr:nth-child(even) td {
+  background: var(--surface-sunken, rgba(0, 0, 0, 0.04));
+}
+
+/* Key column */
+.audit-diff-table__key {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  width: 160px;
+}
+
+/* Before column (update) — muted, strikethrough on changed */
+.audit-diff-table__before {
+  color: var(--text-secondary);
+}
+
+.audit-diff-cell--changed .audit-diff-table__before {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+/* After column (update) — highlighted */
+.audit-diff-table__after {
+  color: var(--text-primary);
+}
+
+.audit-diff-cell--changed .audit-diff-table__after {
+  color: var(--success, #22c55e);
+  font-weight: 500;
+}
+
+/* Arrow between before/after */
+.audit-diff-arrow {
+  color: var(--text-secondary);
+  opacity: 0.5;
+  padding: 7px 4px;
+  vertical-align: middle;
+  white-space: nowrap;
+  width: 28px;
+  text-align: center;
+}
+
+/* Code blocks inside diff cells */
+.audit-diff-cell code {
+  display: block;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  background: var(--surface-sunken, rgba(0, 0, 0, 0.18));
+  padding: 4px 6px;
+  border-radius: 3px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--text-secondary);
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+/* Insert single-pane — value column */
+.audit-diff-table__value {
+  color: var(--text-primary);
+}
+
+/* Delete single-pane — value column muted */
+.audit-diff-section--delete .audit-diff-table__value {
+  color: var(--text-secondary);
+}
+
+/* Back link */
+.audit-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
+  margin-bottom: 4px;
+}
+
+.audit-back:hover {
+  color: var(--text-primary);
+}
+
+/* Empty diff fallback */
+.audit-diff-empty {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-style: italic;
+}
+
+@media (max-width: 640px) {
+  .audit-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .audit-filters__actions {
+    padding-top: 0;
+    flex-direction: row;
+  }
+
+  .audit-row {
+    grid-template-columns: 1fr;
+  }
+
+  .audit-row__side {
+    flex-direction: row;
+    align-items: center;
+    min-width: unset;
+  }
+
+  .audit-diff-table__key {
+    width: 100px;
+  }
+}
