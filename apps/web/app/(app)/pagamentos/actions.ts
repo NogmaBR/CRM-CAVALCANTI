@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { mapDbError, mapDbErrorWithContext } from '@/lib/schemas/errors';
 import { PagamentoCreateSchema, PagamentoUpdateSchema } from '@/lib/schemas/pagamento';
+import { sendPagamentoAguardandoEmail } from '@/lib/services/send-email';
 
 function formToRecord(fd: FormData): Record<string, unknown> {
   const rec: Record<string, unknown> = {};
@@ -52,6 +53,26 @@ export async function createPagamento(formData: FormData) {
         }),
       )}`,
     );
+  }
+
+  // Trigger email quando pagamento entra como 'aguardando' aprovação.
+  // Best-effort — nunca throw; falha silenciosa loga em notificacoes_email
+  // com erro. Await curto (~1s mock, ~2s Resend real) — aceitável na UX.
+  if (parsed.data.status_pagto === 'aguardando') {
+    const [obraRes, fornRes] = await Promise.all([
+      supabase.from('obras').select('nome').eq('id', parsed.data.obra_id).maybeSingle(),
+      parsed.data.fornecedor_id
+        ? supabase.from('fornecedores').select('nome').eq('id', parsed.data.fornecedor_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+    await sendPagamentoAguardandoEmail({
+      pagamento_id: data.id,
+      obra_nome: obraRes.data?.nome ?? '(obra desconhecida)',
+      fornecedor_nome: fornRes.data?.nome ?? null,
+      valor: Number(parsed.data.valor),
+      data_pagamento: parsed.data.data_pagamento,
+      descricao: parsed.data.descricao ?? null,
+    });
   }
 
   revalidatePath('/pagamentos');

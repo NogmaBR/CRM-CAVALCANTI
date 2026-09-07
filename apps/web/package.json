@@ -16,6 +16,8 @@
     "@nogma/db": "workspace:*",
     "@radix-ui/react-dialog": "^1.1.23",
     "@radix-ui/react-visually-hidden": "^1.2.11",
+    "@react-email/components": "^1.0.12",
+    "@react-email/render": "^2.1.0",
     "@react-pdf/renderer": "^4.9.0",
     "@supabase/ssr": "^0.12.6",
     "@supabase/supabase-js": "^2.115.0",
@@ -25,6 +27,7 @@
     "next": "16.3.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "resend": "^6.26.0",
     "sonner": "^1.7.4",
     "zod": "^3.25.76"
   },

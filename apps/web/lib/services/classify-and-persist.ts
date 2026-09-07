@@ -145,5 +145,31 @@ export async function classifyAndPersist(mensagemId: string): Promise<
     })
     .eq('id', mensagemId);
 
+  // Dispara email pra gestores — best-effort. Import dinâmico pra evitar
+  // ciclo de deps (send-email importa data/notificacoes, que não depende
+  // deste service). Falha silenciosa loga em notificacoes_email.erro.
+  try {
+    const { count: pendenciaCount } = await supabase
+      .from('confirmacoes_pendentes')
+      .select('*', { count: 'exact', head: true })
+      .eq('resolvida', false);
+
+    const obraHint = out.extracted.obra_id
+      ? (obrasRes.data ?? []).find((o) => o.id === out.extracted.obra_id)?.nome ?? null
+      : null;
+
+    const { sendPendenciaNovaEmail } = await import('@/lib/services/send-email');
+    await sendPendenciaNovaEmail({
+      texto_bruto: msg.texto_bruto,
+      midia_mime: msg.midia_mime,
+      valor_estimado: out.extracted.valor ?? null,
+      obra_hint: obraHint,
+      confidence: out.confidence,
+      pendencia_count: pendenciaCount ?? 1,
+    });
+  } catch {
+    // Silencioso — email é secundário ao fluxo principal
+  }
+
   return { ok: true, status: 'classificada', confianca: out.confidence, kind: out.kind };
 }
