@@ -1,19 +1,16 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, Pencil, Archive, RotateCcw, Sparkles } from 'lucide-react';
+import { ArrowLeft, Pencil, Archive, RotateCcw } from 'lucide-react';
 import '../../_shared/detail-layout.css';
 import { TopBar } from '@/components/layout/topbar';
 import { Badge } from '@/components/nogma/Badge';
 import { Button } from '@/components/nogma/Button';
 import { listCategorias } from '@/lib/data/categorias';
-import {
-  getFornecedor,
-  listFornecedorApelidos,
-  type FornecedorApelido,
-} from '@/lib/data/fornecedores';
+import { getFornecedor, listFornecedorApelidos } from '@/lib/data/fornecedores';
 import { formatDocumento } from '@/lib/schemas/fornecedor';
 import { archiveFornecedor, restoreFornecedor } from '../actions';
 import { Section, Row } from '../../_shared/detail-primitives';
+import { ApelidosSection } from './apelidos-section';
 
 function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return '—';
@@ -33,13 +30,13 @@ export default async function FornecedorDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; success?: string }>;
 }) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
   const [fornecedor, categorias] = await Promise.all([getFornecedor(id), listCategorias()]);
   if (!fornecedor) notFound();
 
-  const apelidos: FornecedorApelido[] = await listFornecedorApelidos(fornecedor.id);
+  const apelidos = await listFornecedorApelidos(fornecedor.id);
 
   const isArquivado = fornecedor.deleted_at != null;
   const isAtivo = fornecedor.ativo === true && !isArquivado;
@@ -81,6 +78,22 @@ export default async function FornecedorDetailPage({
       />
 
       <div className="nos-page-body">
+        {sp.success ? (
+          <div
+            role="status"
+            style={{
+              marginBottom: 16,
+              padding: '12px 14px',
+              borderRadius: 8,
+              background: 'color-mix(in srgb, var(--brand, #a3e635) 12%, transparent)',
+              color: 'var(--brand, #a3e635)',
+              fontSize: 13,
+              border: '1px solid color-mix(in srgb, var(--brand, #a3e635) 30%, transparent)',
+            }}
+          >
+            {sp.success}
+          </div>
+        ) : null}
         {sp.error ? (
           <div className="detail-layout__error" role="alert">
             {sp.error}
@@ -128,49 +141,7 @@ export default async function FornecedorDetailPage({
           </Section>
 
           <Section title="Apelidos" span={2}>
-            {apelidos.length === 0 ? (
-              <div className="detail-layout__row">
-                <dt className="detail-layout__label">Registrados</dt>
-                <dd className="detail-layout__value" style={{ color: 'var(--text-secondary)' }}>
-                  Nenhum apelido registrado. Apelidos são criados automaticamente pela IA quando este fornecedor for mencionado no WhatsApp.
-                </dd>
-              </div>
-            ) : (
-              <ul
-                style={{
-                  listStyle: 'none',
-                  padding: 0,
-                  margin: 0,
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: 8,
-                }}
-              >
-                {apelidos.map((a) => (
-                  <li
-                    key={a.id}
-                    style={{
-                      padding: '6px 10px',
-                      background: 'var(--surface-2)',
-                      border: '1px solid var(--border-subtle)',
-                      borderRadius: 8,
-                      fontSize: 13,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                    }}
-                  >
-                    {a.criado_por_ia ? (
-                      <Sparkles size={12} aria-label="Criado pela IA" style={{ opacity: 0.6 }} />
-                    ) : null}
-                    <span>{a.apelido}</span>
-                    <span style={{ color: 'var(--text-secondary)', fontSize: 11 }}>
-                      · {a.vezes_visto}×
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <ApelidosSection fornecedorId={fornecedor.id} apelidos={apelidos} />
           </Section>
 
           <Section title="Metadados" span={2}>
