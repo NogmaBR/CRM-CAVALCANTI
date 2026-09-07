@@ -80,7 +80,7 @@ export async function createDocumento(formData: FormData) {
   try {
     await uploadDocumentFile(path, file);
   } catch (uploadErr) {
-    await supabase.from('documentos').delete().eq('id', documentoId);
+    try { await supabase.from('documentos').delete().eq('id', documentoId); } catch { /* best effort */ }
     const msg = uploadErr instanceof Error ? uploadErr.message : 'Falha no upload';
     redirect(`/documentos/novo?error=${encodeURIComponent(msg)}`);
   }
@@ -93,7 +93,7 @@ export async function createDocumento(formData: FormData) {
   if (upd.error) {
     // path inconsistente — tenta cleanup e falha
     try { await deleteDocumentFile(path); } catch { /* best effort */ }
-    await supabase.from('documentos').delete().eq('id', documentoId);
+    try { await supabase.from('documentos').delete().eq('id', documentoId); } catch { /* best effort */ }
     redirect(`/documentos/novo?error=${encodeURIComponent(mapDbError(upd.error))}`);
   }
 
