@@ -1,0 +1,205 @@
+.pendentes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 860px;
+}
+
+.pendentes-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 64px 24px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.pendentes-empty__icon {
+  opacity: 0.4;
+}
+
+.pendentes-empty__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.pendentes-empty__sub {
+  font-size: 13px;
+  color: var(--text-muted, var(--text-secondary));
+  margin: 0;
+}
+
+.pendente-card {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg, 12px);
+  background: var(--surface-1);
+  overflow: hidden;
+}
+
+.pendente-card__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-2, transparent);
+}
+
+.pendente-card__telefone {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.pendente-card__data {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.pendente-card__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--accent, #84cc16) 15%, transparent);
+  color: var(--accent, #84cc16);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  border: 1px solid color-mix(in srgb, var(--accent, #84cc16) 30%, transparent);
+}
+
+.pendente-card__body {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pendente-card__texto {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  background: var(--surface-2, rgba(0,0,0,0.04));
+  border-radius: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+}
+
+.pendente-card__extracted {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.pendente-extracted__field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pendente-extracted__label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.pendente-extracted__value {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.pendente-extracted__value--empty {
+  color: var(--text-muted, var(--text-secondary));
+  font-style: italic;
+}
+
+.pendente-extracted__value--wide {
+  grid-column: 1 / -1;
+}
+
+.pendente-card__confidence {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.pendente-confidence__label {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.pendente-confidence__track {
+  height: 6px;
+  border-radius: 99px;
+  background: var(--surface-2, rgba(0,0,0,0.08));
+  overflow: hidden;
+}
+
+.pendente-confidence__fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 300ms ease;
+}
+
+.pendente-confidence__fill--low {
+  background: var(--danger, #ef4444);
+}
+
+.pendente-confidence__fill--mid {
+  background: var(--warning, #eab308);
+}
+
+.pendente-confidence__fill--high {
+  background: var(--success, #22c55e);
+}
+
+.pendente-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px 14px;
+  border-top: 1px solid var(--border-subtle);
+  justify-content: flex-end;
+}
+
+.pendentes-banner {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 20px;
+  max-width: 860px;
+}
+
+.pendentes-banner--error {
+  background: color-mix(in srgb, var(--danger, #ef4444) 12%, transparent);
+  color: var(--danger, #ef4444);
+  border: 1px solid color-mix(in srgb, var(--danger, #ef4444) 30%, transparent);
+}
+
+.pendentes-banner--success {
+  background: color-mix(in srgb, var(--success, #22c55e) 12%, transparent);
+  color: var(--success, #22c55e);
+  border: 1px solid color-mix(in srgb, var(--success, #22c55e) 30%, transparent);
+}
+
+@media (max-width: 600px) {
+  .pendente-card__extracted {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pendente-card__actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+}
