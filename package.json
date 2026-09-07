@@ -12,13 +12,17 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "test:e2e": "pnpm --filter web test:e2e",
+    "test:e2e:staging": "cross-env PLAYWRIGHT_ENV=staging pnpm --filter web test:e2e",
     "test:e2e:install": "pnpm --filter web exec playwright install --with-deps chromium",
     "test:e2e:ui": "pnpm --filter web exec playwright test --ui",
     "e2e:cleanup": "node scripts/e2e-cleanup.mjs",
+    "staging:apply-migrations": "node scripts/apply-migrations-staging.mjs",
+    "staging:setup-vercel": "node scripts/setup-vercel-staging-env.mjs",
     "db:types": "pnpm --filter @nogma/db gen-types"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
+    "cross-env": "^10.1.0",
     "typescript": "^5.6.3"
   },
   "engines": {

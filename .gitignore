@@ -14,8 +14,10 @@ build/
 .env
 .env.*
 !.env.example
+!.env.staging.example
 .env.local
 .env.*.local
+.env.staging
 
 # Editors
 .vscode/*

@@ -3,9 +3,19 @@ import dotenv from 'dotenv';
 import path from 'node:path';
 
 // Playwright config roda antes do Next.js — precisa carregar .env manualmente.
-// Tentamos apps/web/.env.local primeiro (padrão vercel env pull), depois root.
+// Precedência (última chamada override):
+//   1. .env.local (dev default)
+//   2. .env.staging (se PLAYWRIGHT_ENV=staging — Fase 15)
+// Tentamos apps/web/ primeiro (padrão vercel env pull), depois root.
+const useStaging = process.env.PLAYWRIGHT_ENV === 'staging';
 dotenv.config({ path: path.resolve(__dirname, '.env.local') });
 dotenv.config({ path: path.resolve(__dirname, '..', '..', '.env.local') });
+if (useStaging) {
+  dotenv.config({
+    path: path.resolve(__dirname, '..', '..', '.env.staging'),
+    override: true,
+  });
+}
 
 /**
  * Playwright config para CRM Nogma-Cavalcanti.
