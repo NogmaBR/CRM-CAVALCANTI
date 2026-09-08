@@ -159,3 +159,79 @@ enganado.
 de vazamento de dados ou execução remota. Os 3 fixes desta sessão elevam
 o baseline. Recomendações restantes são hardening incremental que não
 bloqueiam produção.
+
+---
+
+## Segunda rodada de fixes — 2026-09-08 (commits `cb33f4c` + `1a29ae4`)
+
+Sessão de follow-up percorreu o backlog acima e resolveu 7 findings adicionais
+autonomamente (migrations aplicadas em prod, código deployado).
+
+### Migrations aplicadas em prod (`bbtejxugeeccywwhfpoc`)
+
+| Migration | Objetivo | Fecha finding |
+|---|---|---|
+| `20260908100000_pagamentos_criado_via_msg_unique.sql` | Unique index parcial em `pagamentos(criado_via_msg_id)` WHERE not null | BUG-02 |
+| `20260908110000_webhook_counter_rpc.sql` | RPC `increment_webhook_execution` atômica | BUG-04 |
+| `20260908120000_merge_fornecedores_rpc.sql` | RPC `merge_fornecedores_atomic` plpgsql transacional | BUG-01 |
+
+Auxiliar: `scripts/apply-migration.mjs` — permite aplicar migration individual
+em prod (default) ou `--staging`, usa Node `--env-file=.env.local` pra parsear
+valores com chars especiais.
+
+### Código (commit `1a29ae4`)
+
+| Fix | Arquivo | Detalhe |
+|---|---|---|
+| BUG-02 idempotência | `apps/web/app/(app)/pendentes/actions.ts` | Pre-check `pagamento` existente + catch de código `23505` retorna existente em vez de erro |
+| BUG-04 atomic counter | `apps/web/lib/services/dispatch-webhook.ts` | `logWebhookExecution` agora chama `supabase.rpc('increment_webhook_execution', ...)` |
+| BUG-01 merge transacional | `apps/web/lib/services/merge-fornecedores.ts` | Refatorado 100% — service passa a ser wrapper fino da RPC |
+| BUG-03 sanitize error | `apps/web/app/(app)/fornecedores/[id]/apelido-actions.ts` | `mapDbErrorWithContext` substitui `error.message` raw (evita vazar constraint names) |
+| MED Magic bytes | `apps/web/lib/schemas/documento.ts` + `documentos/actions.ts` | `validateFileMagicBytes` confere assinatura PDF/PNG/JPEG/WebP antes do upload (bloqueia MIME rename) |
+| MED StatusBanner sanitize | `apps/web/components/nogma/StatusBanner.tsx` | Remove URLs (phishing), tags HTML, colapsa whitespace, trunca 240 chars |
+| MED Cookie tema secure | `apps/web/app/api/theme/route.ts` | `httpOnly + sameSite=strict + secure` — XSS não lê/escreve mais |
+| MED PWA + OG | `apps/web/app/manifest.ts` + `layout.tsx` | Manifest com ícones lima+petroleum, `standalone`; OpenGraph + Twitter + `robots:noindex` (app interno) |
+| MED loading.tsx | 6 arquivos em `app/(app)/{painel,pagamentos,relatorios,documentos,obras,pendentes}/loading.tsx` | Skeleton shimmer respeitando `prefers-reduced-motion`, `role="status"` + `aria-busy` |
+| MED .env.example | `.env.example` (root) | TODAS as vars documentadas com fontes/URLs (Supabase, Resend, Anthropic, UAZAPI, Cron, hCaptcha, Vercel, Playwright) |
+
+### Typescript types
+
+`packages/db/src/types.ts` — adicionadas assinaturas das 2 novas RPCs
+(`increment_webhook_execution`, `merge_fornecedores_atomic`) pra type-safety
+nas chamadas `supabase.rpc(...)`.
+
+### Backlog residual (não fixado nesta rodada)
+
+| Finding | Severidade | Rationale |
+|---|---|---|
+| HIGH-002 `/api/exports` whitelist | 🟠 | Design decision — route handler tem auth check próprio (documentado acima) |
+| MED Recharts lazy load | 🟡 | Otimização de bundle — sem impacto de segurança, adiar pra ciclo de perf |
+| MED action version pin | 🟡 | Requer workflow scope no PAT (`.github/workflows/*` não pushou nesta sessão) |
+| CSP com nonces | 🟡 | Extensão futura — Recharts SVG + hCaptcha iframe + Storage URLs quebram sem nonces por-request |
+| Rate limiting `/api/exports` + `/api/webhooks/uazapi` | 🟡 | Requer Upstash Redis — sem incidente atual justifica adiar |
+| Sentry / error tracking | 🟢 | Ferramenta opcional |
+| axe-core CI + LGPD data export + SOC 2 | 🟢 | Roadmap long-term |
+
+### Timeline atualizada (final da sessão 2)
+
+| Finding | Severidade | Status |
+|---|---|---|
+| F-01 Security headers | 🔴 CRIT | ✅ Fixed (sessão 1) |
+| HIGH-001 Math.random secret | 🟠 HIGH | ✅ Fixed (sessão 1) |
+| HIGH-002 iframe sandbox | 🟠 HIGH | ✅ Fixed (sessão 1) |
+| BUG-01 merge sem transação | 🟠 HIGH | ✅ Fixed (sessão 2) |
+| BUG-02 race confirmarPendencia | 🟠 HIGH | ✅ Fixed (sessão 2) |
+| BUG-04 RMW total_execucoes | 🟠 HIGH | ✅ Fixed (sessão 2) |
+| HIGH-002 /api/exports whitelist | 🟠 HIGH | ⚠️ Justificado (design) |
+| BUG-03 apelido-actions raw error | 🟡 MED | ✅ Fixed (sessão 2) |
+| MED magic bytes upload | 🟡 MED | ✅ Fixed (sessão 2) |
+| MED StatusBanner sanitize | 🟡 MED | ✅ Fixed (sessão 2) |
+| MED cookie tema secure | 🟡 MED | ✅ Fixed (sessão 2) |
+| MED manifest.json + OG | 🟡 MED | ✅ Fixed (sessão 2) |
+| MED loading.tsx skeletons | 🟡 MED | ✅ Fixed (sessão 2) |
+| MED .env.example completo | 🟡 MED | ✅ Fixed (sessão 2) |
+
+**Progresso total:** de 31 findings iniciais → **10 fixados** + **1 justificado**
++ **7 residuais adiáveis** (perf/opcional/roadmap). Zero findings críticos
+abertos. Baseline de segurança consideravelmente elevado sem breaking changes
+pra usuários.
