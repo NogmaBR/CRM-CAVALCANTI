@@ -112,11 +112,15 @@ export default async function NotificacaoDetailPage({
             </div>
           ) : null}
 
+          {/* sandbox="" (empty) — HTML renderiza mas sem scripts, forms,
+              same-origin (não acessa cookies/localStorage do app), popups.
+              Audit HIGH-002: allow-same-origin permitia HTML malicioso do
+              email acessar dados do domínio. */}
           <iframe
             className="notif-preview-iframe"
             srcDoc={notif.corpo}
             title={`Preview do email: ${notif.assunto}`}
-            sandbox="allow-same-origin"
+            sandbox=""
           />
 
           {contexto != null ? (

@@ -1,5 +1,5 @@
 import 'server-only';
-import { createHmac } from 'node:crypto';
+import { createHmac, randomBytes } from 'node:crypto';
 import { createClient as createSbClient } from '@supabase/supabase-js';
 import type { Database } from '@nogma/db';
 
@@ -178,9 +178,11 @@ export async function testWebhook(id: string): Promise<{
   }
 }
 
-/** Gera secret pseudo-random 64 chars hex — usado no create. */
+/**
+ * Gera secret criptograficamente forte 64 chars hex — usado no create.
+ * Fase QA fix (audit HIGH-001): trocado Math.random() por randomBytes(32)
+ * do node:crypto (CSPRNG). Math.random é previsível → secret adivinhável.
+ */
 export function generateWebhookSecret(): string {
-  return createHmac('sha256', Math.random().toString(36))
-    .update(Date.now().toString() + Math.random().toString(36))
-    .digest('hex');
+  return randomBytes(32).toString('hex');
 }
