@@ -763,6 +763,19 @@ export type Database = {
         Args: { roles: Database["public"]["Enums"]["papel_usuario"][] }
         Returns: boolean
       }
+      increment_webhook_execution: {
+        Args: { p_webhook_id: string; p_status: number; p_erro: string | null }
+        Returns: undefined
+      }
+      merge_fornecedores_atomic: {
+        Args: { p_keep_id: string; p_drop_id: string }
+        Returns: {
+          pagamentos_movidos: number
+          documentos_movidos: number
+          apelidos_movidos: number
+          drop_nome: string
+        }[]
+      }
     }
     Enums: {
       anexo_tipo: "nota_fiscal" | "comprovante" | "contrato" | "outro"

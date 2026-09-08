@@ -1,7 +1,7 @@
 import 'server-only';
 import { createHmac, randomBytes } from 'node:crypto';
-import { createClient as createSbClient } from '@supabase/supabase-js';
 import type { Database } from '@nogma/db';
+import { createClient as createSbClient } from '@supabase/supabase-js';
 
 /**
  * Outbound webhook dispatch — usado pra notificar n8n/Zapier/Make.com etc
@@ -52,7 +52,10 @@ function sign(body: string, secret: string): string {
  *
  * Retorna nada — best-effort logging em cada webhook.
  */
-export async function dispatchEvento(evento: EventoWebhook, dados: Record<string, unknown>): Promise<void> {
+export async function dispatchEvento(
+  evento: EventoWebhook,
+  dados: Record<string, unknown>,
+): Promise<void> {
   const supabase = serviceRoleClient();
 
   const { data: webhooks } = await supabase
@@ -89,7 +92,12 @@ export async function dispatchEvento(evento: EventoWebhook, dados: Record<string
           body,
           signal: controller.signal,
         });
-        await logWebhookExecution(supabase, wh.id, res.status, res.ok ? null : `HTTP ${res.status}`);
+        await logWebhookExecution(
+          supabase,
+          wh.id,
+          res.status,
+          res.ok ? null : `HTTP ${res.status}`,
+        );
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         await logWebhookExecution(supabase, wh.id, 0, `Exception: ${msg}`);
@@ -107,23 +115,19 @@ async function logWebhookExecution(
   erro: string | null,
 ): Promise<void> {
   try {
-    // Increment total_execucoes usando raw sql seria melhor; aqui fazemos read-modify-write
-    const { data: cur } = await supabase
-      .from('webhooks_outbound')
-      .select('total_execucoes')
-      .eq('id', id)
-      .maybeSingle();
-    await supabase
-      .from('webhooks_outbound')
-      .update({
-        ultima_execucao_em: new Date().toISOString(),
-        ultima_execucao_status: status,
-        ultima_execucao_erro: erro,
-        total_execucoes: (cur?.total_execucoes ?? 0) + 1,
-      })
-      .eq('id', id);
+    // Audit BUG-04 fix: increment atômico via RPC. Antes fazíamos
+    // read-modify-write manual (SELECT total_execucoes → UPDATE +1),
+    // que perdia contagens sob N webhooks concorrentes via Promise.allSettled.
+    // A RPC increment_webhook_execution faz UPDATE ... SET total = total + 1
+    // em uma única query — zero janela de race.
+    const { error } = await supabase.rpc('increment_webhook_execution', {
+      p_webhook_id: id,
+      p_status: status,
+      p_erro: erro,
+    });
+    if (error) throw error;
   } catch {
-    // Silencioso
+    // Silencioso — telemetria não deve poluir o fluxo principal
   }
 }
 
@@ -149,7 +153,9 @@ export async function testWebhook(id: string): Promise<{
   const payload: WebhookPayload = {
     evento: 'test',
     ocorrido_em: new Date().toISOString(),
-    dados: { mensagem: 'Este é um teste do CRM Nogma-Cavalcanti. Se você recebeu, tá funcionando!' },
+    dados: {
+      mensagem: 'Este é um teste do CRM Nogma-Cavalcanti. Se você recebeu, tá funcionando!',
+    },
   };
   const body = JSON.stringify(payload);
   const signature = sign(body, wh.secret);

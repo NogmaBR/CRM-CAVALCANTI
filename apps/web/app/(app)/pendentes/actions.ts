@@ -58,38 +58,73 @@ export async function confirmarPendencia(formData: FormData) {
 
   const hoje = new Date().toISOString().slice(0, 10);
 
-  // INSERT pagamento
-  const { data: novoPagamento, error: errInsert } = await supabase
+  // Guard idempotente (audit BUG-02): se já existe pagamento pra esta mensagem
+  // (duplo-submit ou reprocessamento), retorna o existente em vez de criar dup.
+  // Pareado com unique index parcial em idx_pagamentos_criado_via_msg_unique.
+  const { data: pagamentoExistente } = await supabase
     .from('pagamentos')
-    .insert({
-      obra_id: de.obra_id,
-      fornecedor_id: de.fornecedor_id ?? null,
-      valor: de.valor,
-      data_pagamento: de.data_pagamento ?? hoje,
-      origem: 'whatsapp',
-      status_pagto: 'confirmado',
-      descricao: de.descricao ?? null,
-      criado_via_msg_id: mensagem.id,
-      criado_por_user_id: userId,
-    })
     .select('id')
-    .single();
+    .eq('criado_via_msg_id', mensagem.id)
+    .maybeSingle();
 
-  if (errInsert || !novoPagamento) {
-    redirect(
-      `/pendentes?error=${encodeURIComponent(
-        mapDbErrorWithContext(errInsert, {
-          '23503': 'Obra ou fornecedor referenciado não existe.',
-          '23502': 'Campo obrigatório ausente ao criar pagamento.',
-        }),
-      )}`,
-    );
+  let pagamentoId: string;
+
+  if (pagamentoExistente) {
+    pagamentoId = pagamentoExistente.id;
+  } else {
+    const { data: novoPagamento, error: errInsert } = await supabase
+      .from('pagamentos')
+      .insert({
+        obra_id: de.obra_id,
+        fornecedor_id: de.fornecedor_id ?? null,
+        valor: de.valor,
+        data_pagamento: de.data_pagamento ?? hoje,
+        origem: 'whatsapp',
+        status_pagto: 'confirmado',
+        descricao: de.descricao ?? null,
+        criado_via_msg_id: mensagem.id,
+        criado_por_user_id: userId,
+      })
+      .select('id')
+      .single();
+
+    if (errInsert || !novoPagamento) {
+      // Se caiu no unique index (race concorrente venceu), busca o existente
+      // e continua o fluxo normalmente em vez de erro pro usuário.
+      if (errInsert?.code === '23505') {
+        const { data: existente } = await supabase
+          .from('pagamentos')
+          .select('id')
+          .eq('criado_via_msg_id', mensagem.id)
+          .maybeSingle();
+        if (existente) {
+          pagamentoId = existente.id;
+        } else {
+          redirect(
+            `/pendentes?error=${encodeURIComponent(
+              'Conflito ao criar pagamento — recarregue a página e tente de novo.',
+            )}`,
+          );
+        }
+      } else {
+        redirect(
+          `/pendentes?error=${encodeURIComponent(
+            mapDbErrorWithContext(errInsert, {
+              '23503': 'Obra ou fornecedor referenciado não existe.',
+              '23502': 'Campo obrigatório ausente ao criar pagamento.',
+            }),
+          )}`,
+        );
+      }
+    } else {
+      pagamentoId = novoPagamento.id;
+    }
   }
 
   // Update mensagem
   await supabase
     .from('mensagens_whats')
-    .update({ status: 'confirmada', pagamento_id: novoPagamento.id })
+    .update({ status: 'confirmada', pagamento_id: pagamentoId })
     .eq('id', mensagem.id);
 
   // Update confirmacao

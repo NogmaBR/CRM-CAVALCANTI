@@ -7,6 +7,7 @@ import { mapDbError, mapDbErrorWithContext } from '@/lib/schemas/errors';
 import {
   DocumentoMetaCreateSchema,
   DocumentoUpdateSchema,
+  validateFileMagicBytes,
   validateUploadedFile,
 } from '@/lib/schemas/documento';
 import { getDocumento } from '@/lib/data/documentos';
@@ -44,8 +45,16 @@ export async function createDocumento(formData: FormData) {
   }
   const file = fileCheck.file;
 
-  // 3) Lê buffer 1x → alimenta hash SHA-256 (dedup) + upload
+  // 3) Lê buffer 1x → alimenta magic-bytes check + hash SHA-256 (dedup) + upload
   const buffer = await file.arrayBuffer();
+
+  // 3.5) Magic bytes validation (audit MED fix): confirma que o conteúdo bate
+  // com o MIME declarado. Sem isso, atacante pode renomear .exe → .pdf.
+  const magicCheck = validateFileMagicBytes(buffer, file.type);
+  if (!magicCheck.ok) {
+    redirect(`/documentos/novo?error=${encodeURIComponent(magicCheck.error)}`);
+  }
+
   const hash = sha256Hex(buffer);
 
   // 4) Insert do row (obtém id) — storage_path placeholder temporário

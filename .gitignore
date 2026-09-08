@@ -48,6 +48,9 @@ apps/web/e2e/.auth/
 # Superpowers session
 .superpowers/
 
+# Claude Code local session state (per-project scratch, schedule locks)
+.claude/
+
 # Vercel link (contém projectId/orgId — não secret mas project-specific)
 .vercel/
 

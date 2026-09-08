@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { findApelidoConflict } from '@/lib/data/apelidos';
+import { mapDbError, mapDbErrorWithContext } from '@/lib/schemas/errors';
 
 const ApelidoSchema = z.object({
   apelido: z
@@ -48,11 +49,16 @@ export async function adicionarApelido(formData: FormData) {
   });
 
   if (error) {
-    const msg =
-      error.code === '23505'
-        ? 'Apelido já existe para este fornecedor'
-        : `Erro ao adicionar apelido: ${error.message}`;
-    redirect(`/fornecedores/${fornecedor_id}?error=${encodeURIComponent(msg)}`);
+    // Audit BUG-03 fix: usar mapDbErrorWithContext em vez de expor error.message raw.
+    // Raw message pode vazar nomes de constraint/coluna e detalhes do schema.
+    redirect(
+      `/fornecedores/${fornecedor_id}?error=${encodeURIComponent(
+        mapDbErrorWithContext(error, {
+          '23505': 'Apelido já existe para este fornecedor',
+          '23503': 'Fornecedor referenciado não existe',
+        }),
+      )}`,
+    );
   }
 
   revalidatePath(`/fornecedores/${fornecedor_id}`);
@@ -74,10 +80,9 @@ export async function removerApelido(formData: FormData) {
     .eq('id', apelido_id);
 
   if (error) {
+    // Audit BUG-03 fix: sanitize via mapDbError
     redirect(
-      `/fornecedores/${fornecedor_id}?error=${encodeURIComponent(
-        `Erro ao remover apelido: ${error.message}`,
-      )}`,
+      `/fornecedores/${fornecedor_id}?error=${encodeURIComponent(mapDbError(error))}`,
     );
   }
 

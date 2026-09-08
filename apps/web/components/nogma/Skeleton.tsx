@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import './Skeleton.css';
 
 export interface SkeletonProps {
@@ -8,6 +9,8 @@ export interface SkeletonProps {
   /** Rounded shape variant. @default 'rect' */
   variant?: 'rect' | 'text' | 'circle';
   className?: string;
+  /** Extra inline styles (mesclados com width/height). Útil pra margin/layout. */
+  style?: CSSProperties;
 }
 
 /**
@@ -18,9 +21,10 @@ export function Skeleton({
   height = '1em',
   variant = 'rect',
   className = '',
+  style,
 }: SkeletonProps) {
   const w = typeof width === 'number' ? `${width}px` : width;
   const h = typeof height === 'number' ? `${height}px` : height;
   const cls = ['ng-skeleton', `ng-skeleton--${variant}`, className].filter(Boolean).join(' ');
-  return <span className={cls} style={{ width: w, height: h }} aria-hidden="true" />;
+  return <span className={cls} style={{ width: w, height: h, ...style }} aria-hidden="true" />;
 }
