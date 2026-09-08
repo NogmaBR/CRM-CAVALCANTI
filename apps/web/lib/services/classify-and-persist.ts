@@ -167,8 +167,20 @@ export async function classifyAndPersist(mensagemId: string): Promise<
       confidence: out.confidence,
       pendencia_count: pendenciaCount ?? 1,
     });
+
+    // Dispatch outbound webhook (fase n8n) — best-effort
+    const { dispatchEvento } = await import('@/lib/services/dispatch-webhook');
+    await dispatchEvento('confirmacao_pendente_created', {
+      mensagem_id: mensagemId,
+      texto_bruto: msg.texto_bruto,
+      telefone_from: msg.telefone_from,
+      midia_mime: msg.midia_mime,
+      confianca_ia: out.confidence,
+      dados_extraidos: out.extracted,
+      pendencia_count: pendenciaCount ?? 1,
+    });
   } catch {
-    // Silencioso — email é secundário ao fluxo principal
+    // Silencioso — email/webhook são secundários ao fluxo principal
   }
 
   return { ok: true, status: 'classificada', confianca: out.confidence, kind: out.kind };

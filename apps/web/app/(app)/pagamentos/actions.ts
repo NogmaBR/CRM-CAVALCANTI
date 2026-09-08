@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { mapDbError, mapDbErrorWithContext } from '@/lib/schemas/errors';
 import { PagamentoCreateSchema, PagamentoUpdateSchema } from '@/lib/schemas/pagamento';
 import { sendPagamentoAguardandoEmail } from '@/lib/services/send-email';
+import { dispatchEvento } from '@/lib/services/dispatch-webhook';
 
 function formToRecord(fd: FormData): Record<string, unknown> {
   const rec: Record<string, unknown> = {};
@@ -73,6 +74,21 @@ export async function createPagamento(formData: FormData) {
       data_pagamento: parsed.data.data_pagamento,
       descricao: parsed.data.descricao ?? null,
     });
+  }
+
+  // Dispatch webhook outbound (fase n8n) — best-effort, não bloqueia UX
+  try {
+    await dispatchEvento('pagamento_created', {
+      id: data.id,
+      obra_id: parsed.data.obra_id,
+      fornecedor_id: parsed.data.fornecedor_id ?? null,
+      valor: parsed.data.valor,
+      data_pagamento: parsed.data.data_pagamento,
+      origem: parsed.data.origem,
+      status_pagto: parsed.data.status_pagto,
+    });
+  } catch {
+    // Silencioso — webhook falhou mas pagamento tá OK
   }
 
   revalidatePath('/pagamentos');

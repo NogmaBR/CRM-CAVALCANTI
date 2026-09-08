@@ -115,6 +115,24 @@ export async function createDocumento(formData: FormData) {
     redirect(`/documentos/novo?error=${encodeURIComponent(mapDbError(upd.error))}`);
   }
 
+  // Dispatch outbound webhook (fase n8n) — best-effort
+  try {
+    const { dispatchEvento } = await import('@/lib/services/dispatch-webhook');
+    await dispatchEvento('documento_created', {
+      id: documentoId,
+      obra_id: meta.data.obra_id,
+      pagamento_id: meta.data.pagamento_id ?? null,
+      fornecedor_id: meta.data.fornecedor_id ?? null,
+      tipo: meta.data.tipo,
+      nome_arquivo: file.name,
+      mime_type: file.type,
+      tamanho_bytes: file.size,
+      storage_path: path,
+    });
+  } catch {
+    // Silencioso
+  }
+
   revalidatePath('/documentos');
   revalidatePath('/painel');
   revalidatePath(`/obras/${meta.data.obra_id}`);

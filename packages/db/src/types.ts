@@ -695,6 +695,65 @@ export type Database = {
         }
         Relationships: []
       }
+      webhooks_outbound: {
+        Row: {
+          ativo: boolean
+          created_at: string | null
+          criado_por_user_id: string | null
+          deleted_at: string | null
+          eventos: string[]
+          id: string
+          nome: string
+          secret: string
+          total_execucoes: number
+          ultima_execucao_em: string | null
+          ultima_execucao_erro: string | null
+          ultima_execucao_status: number | null
+          updated_at: string | null
+          url: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string | null
+          criado_por_user_id?: string | null
+          deleted_at?: string | null
+          eventos?: string[]
+          id?: string
+          nome: string
+          secret: string
+          total_execucoes?: number
+          ultima_execucao_em?: string | null
+          ultima_execucao_erro?: string | null
+          ultima_execucao_status?: number | null
+          updated_at?: string | null
+          url: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string | null
+          criado_por_user_id?: string | null
+          deleted_at?: string | null
+          eventos?: string[]
+          id?: string
+          nome?: string
+          secret?: string
+          total_execucoes?: number
+          ultima_execucao_em?: string | null
+          ultima_execucao_erro?: string | null
+          ultima_execucao_status?: number | null
+          updated_at?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhooks_outbound_criado_por_user_id_fkey"
+            columns: ["criado_por_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
