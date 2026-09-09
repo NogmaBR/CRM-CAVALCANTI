@@ -215,9 +215,9 @@ export function ObrasTable({
           style={{
             padding: '10px 16px',
             borderRadius: 8,
-            background: 'var(--color-success-bg, rgba(132,204,22,0.12))',
-            border: '1px solid var(--color-success-border, rgba(132,204,22,0.3))',
-            color: 'var(--color-success-text, #a3e635)',
+            background: 'var(--success-bg)',
+            border: '1px solid color-mix(in srgb, var(--success) 30%, transparent)',
+            color: 'var(--success)',
             fontSize: 14,
           }}
         >
@@ -231,9 +231,9 @@ export function ObrasTable({
           style={{
             padding: '10px 16px',
             borderRadius: 8,
-            background: 'var(--color-danger-bg, rgba(239,68,68,0.12))',
-            border: '1px solid var(--color-danger-border, rgba(239,68,68,0.3))',
-            color: 'var(--color-danger-text, #f87171)',
+            background: 'var(--danger-bg)',
+            border: '1px solid color-mix(in srgb, var(--danger) 30%, transparent)',
+            color: 'var(--danger)',
             fontSize: 14,
           }}
         >

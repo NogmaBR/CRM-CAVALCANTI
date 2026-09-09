@@ -10,9 +10,9 @@
 }
 
 .wh-banner--success {
-  background: color-mix(in srgb, #22c55e 12%, transparent);
-  color: #22c55e;
-  border: 1px solid color-mix(in srgb, #22c55e 30%, transparent);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  color: var(--success);
+  border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
 }
 
 .wh-banner--error {
@@ -98,9 +98,9 @@
 }
 
 .wh-test-banner--ok {
-  background: color-mix(in srgb, #22c55e 12%, transparent);
-  color: #22c55e;
-  border: 1px solid color-mix(in srgb, #22c55e 30%, transparent);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  color: var(--success);
+  border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
 }
 
 .wh-test-banner--err {
@@ -219,9 +219,9 @@
 }
 
 .wh-ativo-badge--on {
-  background: color-mix(in srgb, #22c55e 12%, transparent);
-  color: #22c55e;
-  border: 1px solid color-mix(in srgb, #22c55e 30%, transparent);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  color: var(--success);
+  border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
 }
 
 .wh-ativo-badge--off {
@@ -243,9 +243,9 @@
 
 /* 2xx — green */
 .wh-exec-status--ok {
-  background: color-mix(in srgb, #22c55e 12%, transparent);
-  color: #22c55e;
-  border: 1px solid color-mix(in srgb, #22c55e 25%, transparent);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  color: var(--success);
+  border: 1px solid color-mix(in srgb, var(--success) 25%, transparent);
 }
 
 /* 3xx — yellow */

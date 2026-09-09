@@ -100,9 +100,9 @@
 }
 
 .notif-badge--sent {
-  background: color-mix(in srgb, #22c55e 15%, transparent);
-  color: #22c55e;
-  border: 1px solid color-mix(in srgb, #22c55e 30%, transparent);
+  background: color-mix(in srgb, var(--success) 15%, transparent);
+  color: var(--success);
+  border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
 }
 
 .notif-badge--failed {
@@ -249,9 +249,9 @@
 }
 
 .notif-banner--success {
-  background: color-mix(in srgb, #22c55e 12%, transparent);
-  color: #22c55e;
-  border: 1px solid color-mix(in srgb, #22c55e 30%, transparent);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  color: var(--success);
+  border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
 }
 
 .notif-banner--error {

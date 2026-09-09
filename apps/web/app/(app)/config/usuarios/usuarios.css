@@ -35,9 +35,9 @@
 }
 
 .usuarios-banner--success {
-  background: color-mix(in srgb, #22c55e 12%, transparent);
-  color: #22c55e;
-  border: 1px solid color-mix(in srgb, #22c55e 30%, transparent);
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
 }
 
 .usuarios-banner--error {
@@ -116,9 +116,9 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--accent, #a3e635) 20%, transparent);
-  color: var(--accent, #a3e635);
-  border: 1px solid color-mix(in srgb, var(--accent, #a3e635) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -168,9 +168,9 @@
 }
 
 .usuarios-badge--success {
-  background: color-mix(in srgb, #22c55e 15%, transparent);
-  color: #22c55e;
-  border: 1px solid color-mix(in srgb, #22c55e 30%, transparent);
+  background: color-mix(in srgb, var(--success) 15%, transparent);
+  color: var(--success);
+  border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
 }
 
 .usuarios-badge--info {
