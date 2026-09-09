@@ -145,28 +145,14 @@ export async function classifyAndPersist(mensagemId: string): Promise<
     })
     .eq('id', mensagemId);
 
-  // Dispara email pra gestores — best-effort. Import dinâmico pra evitar
-  // ciclo de deps (send-email importa data/notificacoes, que não depende
-  // deste service). Falha silenciosa loga em notificacoes_email.erro.
+  // Nota: automação de e-mail "pendência nova" removida — fora do escopo
+  // contratado (briefing de alinhamento 16/09). Webhook outbound (fase
+  // n8n) segue best-effort abaixo.
   try {
     const { count: pendenciaCount } = await supabase
       .from('confirmacoes_pendentes')
       .select('*', { count: 'exact', head: true })
       .eq('resolvida', false);
-
-    const obraHint = out.extracted.obra_id
-      ? (obrasRes.data ?? []).find((o) => o.id === out.extracted.obra_id)?.nome ?? null
-      : null;
-
-    const { sendPendenciaNovaEmail } = await import('@/lib/services/send-email');
-    await sendPendenciaNovaEmail({
-      texto_bruto: msg.texto_bruto,
-      midia_mime: msg.midia_mime,
-      valor_estimado: out.extracted.valor ?? null,
-      obra_hint: obraHint,
-      confidence: out.confidence,
-      pendencia_count: pendenciaCount ?? 1,
-    });
 
     // Dispatch outbound webhook (fase n8n) — best-effort
     const { dispatchEvento } = await import('@/lib/services/dispatch-webhook');
@@ -180,7 +166,7 @@ export async function classifyAndPersist(mensagemId: string): Promise<
       pendencia_count: pendenciaCount ?? 1,
     });
   } catch {
-    // Silencioso — email/webhook são secundários ao fluxo principal
+    // Silencioso — webhook é secundário ao fluxo principal
   }
 
   return { ok: true, status: 'classificada', confianca: out.confidence, kind: out.kind };

@@ -17,8 +17,8 @@
 .ng-iconbtn--ghost:hover{ --_bg:var(--neutral-100); }
 .ng-iconbtn--outline{ --_bd:var(--border-default); }
 .ng-iconbtn--outline:hover{ --_bg:var(--neutral-50); --_bd:var(--border-strong); }
-.ng-iconbtn--primary{ --_bg:var(--lime-500); --_fg:var(--petroleum-950); }
-.ng-iconbtn--primary:hover{ --_bg:var(--lime-300); }
+.ng-iconbtn--primary{ --_bg:var(--accent); --_fg:var(--accent-text); }
+.ng-iconbtn--primary:hover{ --_bg:var(--accent-hover); }
 .ng-iconbtn--solid{ --_bg:var(--petroleum-800); --_fg:#fff; }
 .ng-iconbtn--solid:hover{ --_bg:var(--petroleum-700); }
 .on-dark .ng-iconbtn,[data-theme="dark"] .ng-iconbtn,.on-black .ng-iconbtn,[data-theme="black"] .ng-iconbtn{ --_fg:var(--white); }

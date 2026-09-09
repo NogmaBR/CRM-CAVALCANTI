@@ -175,7 +175,7 @@ function CardMes() {
   );
 }
 
-// ── Card 3 — Histórico do Fornecedor ────────────────────────────
+// ── Card 3 — Relatório do Fornecedor ────────────────────────────
 
 function CardFornecedor({ fornecedores }: { fornecedores: Fornecedor[] }) {
   const [fornecedorId, setFornecedorId] = useState('');
@@ -197,7 +197,7 @@ function CardFornecedor({ fornecedores }: { fornecedores: Fornecedor[] }) {
   return (
     <article className="relatorio-card">
       <Truck size={32} aria-hidden="true" className="relatorio-card__icon" />
-      <h2 className="relatorio-card__title">Histórico do Fornecedor</h2>
+      <h2 className="relatorio-card__title">Relatório do Fornecedor</h2>
       <p className="relatorio-card__desc">
         Todos os pagamentos feitos a um fornecedor + ticket médio + primeira/última compra.
       </p>
@@ -256,14 +256,14 @@ function CardFornecedor({ fornecedores }: { fornecedores: Fornecedor[] }) {
           disabled={disabled}
           variant="pdf"
           icon={<FileText size={14} aria-hidden="true" />}
-          label="Baixar histórico do fornecedor em PDF"
+          label="Baixar relatório do fornecedor em PDF"
         />
         <DownloadLink
           href={buildBase('csv')}
           disabled={disabled}
           variant="csv"
           icon={<Table2 size={14} aria-hidden="true" />}
-          label="Baixar histórico do fornecedor em CSV"
+          label="Baixar relatório do fornecedor em CSV"
         />
       </div>
     </article>

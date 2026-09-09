@@ -1,16 +1,14 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { User, Palette, Globe, Bell } from 'lucide-react';
+import { User, Palette, Globe } from 'lucide-react';
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
 import { Input } from '@/components/nogma/Input';
-import { Checkbox } from '@/components/nogma/Checkbox';
 import { getMyProfile } from '@/lib/data/perfil';
 import { PAPEL_LABELS } from '@/lib/data/usuarios';
 import {
   TEMA_LABELS,
   TIMEZONE_OPTIONS,
-  EMAIL_PREF_LABELS,
 } from '@/lib/schemas/perfil';
 import type { Tema } from '@/lib/schemas/perfil';
 import { salvarPerfil } from './actions';
@@ -173,31 +171,8 @@ export default async function PerfilPage({
             </div>
           </fieldset>
 
-          {/* ── Fieldset 4: Notificações por email ── */}
-          <fieldset className="form-layout__section">
-            <legend className="form-layout__legend">
-              <Bell size={12} aria-hidden="true" style={{ verticalAlign: 'middle', marginRight: 4 }} />
-              Notificações por email
-            </legend>
-            <p className="perfil-notif-hint">Escolha que tipo de notificação quer receber</p>
-            <div className="perfil-notif-list">
-              <Checkbox
-                name="email_prefs.pagamentos_aguardando"
-                label={EMAIL_PREF_LABELS.pagamentos_aguardando}
-                defaultChecked={profile.parsed_email_prefs.pagamentos_aguardando}
-              />
-              <Checkbox
-                name="email_prefs.pendencias_novas"
-                label={EMAIL_PREF_LABELS.pendencias_novas}
-                defaultChecked={profile.parsed_email_prefs.pendencias_novas}
-              />
-              <Checkbox
-                name="email_prefs.digest_semanal"
-                label={EMAIL_PREF_LABELS.digest_semanal}
-                defaultChecked={profile.parsed_email_prefs.digest_semanal}
-              />
-            </div>
-          </fieldset>
+          {/* Nota: fieldset de notificações por email removido — automação de
+              e-mail fora do escopo contratado (briefing de alinhamento 16/09). */}
 
           {/* ── Actions ── */}
           <div className="form-layout__actions">

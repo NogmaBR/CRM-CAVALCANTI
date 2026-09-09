@@ -17,7 +17,13 @@ const CRLF = '\r\n';
 
 function csvCell(v: unknown): string {
   if (v == null) return '';
-  const s = String(v);
+  let s = String(v);
+  // Formula injection guard (security audit 2026-09-09, finding D): Excel/Sheets
+  // interpret a cell starting with =, +, -, @, tab or CR as a formula. Fields
+  // like descricao/observacoes can come from free-text WhatsApp messages or
+  // imported CSVs — neutralize by prefixing with an apostrophe, same fix as
+  // OWASP recommends for CSV injection.
+  if (/^[=+\-@\t\r]/u.test(s)) s = `'${s}`;
   const needsWrap = /[",\r\n]/u.test(s);
   const escaped = s.replace(/"/gu, '""');
   return needsWrap ? `"${escaped}"` : escaped;
@@ -162,7 +168,7 @@ export function mesToCsv(data: MesData): string {
 
 export function fornecedorToCsv(data: FornecedorData): string {
   const rows: Array<Array<unknown>> = [];
-  rows.push(['# Histórico do Fornecedor']);
+  rows.push(['# Relatório do Fornecedor']);
   rows.push(['Fornecedor', data.fornecedor.nome]);
   if (data.fornecedor.documento) {
     const label = data.fornecedor.documento_tipo === 'cpf' ? 'CPF' : 'CNPJ';

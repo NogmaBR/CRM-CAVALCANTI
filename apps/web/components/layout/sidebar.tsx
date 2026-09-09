@@ -1,22 +1,17 @@
 import Image from 'next/image';
+import Link from 'next/link';
 import { SidebarNav } from './sidebar-nav';
 import { UserMenu } from './user-menu';
 
 export function Sidebar() {
   return (
     <aside className="nos-sidebar on-black" aria-label="Barra lateral">
-      <div className="nos-brand">
+      <Link href="/painel" className="nos-brand" aria-label="Ir para o painel">
         <span className="nos-brand__mark">
-          <Image src="/logos/isotype-n-lime.png" alt="Nogma" width={28} height={28} />
+          <Image src="/logos/cavalcanti-mark-light.png" alt="" width={28} height={28} priority />
         </span>
-        <Image
-          className="nos-brand__word"
-          src="/logos/logo-nogma-lime.png"
-          alt="nogma"
-          width={100}
-          height={24}
-        />
-      </div>
+        <span className="nos-brand__wordtext">Cavalcanti</span>
+      </Link>
       <SidebarNav />
       <div className="nos-side-foot">
         <UserMenu />

@@ -65,11 +65,11 @@ export function renderFornecedorPdf(data: FornecedorData): ReactElement {
 
   return (
     <NogmaDoc
-      title={`Histórico do Fornecedor: ${fornecedor.nome}`}
+      title={`Relatório do Fornecedor: ${fornecedor.nome}`}
       headerSubtitle={subtitle}
     >
       <ReportTitle
-        title={`Histórico do Fornecedor: ${fornecedor.nome}`}
+        title={`Relatório do Fornecedor: ${fornecedor.nome}`}
         subtitle={subtitle}
       />
 

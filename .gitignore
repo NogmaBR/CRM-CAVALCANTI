@@ -61,3 +61,7 @@ supabase/.temp/
 # Docker
 infra/docker/.env
 .playwright-mcp/
+
+# Screenshots/capturas de sessão logada — nunca commitar (audit finding M-7)
+crm-cavalcanti-logado.png
+*-logado.png

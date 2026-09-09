@@ -39,25 +39,6 @@ function formatDate(iso: string): string {
   return `${d}/${m}/${y}`;
 }
 
-function ConfidenceBar({ value }: { value: number }) {
-  const pct = Math.round(value * 100);
-  const fillClass =
-    pct < 50
-      ? 'pendente-confidence__fill pendente-confidence__fill--low'
-      : pct < 75
-        ? 'pendente-confidence__fill pendente-confidence__fill--mid'
-        : 'pendente-confidence__fill pendente-confidence__fill--high';
-
-  return (
-    <div className="pendente-card__confidence">
-      <span className="pendente-confidence__label">Confianca IA: {pct}%</span>
-      <div className="pendente-confidence__track" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
-        <div className={fillClass} style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  );
-}
-
 export default async function PendentesPage({
   searchParams,
 }: {
@@ -94,7 +75,7 @@ export default async function PendentesPage({
             <Inbox size={48} className="pendentes-empty__icon" />
             <p className="pendentes-empty__title">Nenhuma pendencia no momento</p>
             <p className="pendentes-empty__sub">
-              Quando a IA classificar mensagens com baixa confianca, elas apareceram aqui.
+              Quando a IA classificar mensagens que precisam de revisao, elas apareceram aqui.
             </p>
           </div>
         ) : (
@@ -191,10 +172,6 @@ export default async function PendentesPage({
                         </div>
                       ) : null}
                     </div>
-
-                    {item.confianca_ia != null ? (
-                      <ConfidenceBar value={item.confianca_ia} />
-                    ) : null}
                   </div>
 
                   {/* Actions */}

@@ -128,42 +128,6 @@
   grid-column: 1 / -1;
 }
 
-.pendente-card__confidence {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.pendente-confidence__label {
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-
-.pendente-confidence__track {
-  height: 6px;
-  border-radius: 99px;
-  background: var(--surface-2, rgba(0,0,0,0.08));
-  overflow: hidden;
-}
-
-.pendente-confidence__fill {
-  height: 100%;
-  border-radius: 99px;
-  transition: width 300ms ease;
-}
-
-.pendente-confidence__fill--low {
-  background: var(--danger, #ef4444);
-}
-
-.pendente-confidence__fill--mid {
-  background: var(--warning, #eab308);
-}
-
-.pendente-confidence__fill--high {
-  background: var(--success, #22c55e);
-}
-
 .pendente-card__actions {
   display: flex;
   align-items: center;

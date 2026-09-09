@@ -135,9 +135,6 @@ function MensagemRow({ m }: { m: MensagemFeedItem }) {
       </div>
       <div className="wa-item__meta">
         <Badge variant={STATUS_VARIANT[m.status]}>{STATUS_LABEL[m.status]}</Badge>
-        {m.confianca_ia != null ? (
-          <span>Confiança IA: {Math.round(Number(m.confianca_ia) * 100)}%</span>
-        ) : null}
         {m.pagamento_id ? (
           <Link href={`/pagamentos/${m.pagamento_id}`} className="wa-item__link">
             {formatBRL(m.pagamento_valor)}

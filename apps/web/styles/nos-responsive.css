@@ -60,14 +60,29 @@
   padding: 6px 8px 18px;
   position: relative;
 }
+.nos-drawer__brand .nos-brand {
+  padding: 4px 6px;
+  flex: 1;
+  min-width: 0;
+}
 .nos-drawer__brand .nos-brand__mark img {
-  width: 26px;
+  width: 28px;
   height: auto;
   display: block;
 }
 .nos-drawer__brand .nos-brand__word {
   height: 20px;
   width: auto;
+}
+.nos-drawer__brand .nos-brand__wordtext {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: #fff;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .nos-drawer__close {

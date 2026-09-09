@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Building2, FileText, MessageSquare,
-  AlertCircle, Users, Settings, FileBarChart, Mail, ShieldCheck, User,
+  AlertCircle, Users, Settings, FileBarChart, ShieldCheck, User,
 } from 'lucide-react';
 
 const NAV = [
@@ -13,7 +13,6 @@ const NAV = [
   { href: '/whatsapp',     label: 'WhatsApp',     icon: MessageSquare },
   { href: '/pendentes',    label: 'Pendentes',    icon: AlertCircle },
   { href: '/fornecedores',   label: 'Fornecedores',  icon: Users },
-  { href: '/notificacoes',  label: 'Notificacoes',  icon: Mail },
   { href: '/auditoria',    label: 'Auditoria',    icon: ShieldCheck },
 ] as const;
 
