@@ -51,7 +51,8 @@ soma em R$). **Anote-as**: é contra elas que o restore se confere.
 ## Baixar e decifrar
 
 1. Abra a execução em Actions → **Artifacts** → baixe o `.tar.gz.enc`
-   (ou `gh run download <run-id>`)
+   (ou `gh run download <run-id> -D backup/` — atenção: o `gh` cria uma
+   **pasta** com o nome do artifact e põe o arquivo dentro dela)
 2. A frase está em `.env.local`, variável `BACKUP_PASSPHRASE`. **Não está em
    lugar nenhum versionado.** Quem perder o `.env.local` e o secret do GitHub
    perde o acesso a todos os backups — guarde a frase também no gerenciador
@@ -133,9 +134,9 @@ Settings → General → Delete project. Ele tem dado real do cliente.
 Anote aqui embaixo a data e o resultado. Backup sem restore registrado não
 conta.
 
-| Data | Artifact | Contagens bateram? | Quem |
-|---|---|---|---|
-| — | — | — | — |
+| Data | Artifact | Até onde foi | Contagens bateram? | Quem |
+|---|---|---|---|---|
+| 2026-09-10 | `crm-cavalcanti-20260910-1927.tar.gz.enc` (run 34520394787) | Baixado, **decifrado com a frase do `.env.local`** e extraído nesta máquina: `public.dump` válido (assinatura `PGDMP`), `auth-storage.dump` presente, `contagens.txt` com 10 obras / 8 fornecedores / 80 pagamentos / R$ 453.500,00 — iguais à produção. **Restore num projeto descartável NÃO feito** (não há `pg_restore` aqui) | parcial | Claude |
 
 ---
 
