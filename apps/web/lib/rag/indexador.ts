@@ -187,6 +187,15 @@ export async function sincronizarDocumentos(supabase: Client): Promise<Resultado
     inalterados: 0,
   };
 
+  const aCriar: Array<{
+    origem: string;
+    origem_id: string;
+    obra_id: string | null;
+    titulo: string;
+    conteudo: string;
+    hash_conteudo: string;
+  }> = [];
+
   for (const doc of documentos) {
     const existente = porChave.get(`${doc.origem}|${doc.origemId}`);
 
@@ -216,7 +225,8 @@ export async function sincronizarDocumentos(supabase: Client): Promise<Resultado
       continue;
     }
 
-    const { error } = await supabase.from('knowledge_documents').insert({
+    // Acumula em vez de inserir: os inserts vão em lote no fim.
+    aCriar.push({
       origem: doc.origem,
       origem_id: doc.origemId,
       obra_id: doc.obraId,
@@ -224,9 +234,27 @@ export async function sincronizarDocumentos(supabase: Client): Promise<Resultado
       conteudo: doc.conteudo,
       hash_conteudo: doc.hash,
     });
+  }
 
+  // ---------------------------------------------------------------------
+  // Os novos, em lote
+  // ---------------------------------------------------------------------
+  // Um INSERT por documento custou **24,7 segundos** para 98 documentos na
+  // primeira indexação em produção — cerca de 250ms cada, que é o preço de uma
+  // ida e volta entre a função (Virgínia) e o banco (São Paulo).
+  //
+  // Não era lentidão de banco: era latência multiplicada por 98. Em lote, a
+  // mesma carga cabe em poucas requisições. Importa mais do que parece porque
+  // a função tem tempo limitado — e uma carga nova de 80 pagamentos repetiria
+  // o cenário, agora perto do teto.
+  //
+  // As atualizações continuam uma a uma: são raras (só quando um pagamento
+  // muda) e cada uma precisa apagar os trechos antigos antes.
+  const LOTE = 50;
+  for (let i = 0; i < aCriar.length; i += LOTE) {
+    const { error } = await supabase.from('knowledge_documents').insert(aCriar.slice(i, i + LOTE));
     if (error) throw new Error(`Falha ao criar conhecimento: ${error.message}`);
-    resultado.criados += 1;
+    resultado.criados += Math.min(LOTE, aCriar.length - i);
   }
 
   return resultado;
