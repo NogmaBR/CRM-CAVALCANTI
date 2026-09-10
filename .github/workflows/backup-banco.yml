@@ -1,0 +1,185 @@
+# ============================================================
+# Backup semanal do banco — para FORA do Supabase
+# ============================================================
+# Fase 5.0. Descoberto em 2026-09-10 pela API do Supabase:
+#
+#   pitr_enabled: false      backups listados: 0
+#
+# O plano gratuito faz backup diário, mas não expõe isso por API e não
+# permite PITR. Ninguém tinha confirmado que existe backup nem que restaura.
+# E backup no mesmo fornecedor do banco protege contra erro humano, não
+# contra perda do fornecedor.
+#
+# Este workflow faz um `pg_dump` toda semana, **cifra** o arquivo e guarda
+# como artifact do GitHub Actions por 90 dias.
+#
+# ## Por que cifrar
+#
+# O repositório é PÚBLICO. Artifact de repositório público pode ser baixado
+# por qualquer conta do GitHub. Sem cifra, o dump com os pagamentos do
+# cliente ficaria a um clique de qualquer um. O `openssl enc` com AES-256 e
+# a frase em `BACKUP_PASSPHRASE` resolve isso; a frase mora em `.env.local`
+# (gitignored) e no secret do GitHub, e em mais lugar nenhum.
+#
+# ## Segredos (Settings → Secrets → Actions)
+#
+#   BACKUP_DB_URL      — string de conexão do pooler em MODO SESSÃO (porta
+#                        5432, host aws-0-sa-east-1.pooler.supabase.com,
+#                        usuário postgres.<ref>). Não é a conexão direta:
+#                        `db.<ref>.supabase.co` é só IPv6 no plano gratuito
+#                        e os runners do GitHub não têm IPv6.
+#   BACKUP_PASSPHRASE  — frase da cifra. Sem ela o backup é ilegível.
+#
+# ## O que entra
+#
+#   public   — obrigatório. É o dado do cliente.
+#   auth     — melhor esforço. Usuários e senhas (hash) do painel.
+#   storage  — melhor esforço. Metadados dos arquivos (os bytes ficam no
+#              bucket, que este dump NÃO cobre).
+#
+# Fora, de propósito: `pgmq` (jobs em voo, transitório), `vault` (não é
+# exportável e não deve ser), `cron` (recriado pelas migrations).
+#
+# ## Restaurar
+#
+# Passo a passo em docs/RUNBOOK-BACKUP.md — inclusive o restore de teste,
+# que é a única coisa que prova que isto aqui serve para alguma coisa.
+# ============================================================
+
+name: Backup do banco
+
+on:
+  schedule:
+    # Domingo, 03:00 UTC = 00:00 em Brasília. Fora do horário de uso.
+    - cron: "0 3 * * 0"
+  workflow_dispatch:
+
+concurrency:
+  group: backup-banco
+  cancel-in-progress: false
+
+jobs:
+  dump:
+    name: pg_dump → cifrar → artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Conferir segredos
+        env:
+          BACKUP_DB_URL: ${{ secrets.BACKUP_DB_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          faltando=""
+          [ -z "$BACKUP_DB_URL" ] && faltando="$faltando BACKUP_DB_URL"
+          [ -z "$BACKUP_PASSPHRASE" ] && faltando="$faltando BACKUP_PASSPHRASE"
+          if [ -n "$faltando" ]; then
+            echo "::error::Segredo(s) ausente(s):$faltando — ver cabeçalho do workflow"
+            exit 1
+          fi
+          # A porta é a diferença entre modo sessão (5432) e transação (6543).
+          # pg_dump precisa de sessão.
+          case "$BACKUP_DB_URL" in
+            *:6543/*) echo "::error::BACKUP_DB_URL usa a porta 6543 (modo transação). pg_dump exige o modo sessão: porta 5432."; exit 1 ;;
+          esac
+          echo "ok"
+
+      # O servidor é PostgreSQL 17. O pg_dump precisa ser >= 17, e o
+      # ubuntu-latest traz 16. O repositório oficial do PGDG tem o 17.
+      - name: Instalar pg_dump 17
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-common >/dev/null
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y >/dev/null
+          sudo apt-get install -y -qq postgresql-client-17 >/dev/null
+          /usr/lib/postgresql/17/bin/pg_dump --version
+
+      - name: Dump do schema public (obrigatório)
+        env:
+          BACKUP_DB_URL: ${{ secrets.BACKUP_DB_URL }}
+        run: |
+          mkdir -p dump
+          /usr/lib/postgresql/17/bin/pg_dump "$BACKUP_DB_URL" \
+            --format=custom --no-owner --no-privileges \
+            --schema=public \
+            --file=dump/public.dump
+          ls -la dump/public.dump
+
+      - name: Dump de auth e storage (melhor esforço)
+        continue-on-error: true
+        env:
+          BACKUP_DB_URL: ${{ secrets.BACKUP_DB_URL }}
+        run: |
+          /usr/lib/postgresql/17/bin/pg_dump "$BACKUP_DB_URL" \
+            --format=custom --no-owner --no-privileges \
+            --schema=auth --schema=storage \
+            --file=dump/auth-storage.dump
+          ls -la dump/auth-storage.dump
+
+      # As contagens ficam DENTRO do backup: é contra elas que o restore de
+      # teste se confere. Sem isso, "restaurou" não prova nada.
+      - name: Contagens de referência
+        env:
+          BACKUP_DB_URL: ${{ secrets.BACKUP_DB_URL }}
+        run: |
+          /usr/lib/postgresql/17/bin/psql "$BACKUP_DB_URL" -At -F ' | ' -c "
+            SELECT 'gerado_em', now()::text
+            UNION ALL SELECT 'obras', count(*)::text FROM obras WHERE deleted_at IS NULL
+            UNION ALL SELECT 'fornecedores', count(*)::text FROM fornecedores WHERE deleted_at IS NULL
+            UNION ALL SELECT 'pagamentos', count(*)::text FROM pagamentos WHERE deleted_at IS NULL
+            UNION ALL SELECT 'pagamentos_total_brl', coalesce(sum(valor),0)::text FROM pagamentos WHERE deleted_at IS NULL
+            UNION ALL SELECT 'documentos', count(*)::text FROM documentos WHERE deleted_at IS NULL
+            UNION ALL SELECT 'mensagens_whats', count(*)::text FROM mensagens_whats
+            UNION ALL SELECT 'automation_executions', count(*)::text FROM automation_executions
+            UNION ALL SELECT 'knowledge_documents', count(*)::text FROM knowledge_documents WHERE deleted_at IS NULL
+          " | tee dump/contagens.txt
+
+      # `pg_restore --list` lê o índice do arquivo custom. Se o dump estiver
+      # truncado ou corrompido, falha aqui — antes de cifrar e guardar lixo.
+      - name: Validar o dump
+        run: |
+          ENTRADAS=$(/usr/lib/postgresql/17/bin/pg_restore --list dump/public.dump | grep -c 'TABLE DATA' || true)
+          echo "tabelas com dados no dump: $ENTRADAS"
+          if [ "$ENTRADAS" -lt 5 ]; then
+            echo "::error::O dump tem só $ENTRADAS tabelas com dados — esperado bem mais. Algo deu errado."
+            exit 1
+          fi
+          /usr/lib/postgresql/17/bin/pg_restore --list dump/public.dump | grep 'TABLE DATA' | awk '{print $NF, $(NF-1)}' | sort | head -60
+
+      - name: Cifrar
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          NOME="crm-cavalcanti-$(date -u +%Y%m%d-%H%M).tar.gz.enc"
+          tar czf - -C dump . | openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt \
+            -pass env:BACKUP_PASSPHRASE -out "$NOME"
+          ls -la "$NOME"
+          echo "NOME=$NOME" >> "$GITHUB_ENV"
+          # Prova de que decifra com a mesma frase (sem gravar o resultado).
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass env:BACKUP_PASSPHRASE -in "$NOME" | tar tzf - >/dev/null
+          echo "decifra: ok"
+
+      - name: Guardar artifact (90 dias)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NOME }}
+          path: ${{ env.NOME }}
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Resumo
+        if: always()
+        run: |
+          {
+            echo "## Backup do banco"
+            echo
+            if [ -f dump/contagens.txt ]; then
+              echo '```'
+              cat dump/contagens.txt
+              echo '```'
+            fi
+            echo
+            echo "Artifact: \`${NOME:-<não gerado>}\` — retenção 90 dias."
+            echo
+            echo "Para restaurar: \`docs/RUNBOOK-BACKUP.md\`."
+          } >> "$GITHUB_STEP_SUMMARY"
