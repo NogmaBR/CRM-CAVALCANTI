@@ -1,11 +1,15 @@
 import 'server-only';
+import { randomUUID } from 'node:crypto';
 import { executarAgendadas } from '@/lib/automations/engine';
+import { comContexto, logger } from '@/lib/log';
 import type { Database } from '@nogma/db';
 import { createClient as createSbClient } from '@supabase/supabase-js';
 import { type NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+const log = logger('cron');
 
 /**
  * Executa as automações agendadas.
@@ -47,19 +51,27 @@ export async function GET(request: NextRequest) {
 
   const inicio = Date.now();
 
-  try {
-    const relatorio = await executarAgendadas(supabase, { simular, apenas });
-    return NextResponse.json({
-      ok: true,
-      simulado: simular,
-      duracao_ms: Date.now() - inicio,
-      regras: relatorio,
-    });
-  } catch (err) {
-    // O engine já isola falha de regra; chegar aqui significa problema no
-    // próprio motor. Devolvemos 500 para o cron registrar como falha.
-    const detalhe = err instanceof Error ? err.message : String(err);
-    console.error('[cron/automacoes] motor falhou:', detalhe);
-    return NextResponse.json({ ok: false, error: detalhe }, { status: 500 });
-  }
+  // Um id por rodada: todas as regras avaliadas nesta chamada saem com ele.
+  return comContexto({ correlacao: randomUUID(), rota: 'cron/automacoes' }, async () => {
+    try {
+      const relatorio = await executarAgendadas(supabase, { simular, apenas });
+      log.info('automacoes_rodou', {
+        simulado: simular,
+        duracao_ms: Date.now() - inicio,
+        regras: relatorio.length,
+      });
+      return NextResponse.json({
+        ok: true,
+        simulado: simular,
+        duracao_ms: Date.now() - inicio,
+        regras: relatorio,
+      });
+    } catch (err) {
+      // O engine já isola falha de regra; chegar aqui significa problema no
+      // próprio motor. Devolvemos 500 para o cron registrar como falha.
+      const detalhe = err instanceof Error ? err.message : String(err);
+      log.erro('automacoes_motor_falhou', { detalhe });
+      return NextResponse.json({ ok: false, error: detalhe }, { status: 500 });
+    }
+  });
 }

@@ -1,5 +1,6 @@
 import 'server-only';
 import { transcreverAudio } from '@/lib/ia/transcricao';
+import { logger } from '@/lib/log';
 import {
   type UazapiInbound,
   mapTipoToDb,
@@ -39,6 +40,8 @@ import { baixarMidia, enviarTexto } from './uazapi';
  */
 
 type Client = SupabaseClient<Database>;
+
+const log = logger('inbound');
 
 export type AcaoInbound =
   | 'ignorada_nao_autorizada'
@@ -87,9 +90,10 @@ export async function processarInbound(
   // sondou que existe um sistema atrás do número.
   const autorizado = await buscarAutorizado(supabase, telefone);
   if (!autorizado) {
-    console.warn(
-      `[inbound] mensagem de ${mascarar(telefone)} ignorada: número não está em autorizados. Cadastre-o em /config/autorizados para que ele possa lançar pagamentos.`,
-    );
+    log.aviso('ignorada_nao_autorizada', {
+      telefone,
+      dica: 'Cadastre o número em /config/autorizados para que ele possa lançar pagamentos.',
+    });
     return { acao: 'ignorada_nao_autorizada' };
   }
 
@@ -156,7 +160,7 @@ export async function processarInbound(
   const comando = interpretarComando(textoEfetivo);
   if (comando) {
     const resposta = await executarComando(supabase, comando).catch((err) => {
-      console.error('[inbound] comando falhou:', err);
+      log.erro('comando_falhou', { comando: comando.tipo, err });
       return 'Não consegui consultar isso agora. Tente de novo em instantes.';
     });
     await enviarTexto(telefone, resposta);
@@ -188,7 +192,7 @@ export async function processarInbound(
         canal: 'whatsapp',
         autorizadoId: autorizado.id,
       }).catch((err) => {
-        console.error('[inbound] assistente falhou:', err);
+        log.erro('assistente_falhou', { err });
         return null;
       });
 
@@ -294,7 +298,7 @@ async function resolverPendencia(ctx: ContextoResolucao): Promise<ResultadoInbou
       // O caso real aqui é `dados_incompletos`: o cliente confirmou, mas a
       // extração não tinha valor ou obra. Avisamos em vez de silenciar —
       // senão ele acha que lançou e não lançou.
-      console.warn('[inbound] confirmação via WhatsApp não gerou pagamento:', resultado.codigo);
+      log.aviso('confirmacao_sem_pagamento', { codigo: resultado.codigo });
       await enviarTexto(telefone, RESPOSTAS.confirmadoSemPagamento);
       return { acao: 'confirmou_pendencia', detalhe: resultado.codigo };
     }
@@ -359,7 +363,7 @@ async function gravarMensagem(args: ArgsGravar): Promise<string | null> {
         .maybeSingle();
       return vencedor?.id ?? null;
     }
-    console.error('[inbound] falha ao gravar mensagem:', error);
+    log.erro('gravar_mensagem_falhou', { erro: error });
     return null;
   }
 
@@ -389,7 +393,7 @@ async function materializarMidia(
 
   const download = await baixarMidia(url);
   if (!download.ok) {
-    console.error(`[inbound] mídia não baixada (${download.motivo}):`, download.detalhe ?? '');
+    log.erro('midia_nao_baixada', { motivo: download.motivo, detalhe: download.detalhe });
     return { storagePath: null, mime: payload.media?.mimetype ?? null, transcricao: null };
   }
 
@@ -401,7 +405,7 @@ async function materializarMidia(
     if (resultado.ok) {
       transcricao = resultado.texto;
     } else if (resultado.motivo !== 'desativado') {
-      console.warn(`[inbound] transcrição falhou (${resultado.motivo}):`, resultado.detalhe ?? '');
+      log.aviso('transcricao_falhou', { motivo: resultado.motivo, detalhe: resultado.detalhe });
     }
   }
 
@@ -418,7 +422,7 @@ async function materializarMidia(
     await uploadDocumentBuffer(path, buffer, mime);
     return { storagePath: path, mime, transcricao };
   } catch (err) {
-    console.error('[inbound] upload da mídia falhou:', err instanceof Error ? err.message : err);
+    log.erro('upload_midia_falhou', { err });
     return { storagePath: null, mime, transcricao };
   }
 }
@@ -449,24 +453,17 @@ async function buscarAutorizado(
     .is('deleted_at', null);
 
   if (error) {
-    console.error('[inbound] falha ao consultar autorizados:', error.message);
+    log.erro('consultar_autorizados_falhou', { erro: error.message });
     return null;
   }
 
   if (!data || data.length === 0) {
-    console.warn(
-      '[inbound] nenhum número ativo em `autorizados` — toda mensagem será ignorada. ' +
-        'Cadastre a equipe em /config/autorizados.',
-    );
+    log.aviso('autorizados_vazio', {
+      dica: 'Nenhum número ativo em autorizados: toda mensagem será ignorada. Cadastre a equipe em /config/autorizados.',
+    });
     return null;
   }
 
   const encontrado = data.find((a) => normalizeTelefone(a.telefone_whats) === telefone);
   return encontrado ? { id: encontrado.id, nome: encontrado.nome } : null;
-}
-
-/** Telefone em log de produção fica mascarado (LGPD). */
-function mascarar(telefone: string): string {
-  if (telefone.length <= 4) return '***';
-  return `***${telefone.slice(-4)}`;
 }

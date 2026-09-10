@@ -1,10 +1,13 @@
 import 'server-only';
-import { NextResponse, type NextRequest } from 'next/server';
-import { createClient as createSbClient } from '@supabase/supabase-js';
+import { logger } from '@/lib/log';
 import type { Database } from '@nogma/db';
+import { createClient as createSbClient } from '@supabase/supabase-js';
+import { type NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+const log = logger('cron');
 
 /**
  * Cron sweeper: remove rows órfãs em `documentos` onde `storage_path='pending'`
@@ -47,7 +50,7 @@ export async function GET(request: NextRequest) {
   if (error) {
     // Finding M-5: detalhe do Postgres fica no log do servidor, não na
     // resposta HTTP — code/message de constraint são recon gratuito.
-    console.error('[cron/sweep-pending-documentos] delete falhou:', error);
+    log.erro('sweep_delete_falhou', { rota: 'cron/sweep-pending-documentos', erro: error });
     return NextResponse.json({ error: 'internal error' }, { status: 500 });
   }
 
@@ -56,7 +59,10 @@ export async function GET(request: NextRequest) {
   let rateLimitsPurgados = 0;
   const purge = await supabase.rpc('rate_limit_purge', { p_idade_horas: 24 });
   if (purge.error) {
-    console.error('[cron/sweep-pending-documentos] rate_limit_purge falhou:', purge.error);
+    log.erro('sweep_rate_limit_purge_falhou', {
+      rota: 'cron/sweep-pending-documentos',
+      erro: purge.error,
+    });
   } else {
     rateLimitsPurgados = purge.data ?? 0;
   }

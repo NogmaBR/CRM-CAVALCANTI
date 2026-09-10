@@ -1,8 +1,11 @@
 import 'server-only';
 import { executarAutomacoes } from '@/lib/automations/engine';
+import { logger } from '@/lib/log';
 import type { Database } from '@nogma/db';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Evento, NomeEvento, PayloadDe } from './tipos';
+
+const log = logger('eventos');
 
 /**
  * Barramento de eventos de domínio.
@@ -68,9 +71,6 @@ export async function emitir<E extends NomeEvento>(
     // Chegou aqui significa que o próprio engine quebrou, não uma regra — as
     // falhas de regra são capturadas lá dentro e viram linha de log. Ainda
     // assim não propagamos: quem emitiu estava criando um pagamento.
-    console.error(
-      `[eventos] engine falhou ao processar "${nome}":`,
-      err instanceof Error ? err.message : err,
-    );
+    log.erro('engine_falhou', { evento: nome, err });
   }
 }

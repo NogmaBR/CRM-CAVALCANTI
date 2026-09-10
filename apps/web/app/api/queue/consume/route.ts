@@ -1,4 +1,6 @@
 import 'server-only';
+import { randomUUID } from 'node:crypto';
+import { comContexto, logger } from '@/lib/log';
 import { consumirFila } from '@/lib/queue/consumidor';
 import { metricas } from '@/lib/queue/fila';
 import { HANDLERS, filasComHandler } from '@/lib/queue/handlers';
@@ -9,6 +11,8 @@ import { type NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+const log = logger('fila');
 
 /**
  * Drena as filas.
@@ -66,6 +70,10 @@ export async function GET(request: NextRequest) {
   const inicio = Date.now();
   const lotes = [];
 
+  // Cada invocação do consumidor ganha um id: é o que agrupa "este lote" no
+  // log quando o `pg_cron` chama a rota a cada minuto.
+  const invocacao = randomUUID();
+
   for (const fila of alvo) {
     const handler = HANDLERS[fila];
     if (!handler) continue;
@@ -75,14 +83,16 @@ export async function GET(request: NextRequest) {
       // o tipo do payload ao ser indexado por uma variável. A ligação é real —
       // o registro é tipado por fila — só não sobrevive à indexação dinâmica.
       lotes.push(
-        await consumirFila(supabase, fila, handler as Parameters<typeof consumirFila>[2], qtd),
+        await comContexto({ invocacao }, () =>
+          consumirFila(supabase, fila, handler as Parameters<typeof consumirFila>[2], qtd),
+        ),
       );
     } catch (err) {
       // Falha aqui é da leitura da fila, não de uma mensagem — as de mensagem
       // são tratadas dentro do consumidor. Uma fila que não abre não pode
       // impedir as outras de serem drenadas.
       const detalhe = err instanceof Error ? err.message : String(err);
-      console.error(`[fila:${fila}] não consegui drenar:`, detalhe);
+      log.erro('drenar_falhou', { invocacao, fila, detalhe });
       lotes.push({ fila, erro: detalhe });
     }
   }
@@ -94,7 +104,7 @@ export async function GET(request: NextRequest) {
   try {
     filas = await metricas(supabase);
   } catch (err) {
-    console.error('[fila] métricas indisponíveis:', err instanceof Error ? err.message : err);
+    log.erro('metricas_indisponiveis', { invocacao, err });
   }
 
   return NextResponse.json({

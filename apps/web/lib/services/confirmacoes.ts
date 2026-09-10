@@ -1,7 +1,10 @@
 import 'server-only';
-import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '@nogma/db';
 import type { DadosExtraidos } from '@/lib/data/pendentes';
+import { logger } from '@/lib/log';
+import type { Database } from '@nogma/db';
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+const log = logger('confirmacoes');
 
 /**
  * Resolução de uma confirmação pendente — o núcleo do fluxo do briefing.
@@ -166,7 +169,7 @@ async function obterOuCriarPagamento(
         .maybeSingle();
       if (vencedor) return { ok: true, id: vencedor.id };
     }
-    console.error('[confirmacoes] insert de pagamento falhou:', error);
+    log.erro('insert_pagamento_falhou', { mensagemId, erro: error });
     return {
       ok: false,
       codigo: 'erro_insert',
@@ -252,7 +255,7 @@ export async function buscarConfirmacaoAberta(
     .limit(1);
 
   if (error) {
-    console.error('[confirmacoes] busca de pendência aberta falhou:', error);
+    log.erro('buscar_pendencia_falhou', { erro: error });
     return null;
   }
 

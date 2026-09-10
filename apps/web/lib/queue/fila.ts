@@ -1,7 +1,10 @@
 import 'server-only';
+import { logger } from '@/lib/log';
 import type { Database } from '@nogma/db';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { type JobLido, type NomeFila, type PayloadDe, VISIBILITY_TIMEOUT } from './tipos';
+
+const log = logger('fila');
 
 /**
  * Acesso às filas.
@@ -120,7 +123,7 @@ export async function concluir(supabase: Client, fila: NomeFila, msgId: number):
     // que só é seguro porque os handlers são idempotentes. Registrar alto,
     // porém: isso vira trabalho repetido, e trabalho repetido em silêncio é
     // como uma fila entope sem ninguém entender por quê.
-    console.error(`[fila:${fila}] não consegui concluir a msg ${msgId}: ${error.message}`);
+    log.erro('concluir_falhou', { fila, msgId, erro: error.message });
   }
 }
 
@@ -134,7 +137,7 @@ export async function concluir(supabase: Client, fila: NomeFila, msgId: number):
 export async function arquivar(supabase: Client, fila: NomeFila, msgId: number): Promise<void> {
   const { error } = await supabase.rpc('fila_arquivar', { p_fila: fila, p_msg_id: msgId });
   if (error) {
-    console.error(`[fila:${fila}] não consegui arquivar a msg ${msgId}: ${error.message}`);
+    log.erro('arquivar_falhou', { fila, msgId, erro: error.message });
   }
 }
 
