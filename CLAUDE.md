@@ -256,6 +256,7 @@ Verificado **em produção**, não por leitura de config:
 |---|---|---|
 | **#6** `feat/painel-automacoes` | Tela `/config/automacoes`: ligar/desligar, ajustar parâmetros, botão "Ensaiar sem agir" e histórico de cada avaliação. Sem ela, ligar regra exige SQL no console. | **Sim.** Aditivo, nenhum caminho existente muda |
 | **#7** `feat/emitir-eventos` | `emitir()` ganha chamadores em pagamento/documento/confirmação. Tira `lib/events/` de código morto. | **Não antes de 16/09.** Muda caminho em produção |
+| **#8** `feat/fila-pgmq` | Fila `pgmq`, consumidor com teto de tentativas, `/api/queue/consume`. Metade de infraestrutura da Fase 3. | **Sim.** Aditivo e inerte: webhook segue síncrono, nenhum cron agendado |
 
 O PR #7 também corrigiu um erro de desenho que só apareceu ao fiar: `emitir`
 recebia o cliente Supabase do chamador, mas `automation_executions` não tem
@@ -273,6 +274,11 @@ sozinho e o parâmetro sumiu: não há como errar porque não há o que passar.
 
 `pg_cron` 1.6.4, `pg_net` 0.20.4, `pgvector` 0.8.2 e `pgmq` 1.5.1
 **instaladas** em 2026-09-10 e verificadas no catálogo.
+
+**Quatro filas criadas** (`whatsapp_inbound`, `midia`, `ia_classificacao`,
+`whatsapp_outbound`), vazias, com wrappers `fila_*` em `public` — o PostgREST
+não expõe o schema `pgmq`, então o app fala com cinco funções e uma whitelist.
+Só `service_role` tem execute.
 A extensão `http` foi deixada de fora de propósito: ela é síncrona e segura a
 conexão do pool; o `pg_net` faz o mesmo de forma assíncrona.
 
