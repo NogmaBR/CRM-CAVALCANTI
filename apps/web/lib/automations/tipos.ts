@@ -48,6 +48,18 @@ export interface Automacao {
    */
   apenasAgendada?: boolean;
 
+  /**
+   * A ação sai do sistema e alcança alguém de fora — manda WhatsApp, e-mail,
+   * chama API de terceiro.
+   *
+   * Existe para o painel poder avisar antes de ligar. É declarado e não
+   * inferido de `apenasAgendada` porque as duas coisas são diferentes: uma
+   * regra pode ser lenta sem falar com ninguém (uma varredura pesada), e uma
+   * regra rápida pode mandar mensagem. Confundir as duas faria o aviso
+   * aparecer na tela errada — ou, pior, não aparecer na certa.
+   */
+  efeitoExterno?: boolean;
+
   /** Valores default quando `automation_rules.config` estiver vazio. */
   configPadrao?: Record<string, unknown>;
 

@@ -306,102 +306,91 @@ O motor está em produção com **duas regras, ambas desligadas**:
 > **Conclusão: não ligue essa regra antes de (a) trocar os telefones dos
 > fornecedores pelos reais e (b) decidir o que fazer com o histórico.**
 
-## 3.2 — Ensaiar sem agir (o "Test workflow")
+## 3.2 — A tela: `/config/automacoes`
 
-O motor tem modo de simulação: avalia tudo, registra o que **teria** feito, e
-não manda nada.
+Tudo que vem a seguir se faz por **<https://crm-cavalcanti.vercel.app/config/automacoes>**,
+sem tocar em SQL. A tela mostra:
 
-```bash
-node --env-file=.env.local -e "fetch('https://crm-cavalcanti.vercel.app/api/cron/automacoes?simular=true',{headers:{Authorization:'Bearer '+process.env.CRON_SECRET}}).then(r=>r.text()).then(console.log)"
-```
+- cada automação, se está **ligada**, quando roda e se **envia mensagem para fora**;
+- os **parâmetros** de cada uma, editáveis ali mesmo (é o que se ajusta sem deploy);
+- o **histórico**, com uma linha por avaliação — inclusive as que **não** agiram, com o motivo.
 
-Enquanto as regras estiverem desligadas, a resposta é `{"ok":true,...,"regras":[]}`.
-Depois de ligar alguma, ela aparece nessa lista com quantas entidades avaliou.
+> Se a tela ainda não existir no seu ambiente, ela veio no PR do painel de
+> automações. Enquanto ele não estiver mergeado e deployado, use os comandos SQL
+> que estão no fim de cada passo como alternativa.
 
-Para ver o que a simulação registrou:
+### Ensaiar sem agir
 
-```sql
-SELECT regra_chave, status, motivo, created_at
-FROM automation_executions ORDER BY created_at DESC LIMIT 20;
-```
+Botão **"Ensaiar sem agir"**, no topo da tela. É o "Test workflow" do n8n:
+avalia todas as regras ligadas, registra o que **teria** feito, e não manda
+nada para ninguém. O resultado aparece no histórico como **Ensaio**.
+
+Faça isso antes de qualquer coisa. É a única forma de ver para quem uma
+cobrança iria **antes** de ela ir.
 
 ## 3.3 — Ligar a regra inócua primeiro
 
-Comece pela de orçamento: ela não manda nada para ninguém, só escreve log. Serve
-para você ver o motor funcionando sem risco.
+Comece por **"Registra alerta quando o gasto de uma obra passa do limiar"**.
+Ela não manda nada para ninguém — só escreve no histórico. Serve para você ver
+o motor funcionando sem risco nenhum.
 
-No **SQL Editor do Supabase**:
+1. Na linha dela, clique em **Ligar**.
+2. Clique em **Ensaiar sem agir**.
+3. Olhe o histórico.
 
-```sql
-UPDATE automation_rules SET ativo = true WHERE chave = 'orcamento-em-risco';
-```
+Você vai ver uma linha por obra avaliada: **"Não se aplicava"** com o motivo
+("Consumo em 42%, abaixo do limiar de 80%"), ou **"Executada"** para as que
+passaram do limiar.
 
-Agora rode a simulação do passo 3.2 e depois a execução real (mesmo comando,
-**sem** o `?simular=true`). Confira o log:
+**Toda avaliação vira registro, inclusive as que não fizeram nada.** É de
+propósito: quando alguém perguntar "por que não avisou daquela obra?", a
+resposta está na coluna Motivo. Sem isso, a pergunta não teria resposta em
+lugar nenhum.
 
-```sql
-SELECT regra_chave, status, motivo FROM automation_executions
-WHERE regra_chave = 'orcamento-em-risco' ORDER BY created_at DESC LIMIT 10;
-```
+Para mudar o limiar, edite o campo de parâmetros na própria linha
+(`{"limiar_percentual": 90}`) e clique em **Salvar**. Não precisa de deploy.
 
-Você vai ver uma linha por obra avaliada — `pulada` com o motivo
-("Consumo em 42%, abaixo do limiar de 80%") ou `sucesso` para as que passaram.
-
-**Toda avaliação vira log, inclusive as puladas.** É de propósito: quando
-alguém perguntar "por que não avisou daquela obra?", a resposta está ali.
-
-Para ajustar o limiar sem precisar de deploy:
-
-```sql
-UPDATE automation_rules SET config = '{"limiar_percentual": 90}'::jsonb
-WHERE chave = 'orcamento-em-risco';
-```
+> Pelo SQL, se preferir: `UPDATE automation_rules SET ativo = true WHERE chave = 'orcamento-em-risco';`
 
 ## 3.4 — Ligar a cobrança, quando for a hora
 
-Só depois de resolver o que está na caixa vermelha do 3.1.
+Só depois de resolver o que está na caixa vermelha do 3.1 — os telefones falsos
+e o histórico sem documento.
 
-**Primeiro** aumente o prazo, para a regra não varrer o histórico inteiro. Com
-`dias_sem_documento` alto o suficiente, ela ignora os pagamentos antigos e só
-pega os novos:
+**Primeiro** ponha um freio de mão. Na linha da cobrança, edite os parâmetros:
 
-```sql
-UPDATE automation_rules
-SET config = '{"dias_sem_documento": 7, "limite_por_rodada": 3}'::jsonb
-WHERE chave = 'cobrar-documento-fornecedor';
+```json
+{"dias_sem_documento": 7, "limite_por_rodada": 3}
 ```
 
-`limite_por_rodada: 3` é um freio de mão para o primeiro dia: no máximo três
-mensagens, para você ver o resultado antes de soltar o volume todo. Depois que
-confiar, volte para 25.
+`limite_por_rodada: 3` significa no máximo três mensagens por dia. É para você
+ver o resultado antes de soltar o volume todo. Depois que confiar, volte para 25.
 
-**Depois** ensaie, sem ligar:
+**Depois** clique em **Ligar** e, em seguida, em **Ensaiar sem agir**.
 
-```sql
-UPDATE automation_rules SET ativo = true WHERE chave = 'cobrar-documento-fornecedor';
-```
+O histórico vai mostrar linhas **Ensaio** dizendo para quem ela mandaria e o
+que diria — com o telefone mascarado, que é como ele aparece no log.
 
-e rode a **simulação** (com `?simular=true`). Olhe o log:
+**Leia essa lista inteira antes de deixar rodar de verdade.** Se tiver algum
+fornecedor que não deveria ser cobrado, o conserto é o cadastro dele, não a regra.
 
-```sql
-SELECT status, motivo, entidade_id FROM automation_executions
-WHERE regra_chave = 'cobrar-documento-fornecedor' ORDER BY created_at DESC LIMIT 30;
-```
+Enquanto a regra estiver ligada e mandar mensagem para fora, a tela mostra um
+aviso vermelho permanente no topo. É de propósito.
 
-As linhas `simulada` mostram para quem ela mandaria e o que diria. **Leia essa
-lista inteira antes de deixar rodar de verdade.** Se tiver algum fornecedor que
-não deveria ser cobrado, o conserto é o telefone dele no cadastro, não a regra.
+> Pelo SQL: `UPDATE automation_rules SET config = '{"dias_sem_documento": 7, "limite_por_rodada": 3}'::jsonb, ativo = true WHERE chave = 'cobrar-documento-fornecedor';`
 
 ## 3.5 — Como desligar tudo, rápido
 
-Se algo sair errado, uma linha resolve:
+Na tela, clique em **Desligar** em cada regra ligada. A partir daí o motor não
+age mais — nem no cron, nem em evento — e nada precisa de deploy.
+
+Pelo SQL, se a tela estiver fora do ar:
 
 ```sql
 UPDATE automation_rules SET ativo = false;
 ```
 
-A partir daí o motor não age mais — nem no cron, nem em evento. Nada precisa de
-deploy, e o log do que já aconteceu continua lá para investigar.
+O histórico do que já aconteceu continua lá para investigar.
 
 ---
 
@@ -417,7 +406,7 @@ Marque só o que você **conferiu**, não o que você fez.
 - [ ] Webhook da UAZAPI apontado, com HMAC — e `test-webhook-uazapi.mjs` devolvendo 200
 - [ ] Equipe cadastrada em `/config/autorizados`, com os números certos
 - [ ] Teste com celular real: foto → bot pergunta → "SIM" → lançamento no painel
-- [ ] `orcamento-em-risco` ligada e com log aparecendo
+- [ ] `orcamento-em-risco` ligada em `/config/automacoes` e com histórico aparecendo
 - [ ] `cobrar-documento-fornecedor` **só depois** de resolver o histórico e os telefones
 
 ---

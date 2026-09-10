@@ -1,6 +1,7 @@
 import { TopBar } from '@/components/layout/topbar';
 import { createClient } from '@/lib/supabase/server';
 import {
+  Bot,
   MessageCircle,
   ScrollText,
   ShieldCheck,
@@ -52,6 +53,13 @@ const OPERACAO: Atalho[] = [
     label: 'Categorias',
     hint: 'Contas contábeis usadas para classificar os pagamentos.',
     icon: Tag,
+    admin: true,
+  },
+  {
+    href: '/config/automacoes',
+    label: 'Automações',
+    hint: 'O que o sistema faz sozinho: cobrança de nota, alerta de orçamento. Com histórico de cada decisão.',
+    icon: Bot,
     admin: true,
   },
 ];
