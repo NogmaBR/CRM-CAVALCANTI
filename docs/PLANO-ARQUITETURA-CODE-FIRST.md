@@ -402,18 +402,139 @@ duplas, o bloco de pergunta livre é invisível e o WhatsApp segue como sempre.
 
 ---
 
-### FASE 5 — Infraestrutura e operação (2 semanas)
+### FASE 5 — Operação e confiança (1 a 2 semanas) *(reescrita em 2026-09-10)*
 
-- Docker Compose: web, workers, redis, monitoramento
-- Caddy com TLS automático
-- Cloudflare: DNS, WAF, subdomínios por serviço
-- GitHub Actions: lint → testes → build → imagem → deploy
-- `/health`, `/ready`, `/metrics` em cada serviço
-- Logs estruturados e alerta quando job falha ou worker cai
-- Backup automatizado e **restore testado** — backup não testado não é backup
+> A versão anterior desta fase previa Docker Compose, Caddy com TLS, Redis e uma VPS.
+> **A decisão de hospedagem eliminou os quatro** (ver FASE 0): a Vercel faz TLS e
+> deploy, e a fila é `pgmq`. O que sobra não é menos importante — é outra coisa.
+>
+> Sem VPS, o problema deixa de ser "como subir a infraestrutura" e passa a ser
+> **"como saber que algo parou"**. Hoje o sistema tem várias peças que falham em
+> silêncio: automação que não dispara, fila que não é drenada, indexação que para.
+> Todas registram `console.error` num log que ninguém lê.
 
-**Pronto quando:** um deploy inteiro sair de um merge na `main`, sem passo manual, e o
-alerta chegar antes de o usuário perceber.
+---
+
+#### 🔴 5.0 — Backup, e a descoberta que move isto para o topo
+
+Verificado em 2026-09-10 pela API do Supabase:
+
+```
+pitr_enabled: false      backups listados: 0
+```
+
+**Os dados do cliente não têm cópia que eu tenha conseguido verificar.** São 10 obras,
+8 fornecedores e 80 pagamentos — e, a partir de 16/09, lançamentos reais entrando por
+WhatsApp todo dia.
+
+O plano de graça da Supabase faz backup diário, mas não expõe PITR nem lista os arquivos
+por API. Isso significa que ninguém confirmou que existe backup **nem que ele restaura**.
+
+- [ ] Confirmar no painel da Supabase o que existe de backup hoje, e a retenção
+- [ ] Se o plano permitir, **ligar PITR**
+- [ ] Um dump semanal para fora da Supabase (`pg_dump` agendado, guardado noutro lugar) —
+      backup no mesmo fornecedor do banco protege contra erro humano, não contra perda
+      do fornecedor
+- [ ] **Restaurar num projeto descartável e conferir as contagens.** Backup não testado
+      não é backup, e é a única linha desta fase que não admite "provavelmente funciona"
+
+**Pronto quando:** existir um restore feito, com data, e as contagens conferidas contra
+produção.
+
+---
+
+#### 🔴 5.1 — Saber que parou
+
+O sistema tem quatro relógios que podem parar sem barulho:
+
+| Peça | Como falha em silêncio |
+|---|---|
+| `pg_cron` (2 jobs) | Job desativado ou erro no `pg_net` — a fila para de ser drenada |
+| Automações | Regra falha três vezes e vira linha no log que ninguém abre |
+| Fila `pgmq` | Mensagem arquivada na dead-letter sem ninguém olhar |
+| Indexação | Embedding sem chave, ou chave expirada — a busca simplesmente não acha |
+
+- [ ] `/api/health` — checagem funda, protegida por segredo: banco responde, `cron.job`
+      tem os jobs ativos e rodaram na última hora, nenhuma fila com mensagem parada há
+      mais de 15 min, `automation_executions` sem `falha` recente, integrações
+      configuradas. Devolve 200 ou 503 com o motivo.
+- [ ] Um `pg_cron` diário que chama o `/api/health` e, se vier 503, **manda WhatsApp para
+      o gestor** — usando a fila `whatsapp_outbound` que já existe
+- [ ] Alerta específico para dead-letter: mensagem arquivada é sempre digna de nota
+
+> **Por que WhatsApp e não e-mail:** o cliente vive no WhatsApp — é a premissa do
+> produto inteiro. Um alerta por e-mail chegaria na mesma caixa que ninguém abre.
+
+**Pronto quando:** desligar um `cron.job` de propósito fizer chegar um WhatsApp em até
+24h, sem ninguém ter olhado nada.
+
+---
+
+#### 🟠 5.2 — Logs que dá para procurar
+
+Hoje tudo é `console.error('[automacao:x] falhou:', msg)` — texto livre. Procurar "todas
+as falhas da regra de cobrança na semana passada" é impossível.
+
+- [ ] Um helper de log estruturado (JSON: `nivel`, `area`, `evento`, `detalhe`, ids)
+- [ ] Trocar os `console.error` dos caminhos críticos: inbound, fila, automações, RAG
+- [ ] Correlacionar por id: a mesma mensagem do WhatsApp atravessa webhook, fila,
+      classificador e resposta — hoje não dá para seguir o rastro
+
+Sem servidor de log novo: a Vercel já indexa o que sai em JSON.
+
+---
+
+#### 🟠 5.3 — CI que volta a servir
+
+O workflow de E2E falha desde sempre. O Node 22 foi corrigido em `0dce4d5`, mas ele
+agora morre em "Wait for Vercel Preview" e, atrás disso, na Fase 15 nunca provisionada.
+
+Duas saídas, e a escolha é de custo:
+
+| Opção | O que envolve |
+|---|---|
+| **Provisionar staging** | Um segundo projeto Supabase + secrets no GitHub. O E2E roda de verdade contra preview |
+| **Trocar o E2E por testes de rota** | Sem browser e sem staging: exercitar as rotas com service-role num schema descartável. Cobre menos, roda sempre |
+
+- [ ] Decidir qual
+- [ ] Fazer o CI ficar **verde**, porque check vermelho permanente treina todo mundo a
+      ignorar check
+
+---
+
+#### 🟡 5.4 — Cloudflare, e o que ela resolve
+
+A decisão da FASE 0 é DNS na Cloudflare. Vale fazer junto:
+
+- [ ] DNS apontando para a Vercel, com domínio próprio (hoje é `crm-cavalcanti.vercel.app`)
+- [ ] Regra de WAF no `/api/webhooks/uazapi`: rate limit por IP como camada extra ao HMAC
+- [ ] **Não** esperar que a Cloudflare resolva latência de banco — ela acelera estático e
+      resolução de nome, não encurta os 7.600 km entre `iad1` e `sa-east-1`
+
+---
+
+#### 🟡 5.5 — A região, que é a dívida técnica mais cara
+
+Medido em produção: **394 ms de mediana para uma única consulta**, porque a função roda
+na Virgínia e o banco em São Paulo. A primeira indexação levou 24,7s por causa disso.
+
+- [ ] Migrar as funções para `gru1` — exige plano pago da Vercel, que já é necessário
+      para tornar o repositório privado. **São a mesma conversa, com dois motivos.**
+- [ ] Medir de novo depois, e registrar o antes e depois
+
+---
+
+### O que NÃO entra nesta fase
+
+- **Docker, Caddy, Redis, VPS** — eliminados pela decisão de hospedagem
+- **`/metrics` em formato Prometheus** — não há quem colete. Métrica sem coletor é
+  arquivo de texto
+- **Alerta por e-mail** — o canal do produto é WhatsApp
+
+---
+
+**Pronto quando:** um `cron.job` desligado de propósito virar um WhatsApp para o gestor,
+e existir um restore de backup feito e conferido.
 
 ---
 

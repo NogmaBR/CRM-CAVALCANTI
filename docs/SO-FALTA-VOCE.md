@@ -232,6 +232,33 @@ Nada aqui antes da entrega.
 
 ---
 
+# 🔴 URGENTE — Backup do banco
+
+Descoberto em 2026-09-10, consultando a API do Supabase:
+
+```
+pitr_enabled: false      backups listados: 0
+```
+
+**Os dados do cliente não têm cópia que eu tenha conseguido verificar.** São 10 obras,
+8 fornecedores e 80 pagamentos — e, a partir de 16/09, lançamentos reais todo dia.
+
+O plano de graça faz backup diário, mas não expõe isso por API. Então ninguém confirmou
+que existe, nem que restaura.
+
+### O que fazer
+
+1. Abra <https://supabase.com/dashboard/project/bbtejxugeeccywwhfpoc/database/backups>
+2. Veja o que existe e qual a retenção
+3. Se o plano permitir, **ligue o PITR**
+4. **Faça um restore de teste** num projeto descartável e confira as contagens contra
+   produção (10 obras, 80 pagamentos, R$ 453.500,00)
+
+> Backup não testado não é backup. É a única coisa nesta lista que não admite
+> "provavelmente funciona".
+
+---
+
 # 🟢 8. Quando a Vercel virar plano pago
 
 Dois motivos, não um:
