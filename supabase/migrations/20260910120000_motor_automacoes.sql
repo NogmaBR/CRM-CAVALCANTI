@@ -103,8 +103,18 @@ COMMENT ON TABLE automation_executions IS
 -- mensagens para o mesmo fornecedor — e quem recebe não perdoa.
 --
 -- Só vale para execuções que de fato agiram: 'pulada' e 'falha' podem repetir.
+--
+-- O dia é o dia UTC, e o `AT TIME ZONE 'UTC'` explícito não é enfeite: um
+-- `created_at::date` puro é STABLE, não IMMUTABLE (depende do TimeZone da
+-- sessão), e o Postgres recusa em índice — 42P17. Fixar a zona torna a
+-- expressão imutável.
+--
+-- UTC e não America/Sao_Paulo porque o outro lado da trava é JavaScript
+-- rodando no Vercel, e os dois precisam concordar sobre onde o dia começa.
+-- Na prática não muda nada: o cron dispara 12h UTC / 9h BRT, longe de
+-- qualquer borda.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_execucoes_idempotencia
-  ON automation_executions (regra_chave, entidade_id, (created_at::date))
+  ON automation_executions (regra_chave, entidade_id, ((created_at AT TIME ZONE 'UTC')::date))
   WHERE status = 'sucesso' AND entidade_id IS NOT NULL;
 
 -- ---------------------------------------------------------------------------

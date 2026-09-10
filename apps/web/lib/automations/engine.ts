@@ -247,14 +247,18 @@ async function carregarHabilitadas(
 /**
  * Esta regra já agiu com sucesso sobre esta entidade hoje?
  *
- * A janela é o dia corrente, casando com o índice único parcial da migration.
+ * A janela é o dia corrente **em UTC**, casando com o índice único parcial da
+ * migration. UTC explícito, e não a meia-noite local: em produção o runtime é
+ * UTC, mas na máquina de quem desenvolve é BRT, e aí a trava do JS e a do
+ * índice discordariam em três horas por dia.
+ *
  * Serve ao caso concreto de uma regra de cobrança diária: mesmo que o cron
  * rode duas vezes (retry, deploy no meio da execução), o fornecedor recebe
  * uma mensagem só.
  */
 async function jaAgiuHoje(supabase: Client, chave: string, entidadeId: string): Promise<boolean> {
   const inicioDoDia = new Date();
-  inicioDoDia.setHours(0, 0, 0, 0);
+  inicioDoDia.setUTCHours(0, 0, 0, 0);
 
   const { count, error } = await supabase
     .from('automation_executions')

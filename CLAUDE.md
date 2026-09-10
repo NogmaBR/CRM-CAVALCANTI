@@ -217,14 +217,22 @@ deliberada** e está comentada lá. Não reordene sem ler os comentários.
 
 **Tudo mergeado e no ar.** PR #3 (squash `b7086f8`) em produção desde 2026-09-10.
 
-**Em andamento, fora da `main`:** branch `feat/motor-automacoes` (Fase 2 do
+**Em revisão:** PR #5, branch `feat/motor-automacoes` (Fase 2 do
 `docs/PLANO-ARQUITETURA-CODE-FIRST.md`) — o "n8n de código": `lib/events/`,
 `lib/automations/`, tabelas `automation_rules`/`automation_executions`,
 `/api/cron/automacoes`, duas regras reais com teste. Verificado local (tsc 0,
-174 testes, build ok). **Não mergeado e migration não aplicada em produção**,
-por causa do congelamento até 16/09 — é aditivo, mas espera a entrega.
-`emitir()` de propósito ainda não tem chamador: fiar nos services existentes
-mudaria caminho em produção, e isso é depois do dia 16.
+174 testes, build ok).
+
+A **migration já está em produção** e verificada objeto a objeto: 2 tabelas com
+RLS, 4 índices, 3 policies, trigger, função de purga, e as 2 regras no seed com
+`ativo = false`. A trava de idempotência foi provada por escrita real (segunda
+execução no mesmo dia devolve 23505; `pulada` repete, como deve).
+
+**O merge não aconteceu**, por causa do congelamento até 16/09 — e `emitir()`
+de propósito ainda não tem chamador: fiar nos services existentes mudaria
+caminho em produção, e isso é depois do dia 16. Enquanto isso o motor está em
+prod inerte: as tabelas existem, as duas regras estão desligadas, e o cron só
+passa a existir quando o PR entrar.
 
 ✅ Fases 1–21, n8n documentado, 2 rodadas de auditoria (13 findings corrigidos)
 ✅ Bloco 1 — segurança: rate limit, guard SSRF, RLS de storage por ownership, vitest
@@ -295,6 +303,15 @@ mudaria caminho em produção, e isso é depois do dia 16.
 
 - **Não confie no "✓ Aplicado" do script de migration.** Consulte `pg_tables`,
   `pg_proc`, `pg_policies`, `information_schema.columns` e confirme objeto a objeto.
+- **`created_at::date` num índice é recusado** (`42P17: functions in index expression
+  must be marked IMMUTABLE`). O cast de `timestamptz` para `date` depende do TimeZone
+  da sessão, logo é STABLE. Fixe a zona: `((created_at AT TIME ZONE 'UTC')::date)`.
+  E aí lembre do outro lado: se houver JS calculando a mesma janela, ele tem que usar
+  `setUTCHours`, não `setHours` — em produção o runtime é UTC, na sua máquina é BRT,
+  e as duas travas discordariam em três horas por dia sem ninguém notar.
+- **A Management API roda a migration inteira numa transação.** Quando uma statement
+  no meio falha, nada fica pela metade — confirmei consultando o catálogo depois de
+  um erro. Ainda assim, verifique: a garantia é da API, não do script.
 - **`ALTER TYPE ... ADD VALUE`** não pode ter o valor novo usado na mesma transação.
   As migrations daqui já são escritas para isso — mantenha o padrão.
 
