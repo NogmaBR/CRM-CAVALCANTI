@@ -153,7 +153,7 @@ Rode os três antes de dizer que algo está pronto:
 
 ```bash
 pnpm --filter web typecheck          # tsc --noEmit
-pnpm --filter web exec vitest run    # 159 testes, 7 arquivos
+pnpm --filter web exec vitest run    # 174 testes, 8 arquivos (Vitest 4)
 pnpm --filter web build              # next build
 ```
 
@@ -217,22 +217,33 @@ deliberada** e está comentada lá. Não reordene sem ler os comentários.
 
 **Tudo mergeado e no ar.** PR #3 (squash `b7086f8`) em produção desde 2026-09-10.
 
-**Em revisão:** PR #5, branch `feat/motor-automacoes` (Fase 2 do
-`docs/PLANO-ARQUITETURA-CODE-FIRST.md`) — o "n8n de código": `lib/events/`,
-`lib/automations/`, tabelas `automation_rules`/`automation_executions`,
-`/api/cron/automacoes`, duas regras reais com teste. Verificado local (tsc 0,
-174 testes, build ok).
+**Motor de automações (Fase 2) está em produção.** PR #5 (squash `1656257`)
+mergeado em 2026-09-10, junto com o PR #4 (Vitest 3 → 4, suíte passa igual).
 
-A **migration já está em produção** e verificada objeto a objeto: 2 tabelas com
-RLS, 4 índices, 3 policies, trigger, função de purga, e as 2 regras no seed com
-`ativo = false`. A trava de idempotência foi provada por escrita real (segunda
-execução no mesmo dia devolve 23505; `pulada` repete, como deve).
+O que existe: `lib/events/` (barramento tipado), `lib/automations/` (engine,
+registry, ações, 2 regras), `automation_rules`/`automation_executions`, e
+`/api/cron/automacoes` rodando às 12h UTC / 9h BRT.
 
-**O merge não aconteceu**, por causa do congelamento até 16/09 — e `emitir()`
-de propósito ainda não tem chamador: fiar nos services existentes mudaria
-caminho em produção, e isso é depois do dia 16. Enquanto isso o motor está em
-prod inerte: as tabelas existem, as duas regras estão desligadas, e o cron só
-passa a existir quando o PR entrar.
+Verificado **em produção**, não por leitura de config:
+- Migration aplicada e conferida objeto a objeto (2 tabelas com RLS, 4 índices,
+  3 policies, trigger, função de purga, 2 regras no seed).
+- Idempotência provada por escrita real: 2ª `sucesso` na mesma regra+entidade+dia
+  devolve 23505; duas `pulada` entram (o índice é parcial).
+- Endpoint do cron: 401 sem bearer, 401 com bearer errado, 200 com o certo.
+- Os dois crons registrados no deployment de produção.
+
+**O motor está ligado mas inerte, de propósito:** as duas regras estão com
+`ativo = false`. Ligar é um UPDATE em `automation_rules` — e a de cobrança manda
+WhatsApp, que ainda não tem credencial.
+
+**`emitir()` continua sem chamador.** Fiar nos services existentes muda caminho
+em produção, e o congelamento até 16/09 vale. É o primeiro passo depois da
+entrega.
+
+**Ainda não provado:** uma regra LIGADA rodando ponta a ponta em produção. Duas
+razões — o banco não tem nenhuma obra nem pagamento (dado do cliente é o item 1
+da Fase 1), então a varredura não acharia nada; e ligar regra em prod é escrita
+de configuração, que o classificador barra e é decisão do usuário.
 
 ✅ Fases 1–21, n8n documentado, 2 rodadas de auditoria (13 findings corrigidos)
 ✅ Bloco 1 — segurança: rate limit, guard SSRF, RLS de storage por ownership, vitest
