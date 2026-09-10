@@ -81,6 +81,38 @@ export async function POST(request: NextRequest) {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
+  // -------------------------------------------------------------------------
+  // Assíncrono, quando ligado
+  // -------------------------------------------------------------------------
+  // Com `FILA_WHATSAPP=true`, o webhook para de processar e passa a só
+  // enfileirar. É a razão de existir da Fase 3: hoje download de mídia,
+  // transcrição e chamada de LLM rodam aqui dentro, e se qualquer um demorar o
+  // provider dá timeout e reenvia — a idempotência segura a duplicata, mas o
+  // trabalho é refeito do zero.
+  //
+  // A chave existe porque isto muda o coração do produto. Mergear com ela
+  // desligada deixa o código pronto, testado e em produção sem mudar
+  // comportamento nenhum; ligar depois é uma variável de ambiente e um
+  // redeploy, sem tocar em código.
+  //
+  // Quando desligada, o caminho abaixo é exatamente o de sempre.
+  if (process.env.FILA_WHATSAPP === 'true') {
+    try {
+      const { enfileirar } = await import('@/lib/queue/fila');
+      const msgId = await enfileirar(supabase, 'whatsapp_inbound', { payload });
+      return NextResponse.json({ ok: true, acao: 'enfileirada', jobId: msgId });
+    } catch (err) {
+      // Não conseguiu enfileirar: cai para o processamento síncrono em vez de
+      // perder a mensagem. Pior um webhook lento que uma nota fiscal que
+      // nunca chegou — e este é o único caminho em que a degradação vale mais
+      // que a consistência.
+      console.error(
+        '[webhook/uazapi] fila indisponível, processando na hora:',
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
   const resultado = await processarInbound(supabase, payload).catch((err) => {
     console.error('[webhook/uazapi] processamento falhou:', err);
     return {

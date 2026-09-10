@@ -2,6 +2,7 @@ import { TopBar } from '@/components/layout/topbar';
 import { createClient } from '@/lib/supabase/server';
 import {
   Bot,
+  Layers,
   MessageCircle,
   ScrollText,
   ShieldCheck,
@@ -83,6 +84,13 @@ const INTEGRACOES: Atalho[] = [
     label: 'Importar pagamentos',
     hint: 'Carga em massa a partir de planilha CSV.',
     icon: Upload,
+    admin: true,
+  },
+  {
+    href: '/config/filas',
+    label: 'Filas',
+    hint: 'O que está esperando para ser processado, e o que desistiu depois de três tentativas.',
+    icon: Layers,
     admin: true,
   },
 ];
