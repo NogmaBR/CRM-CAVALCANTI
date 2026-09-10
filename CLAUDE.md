@@ -393,6 +393,20 @@ de configuração, que o classificador barra e é decisão do usuário.
 Secrets `BACKUP_DB_URL` e `BACKUP_PASSPHRASE` existem no repositório do GitHub. A
 frase está em `.env.local` e em mais lugar nenhum — sem ela os backups são ilegíveis.
 
+**PRs #13, #14, #15 mergeados em 2026-09-10 e auditados depois** (deploy READY, CI
+verde na `main`, health `problemas: []`, rotas, crons, filas, RLS, typecheck, 240
+testes). A auditoria gerou a migration `20260910260000_higiene_advisors.sql` (PR #16,
+**já aplicada**): advisors de segurança de 11 → 5. Os 5 restantes: `has_role`
+executável por anon/authenticated (**intencional**, a RLS depende), HIBP (exige
+Supabase Pro), e duas tabelas com RLS sem policy (`rate_limits`, intencional;
+`pagamentos.csv`, lixo do import manual do usuário — só ele apaga).
+
+**Existe uma tabela `public."pagamentos.csv"`** criada pelo import do painel. Não é
+o `pagamentos` de verdade. Não a use, não a indexe, não a conte.
+
+O classificador barrou apagar branches remotas e remover env vars na Vercel — as
+duas coisas estão como ação humana em `SO-FALTA-VOCE.md` §4.
+
 **Fase 6 (domínio de vendas) não foi iniciada de propósito.** É um produto novo
 (8–12 semanas) e depende de definição do cliente sobre o que ele vende; não há o
 que codar sem isso. Está como decisão em `docs/SO-FALTA-VOCE.md`.
