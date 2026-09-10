@@ -458,6 +458,11 @@ que codar sem isso. Está como decisão em `docs/SO-FALTA-VOCE.md`.
 - **`gh run download -D pasta/` cria uma subpasta com o nome do artifact** e põe o
   arquivo dentro. `find -name '*.enc' | head -1` devolve a pasta, não o arquivo — use
   `-type f`.
+- **Caminhos do App Router têm parênteses (`app/(app)/…`) e quebram qualquer linha de
+  shell sem aspas.** O primeiro `ci.yml` montava `biome check <lista>` numa string e
+  morreu com `syntax error near unexpected token '('` no PR #7. Lista de arquivos vai
+  em arquivo, uma por linha, e entra por `xargs -d '\n'`. Vale para `sed`, `grep -l`,
+  qualquer coisa que expanda `$VAR` com esses caminhos.
 
 ### Git e GitHub
 
