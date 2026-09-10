@@ -1,5 +1,11 @@
 # MANUAL PENDÊNCIAS — CRM Nogma-Cavalcanti
 
+> ⚠️ **SUPERADO.** Este documento é de 2026-09-08 e descreve um estado que não existe
+> mais (dizia "zero código faltando" antes do motor de automações, das filas e do RAG).
+>
+> **Use `docs/SO-FALTA-VOCE.md`**, que é o consolidado atual e verificado.
+> O texto abaixo fica como histórico.
+
 > **Único documento** com tudo que ainda precisa ser feito **fora do VS Code** pro projeto ficar 100% conectado e operacional em produção. Consolidação de todos os handoffs de fase + auditorias.
 >
 > **Estado do código:** ✅ 21 fases + integração n8n + 2 rodadas de auditoria de segurança shipadas (`a8feb5d` em prod). Zero código faltando.

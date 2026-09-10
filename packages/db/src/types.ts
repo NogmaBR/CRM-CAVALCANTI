@@ -140,6 +140,174 @@ export type Database = {
         }
         Relationships: []
       }
+      knowledge_documents: {
+        Row: {
+          id: string
+          origem: string
+          origem_id: string
+          obra_id: string | null
+          titulo: string
+          conteudo: string
+          hash_conteudo: string
+          indexado_em: string | null
+          created_at: string | null
+          updated_at: string | null
+          deleted_at: string | null
+        }
+        Insert: {
+          id?: string
+          origem: string
+          origem_id: string
+          obra_id?: string | null
+          titulo: string
+          conteudo: string
+          hash_conteudo: string
+          indexado_em?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+          deleted_at?: string | null
+        }
+        Update: {
+          id?: string
+          origem?: string
+          origem_id?: string
+          obra_id?: string | null
+          titulo?: string
+          conteudo?: string
+          hash_conteudo?: string
+          indexado_em?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+          deleted_at?: string | null
+        }
+        Relationships: []
+      }
+      knowledge_chunks: {
+        Row: {
+          id: string
+          documento_id: string
+          ordem: number
+          conteudo: string
+          embedding: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          documento_id: string
+          ordem: number
+          conteudo: string
+          embedding?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          documento_id?: string
+          ordem?: number
+          conteudo?: string
+          embedding?: string | null
+          created_at?: string | null
+        }
+        Relationships: []
+      }
+      ai_conversations: {
+        Row: {
+          id: string
+          canal: string
+          autorizado_id: string | null
+          user_id: string | null
+          obra_id: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          canal: string
+          autorizado_id?: string | null
+          user_id?: string | null
+          obra_id?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          canal?: string
+          autorizado_id?: string | null
+          user_id?: string | null
+          obra_id?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      ai_messages: {
+        Row: {
+          id: string
+          conversation_id: string
+          papel: string
+          conteudo: string
+          fontes: Json | null
+          tokens_entrada: number | null
+          tokens_saida: number | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          conversation_id: string
+          papel: string
+          conteudo: string
+          fontes?: Json | null
+          tokens_entrada?: number | null
+          tokens_saida?: number | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          conversation_id?: string
+          papel?: string
+          conteudo?: string
+          fontes?: Json | null
+          tokens_entrada?: number | null
+          tokens_saida?: number | null
+          created_at?: string | null
+        }
+        Relationships: []
+      }
+      ai_tool_calls: {
+        Row: {
+          id: string
+          message_id: string
+          ferramenta: string
+          argumentos: Json | null
+          resultado: Json | null
+          ok: boolean
+          erro: string | null
+          duracao_ms: number | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          message_id: string
+          ferramenta: string
+          argumentos?: Json | null
+          resultado?: Json | null
+          ok?: boolean
+          erro?: string | null
+          duracao_ms?: number | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          message_id?: string
+          ferramenta?: string
+          argumentos?: Json | null
+          resultado?: Json | null
+          ok?: boolean
+          erro?: string | null
+          duracao_ms?: number | null
+          created_at?: string | null
+        }
+        Relationships: []
+      }
       autorizados: {
         Row: {
           ativo: boolean | null
@@ -926,6 +1094,74 @@ export type Database = {
       purgar_automation_executions: {
         Args: { p_dias?: number }
         Returns: number
+      }
+      fila_enfileirar: {
+        Args: { p_fila: string; p_payload: Json; p_delay?: number }
+        Returns: number
+      }
+      fila_ler: {
+        Args: { p_fila: string; p_vt?: number; p_qtd?: number }
+        Returns: {
+          msg_id: number
+          read_ct: number
+          enqueued_at: string
+          payload: Json
+        }[]
+      }
+      fila_concluir: {
+        Args: { p_fila: string; p_msg_id: number }
+        Returns: boolean
+      }
+      fila_arquivar: {
+        Args: { p_fila: string; p_msg_id: number }
+        Returns: boolean
+      }
+      saude_sistema: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      alertar_se_doente: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      buscar_conhecimento: {
+        Args: {
+          p_embedding: string
+          p_limite?: number
+          p_obra_id?: string | null
+          p_similaridade_minima?: number
+        }
+        Returns: {
+          chunk_id: string
+          documento_id: string
+          origem: string
+          origem_id: string
+          obra_id: string | null
+          titulo: string
+          conteudo: string
+          similaridade: number
+        }[]
+      }
+      fila_arquivadas: {
+        Args: { p_limite?: number }
+        Returns: {
+          fila: string
+          msg_id: number
+          tentativas: number
+          enfileirado_em: string
+          arquivado_em: string
+          payload: Json
+        }[]
+      }
+      fila_metricas: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          fila: string
+          na_fila: number
+          visiveis: number
+          mais_antiga_seg: number | null
+          total_ja_enfileirado: number
+        }[]
       }
       registrar_acesso_compartilhamento: {
         Args: { p_token: string }

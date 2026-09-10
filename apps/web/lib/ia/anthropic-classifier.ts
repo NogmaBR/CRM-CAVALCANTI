@@ -1,4 +1,5 @@
 import 'server-only';
+import { logger } from '@/lib/log';
 import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 // `zod/v4`, e não `zod`: o helper `zodOutputFormat` do SDK exige os tipos do
@@ -6,6 +7,8 @@ import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 // em subpaths separados). Importar de 'zod' aqui compila em erro de tipo.
 import { z } from 'zod/v4';
 import type { Classifier, ClassifierInput, ClassifierOutput } from './classifier';
+
+const log = logger('classificador');
 
 /**
  * Classificador de mensagens de WhatsApp usando Claude.
@@ -131,9 +134,7 @@ export class AnthropicClassifier implements Classifier {
     if (!saida) {
       // Sem saída válida não há como distinguir "não é lançamento" de "o
       // modelo falhou" — devolvemos confiança zero pra cair em revisão humana.
-      console.error('[anthropic-classifier] resposta sem parsed_output', {
-        stop_reason: resposta.stop_reason,
-      });
+      log.erro('sem_parsed_output', { stop_reason: resposta.stop_reason });
       return {
         kind: 'nao_identificado',
         confidence: 0,

@@ -1,0 +1,105 @@
+# ============================================================
+# CI — verificação que roda SEMPRE e fica verde
+# ============================================================
+# É a resposta da Fase 5.3 à pergunta "qual CI vale a pena": esta. Roda os
+# três comandos que o CLAUDE.md §5 manda rodar antes de dizer que algo está
+# pronto — typecheck, testes unitários, build — mais o lint **só dos arquivos
+# que o PR tocou**.
+#
+# Por que lint só do que mudou: o Biome acusa ~450 erros pré-existentes em
+# ~325 arquivos (ordem de import, `role="status"`, etc). Lintar o repositório
+# inteiro deixaria o check vermelho para sempre — e check vermelho permanente
+# treina todo mundo a ignorar check. A regra do projeto já era "lint o que
+# você tocou"; aqui ela vira obrigatória.
+#
+# Não precisa de segredo nenhum. O build recebe placeholders para as
+# variáveis públicas do Supabase porque alguns módulos as leem no topo com
+# `!`; nenhuma página é pré-renderizada com dado real (todas são dinâmicas).
+# ============================================================
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    name: typecheck · testes · build · lint do diff
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Histórico completo: o lint do diff precisa comparar com a base.
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: "11"
+
+      # >= 22.13: o pnpm 11.7 recusa Node 20. Era a causa do E2E vermelho.
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        timeout-minutes: 5
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm --filter web typecheck
+
+      - name: Testes unitários (Vitest)
+        run: pnpm --filter web exec vitest run
+
+      - name: Build (next build)
+        run: pnpm --filter web build
+        env:
+          # Placeholders, não credenciais. O build não fala com o Supabase;
+          # só precisa que as variáveis existam para os módulos que as leem
+          # no carregamento.
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+
+      # ----------------------------------------------------------
+      # Lint só do que mudou.
+      #
+      # PR: diff contra a base do PR. Push na main: diff contra o commit
+      # anterior. Sem arquivo .ts/.tsx/.js/.mjs tocado, o passo pula.
+      # ----------------------------------------------------------
+      - name: Arquivos tocados
+        id: tocados
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="origin/${{ github.base_ref }}"
+            git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
+            RANGE="$(git merge-base "$BASE" HEAD)...HEAD"
+          else
+            RANGE="${{ github.event.before }}...${{ github.sha }}"
+          fi
+          echo "range: $RANGE"
+          ARQUIVOS=$(git diff --name-only --diff-filter=ACMR "$RANGE" -- '*.ts' '*.tsx' '*.js' '*.mjs' '*.json' \
+            | grep -v -E '^(apps/web/e2e/|.*\.d\.ts$|packages/db/src/types\.ts$)' \
+            | tr '\n' ' ' || true)
+          echo "arquivos=$ARQUIVOS" >> "$GITHUB_OUTPUT"
+          if [ -z "$ARQUIVOS" ]; then
+            echo "Nenhum arquivo lintável tocado."
+          else
+            echo "Vai lintar: $ARQUIVOS"
+          fi
+
+      - name: Lint (Biome) do que mudou
+        if: steps.tocados.outputs.arquivos != ''
+        run: ./node_modules/.bin/biome check ${{ steps.tocados.outputs.arquivos }}

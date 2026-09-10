@@ -63,10 +63,12 @@ não entrando.
 
 | Cenário | O que significa | Impacto no plano |
 |---|---|---|
-| **A. Expansão** | A Cavalcanti também vende o que constrói, e o CRM passa a cobrir os dois lados | As duas árvores convivem; `obras`↔`developments` viram a ponte. Fases 2-5 valem, mais uma fase de domínio |
+| **A. Expansão** ✅ **ESCOLHIDO** | A Cavalcanti também vende o que constrói, e o CRM passa a cobrir os dois lados | As duas árvores convivem; `obras`↔`developments` viram a ponte. Fases 2-5 valem, mais uma fase de domínio |
 | **B. Produto novo** | É outro CRM, para outro cliente/mercado | Repositório novo. O atual continua entregue e estável. Reaproveita padrões, não código |
 | **C. Pivô** | O CRM de obras vira CRM de vendas | O trabalho atual vira legado. Precisa combinar o que acontece com a entrega da Cavalcanti |
 | **D. Texto genérico** | A proposta veio de outro contexto e o domínio não é para valer | Descarta-se a lista de entidades; ficam só as fases de arquitetura |
+
+**Decidido em 2026-09-10: cenário A.** (O texto abaixo é de quando a decisão estava aberta.)
 
 **Não consigo escolher por você e não vou adivinhar.** As fases 2 a 5 abaixo valem em
 qualquer cenário, porque são infraestrutura, não domínio. A fase 6 depende da resposta.
@@ -150,8 +152,11 @@ vai valer. Só não precisa ser o primeiro passo.
 - `pgvector` **0.8.2 disponível**, não instalado — RAG é uma migration de distância
 - `pg_cron`, `pg_net`, `http` disponíveis, não instalados
 - Supabase em `sa-east-1`, PostgreSQL 17.6, `ACTIVE_HEALTHY`
-- 159 testes passando, typecheck limpo, build ok
-- O banco de produção está **sem dados reais** (0 obras, 0 fornecedores, 0 pagamentos)
+- 177 testes passando, typecheck limpo, build ok
+- O banco de produção **foi populado em 2026-09-10**: 10 obras, 8 fornecedores,
+  80 pagamentos (R$ 453.500,00), 9 categorias. Conferido obra a obra contra o
+  protótipo. Nenhum documento anexado ainda — os PDFs seguem no OneDrive, então
+  os 80 pagamentos contam como "sem nota" para efeito de automação
 
 ---
 
@@ -162,15 +167,105 @@ usuário além do que está marcado.
 
 ---
 
-### FASE 0 — Decidir (bloqueante, ~1 hora de conversa)
+### FASE 0 — ✅ DECIDIDA em 2026-09-10
 
-**Não é código.** Três decisões que mudam tudo o que vem depois:
+As três respostas, como o cliente decidiu:
 
-1. **Domínio** — cenário A, B, C ou D da §1
-2. **Hospedagem** — híbrida ou VPS completa
-3. **API** — manter Next.js ou introduzir NestJS
+#### 1. Domínio → **Cenário A, Expansão**
 
-**Pronto quando:** as três respostas estiverem escritas neste documento.
+A Cavalcanti também vende o que constrói. As duas árvores convivem e
+`obras` ↔ `empreendimentos` é a ponte.
+
+O que isso implica, concretamente:
+
+- **Nada do que existe é jogado fora.** Obras, fornecedores, pagamentos e o
+  fluxo do WhatsApp continuam sendo o produto entregue em 16/09.
+- **A Fase 6 passa a existir de verdade** — é ela que traz `leads`,
+  `corretores`, `unidades`, `propostas`, `vendas`, `contratos`.
+- **O catálogo de eventos já previu isso.** `lib/events/tipos.ts` declara
+  `EventosVendas` desde o primeiro commit do motor, sem emissor, exatamente
+  para o desenho não precisar mudar quando a decisão chegasse. Chegou, e não
+  precisa.
+- **A ponte não é renomear.** Uma obra é o que se constrói; um empreendimento
+  é o que se vende. Podem ser 1:1, mas também 1:N — as "NSIY 7 Casas" são uma
+  obra e sete unidades vendáveis. A modelagem tem que aguentar isso desde o
+  começo, e é a primeira coisa a desenhar na Fase 6.
+
+#### 2. Hospedagem → **Só Vercel, DNS na Cloudflare** *(revisado em 2026-09-10)*
+
+> A primeira resposta foi "híbrida, com workers numa VPS". Ao detalhar, o cliente
+> preferiu **não ter VPS nenhuma**: web na Vercel, DNS na Cloudflare. Esta seção
+> registra a decisão final e o que ela custa.
+
+Sem VPS não há processo vivo, e sem processo vivo **não há BullMQ** — ele precisa
+de um consumidor rodando para sempre. Mas isso não significa ficar sem fila.
+
+**A fila passa a morar no banco**, com três extensões já instaladas e verificadas:
+
+| Peça | Papel |
+|---|---|
+| `pgmq` 1.5.1 | Guarda a mensagem, entrega uma vez, esconde por N segundos (visibility timeout) e devolve à fila se ninguém confirmar |
+| `pg_cron` 1.6.4 | Acorda de minuto em minuto e pergunta se há o que fazer |
+| `pg_net` 0.20.4 | Chama uma rota da Vercel de forma assíncrona, sem segurar conexão |
+
+Testado neste banco antes de adotar: criar fila, enviar e ler com visibility
+timeout funcionam. `pgmq.send` tem variante com **delay**, o que cobre job
+adiado e backoff de retentativa.
+
+**O que se perde em relação a Redis + BullMQ:**
+
+- Painel de observação pronto (o do BullMQ vem de graça; aqui é uma tela nossa
+  sobre `pgmq.q_*` e `pgmq.a_*`, ou SQL)
+- Prioridade por job
+- Throughput de Redis — irrelevante nesta escala: são dezenas de mensagens por
+  dia, não milhares por segundo
+
+**O que se ganha:** zero servidor para administrar, atualizar, vigiar e pagar.
+Nada de SSL, uptime, backup ou worker que morre em silêncio às 3h da manhã.
+
+Para esta escala, a troca vale. Se um dia o volume justificar Redis, migrar de
+`pgmq` para BullMQ é trocar o adaptador de fila — não a arquitetura, porque o
+que enfileira e o que consome continuam sendo os mesmos serviços em `lib/`.
+
+> ⚠️ **Achado que esta decisão torna mais importante: as regiões não batem.**
+>
+> As funções da Vercel rodam em **`iad1` (Virgínia)** e o Supabase está em
+> **`sa-east-1` (São Paulo)**. Toda consulta do servidor atravessa ~7.600 km.
+>
+> Medido em produção em 2026-09-10, no `/api/cron/automacoes` com as regras
+> desligadas — o que é essencialmente **uma** consulta: `154, 392, 394, 461,
+> 900 ms`, mediana **394 ms**.
+>
+> Com tudo na Vercel, isso deixa de ser detalhe: cada página server-rendered
+> paga esse pedágio, várias vezes. Mudar a região das funções para `gru1`
+> (São Paulo) é configuração, mas **exige plano pago** — e o repositório já
+> depende de ir para o plano pago para virar privado. São a mesma conversa.
+>
+> Não confundir com o DNS na Cloudflare: Cloudflare acelera o que é estático e
+> a resolução de nome. Ela não encurta a distância entre a função e o banco.
+
+> **Adendo de 2026-09-10:** o cliente pediu para "usar a VPS da Cloudflare".
+> **A Cloudflare não vende VPS** — verificado na documentação oficial. O que
+> existe é Workers, Containers, Queues e Hyperdrive. A análise completa, o que
+> quebraria numa migração e o plano estão em **`docs/PLANO-CLOUDFLARE.md`**.
+>
+> Resumo: migrar resolveria a latência, mas **Vercel Pro + região `gru1`
+> resolve a mesma coisa em minutos**, contra 1–2 semanas e o risco de trocar a
+> plataforma de um sistema recém-entregue. A economia é de ~US$ 15/mês.
+> Decisão pendente, e nada disso antes de 16/09.
+
+#### 3. API → **Manter Next.js**
+
+Sem NestJS. O App Router já é o backend: route handlers, server actions com
+Zod, RLS no banco e tipos compartilhados. NestJS se pagaria com múltiplos
+consumidores ou time grande precisando de fronteiras rígidas; com o front como
+único consumidor, adicionaria superfície sem adicionar capacidade.
+
+Consequência prática para a Fase 3: a lógica de `lib/services/` sai para um
+pacote compartilhado que **o app e os workers importam**. Worker com fila é um
+processo Node comum consumindo a fila — não exige NestJS.
+
+Reavaliar quando aparecer o segundo consumidor.
 
 ---
 
@@ -229,42 +324,79 @@ ficar registrada em `automation_executions`.
 
 ---
 
-### FASE 3 — Filas e workers (2 a 3 semanas)
+### FASE 3 — Filas, sem sair da Vercel (1 a 2 semanas) *(revisado)*
 
-O ponto em que o serverless deixa de servir. **Esta fase existe por uma razão concreta:**
-hoje o webhook do UAZAPI faz download de mídia, transcrição e chamada de IA dentro do
-request HTTP. Se qualquer um demorar, o provider dá timeout e reenvia — e a
-idempotência que construí segura a duplicata, mas o trabalho é refeito.
+**Esta fase existe por uma razão concreta:** hoje o webhook do UAZAPI faz download de
+mídia, transcrição e chamada de IA dentro do request HTTP. Se qualquer um demorar, o
+provider dá timeout e reenvia — e a idempotência que construí segura a duplicata, mas o
+trabalho é refeito.
+
+A versão anterior desta fase previa Redis + BullMQ numa VPS. **A decisão de hospedagem
+mudou** (ver FASE 0): sem VPS, a fila é `pgmq` no próprio Postgres.
+
+> **Um entregável saiu da lista.** A versão anterior previa extrair
+> `lib/services/` para `packages/core/`, "importável pelo app e pelos workers".
+> Com a fila no Postgres e o consumidor sendo uma rota do próprio app, **o
+> worker é o app** — não há segundo processo com quem compartilhar código. A
+> extração viraria uma camada a manter sem ninguém do outro lado.
 
 **Entregáveis:**
 
-- Extrair `lib/services/` para `packages/core/`, importável pelo app e pelos workers
-- Processo worker separado (Node puro, sem framework)
-- Redis + BullMQ numa VPS pequena
-- Filas: `whatsapp-inbound`, `whatsapp-outbound`, `ia-classificacao`, `midia`,
-  `automacoes`, `relatorios`
-- Retry com backoff, dead-letter queue e painel de observação
-- O webhook passa a só validar HMAC, enfileirar e responder 200 em milissegundos
+- [x] Filas `pgmq`: `whatsapp_inbound`, `whatsapp_outbound`, `ia_classificacao`, `midia`
+- [x] Wrappers `fila_*` em `public`, com whitelist — o PostgREST não expõe o schema
+      `pgmq`, e em vez de expor tudo, expõem-se cinco funções
+- [x] `lib/queue/` — catálogo tipado, acesso e consumidor com teto de tentativas
+- [x] Rota `/api/queue/consume`, protegida por `CRON_SECRET` como os crons de hoje
+- [x] Retry por omissão (visibility timeout) e arquivo (`pgmq.archive`) como dead-letter
+- [x] Handler de `whatsapp_inbound` — é `processarInbound` inteiro
+- [x] O webhook enfileira e responde 200, atrás de `FILA_WHATSAPP=true`
+- [x] `pg_cron` chamando a rota via `pg_net`, **só quando há job na fila**
+- [x] `/config/filas` — métricas e dead-letter
+- [x] Segredos no Vault (`scripts/provisionar-vault.mjs`), fora do Git
+- [ ] **Ligar `FILA_WHATSAPP=true` em produção** — depois de 16/09
 
-**Pronto quando:** o webhook responder em <100ms com a mídia sendo baixada em
-background, e um job que falha três vezes aparecer numa DLQ visível.
+> **`midia` e `ia_classificacao` ficaram reservadas, sem handler.** Picar o fluxo
+> exigiria reordenar as etapas de `processarInbound`, e a transcrição do áudio
+> precisa estar pronta *antes* de decidir se a mensagem é um "SIM". O ganho da
+> fila não estava na granularidade — estava em tirar download, transcrição e
+> chamada de LLM de dentro do request do provider, e isso um job só entrega.
 
-**Risco:** médio. É a primeira infraestrutura fora da Vercel. Precisa de monitoramento
-desde o primeiro dia — worker que morre em silêncio é pior que erro visível.
+**Pronto quando:** com a chave ligada, o webhook responder em <100ms e o job
+aparecer sendo drenado em `/config/filas`.
+
+**Pronto quando:** o webhook responder em <100ms com a mídia sendo baixada depois, e um
+job que falha três vezes aparecer arquivado e visível numa tela.
+
+**Risco:** baixo, e menor que o da versão anterior — não há infraestrutura nova para
+administrar. O risco que sobra é de desenho: `pgmq` entrega *pelo menos uma vez*, então
+todo consumidor precisa ser idempotente. O motor de automações já é; os novos precisam
+nascer assim.
 
 ---
 
 ### FASE 4 — IA e RAG (3 a 4 semanas)
 
+> **O corpus mudou, e a razão é factual.** O plano previa "documento → parser →
+> chunking". Ao chegar aqui, o banco tem **zero documentos**: os PDFs de nota e
+> comprovante estão no OneDrive do cliente. Um parser indexaria nada.
+>
+> O que existe são 80 pagamentos, 10 obras e 8 fornecedores — e é sobre eles que
+> o gestor pergunta. O pipeline é o mesmo e a tabela tem `origem`: quando os PDFs
+> entrarem no sistema, basta um indexador novo.
+
 **Entregáveis:**
 
-- `CREATE EXTENSION vector` — já disponível no projeto
-- Tabelas `knowledge_documents`, `knowledge_chunks`, `embeddings`
-- Pipeline: documento → parser → chunking → embedding → pgvector
-- Busca vetorial + montagem de contexto
-- Tools com allowlist explícita, cada uma com schema e permissão
-- Prompts em arquivo, versionados
-- Tabelas `ai_conversations`, `ai_messages`, `ai_tool_calls` — separadas das de negócio
+- [x] `CREATE EXTENSION vector` — instalada 2026-09-10
+- [x] `knowledge_documents` + `knowledge_chunks` com `vector(1536)` e índice HNSW
+- [x] Pipeline: registro do CRM → texto → chunking → embedding → pgvector
+- [x] Busca vetorial com **corte de similaridade** + montagem de contexto numerado
+- [x] Prompts em arquivo, versionados (`lib/ia/prompts/`, com `VERSAO` gravada na resposta)
+- [x] `ai_conversations`, `ai_messages`, `ai_tool_calls` — sem FK para as de negócio
+- [x] Pergunta livre no WhatsApp → resposta com fonte citada
+- [x] `/api/cron/indexar` agendado por `pg_cron` (não pela Vercel: o plano Hobby
+      só permite dois crons, e os dois já estão usados)
+- [ ] Tools com allowlist explícita — `ai_tool_calls` existe e está vazia; nenhuma
+      ferramenta foi implementada ainda
 
 **Decisão dentro da fase:** TypeScript ou Python. Minha recomendação é começar em TS
 (a chamada de embeddings e a busca vetorial são triviais nas duas linguagens) e só
@@ -274,20 +406,159 @@ Python desde já, o serviço nasce isolado atrás de HTTP e a fase não muda de 
 **Pronto quando:** o gestor perguntar algo sobre um documento da obra no WhatsApp e
 receber resposta fundamentada, com a fonte citada.
 
+**Falta para isso valer:** `IA_EMBEDDINGS_PROVIDER=openai` + `OPENAI_API_KEY` (para a
+busca) e `IA_PROVIDER=anthropic` + `ANTHROPIC_API_KEY` (para a redação). Sem as duas
+duplas, o bloco de pergunta livre é invisível e o WhatsApp segue como sempre.
+
 ---
 
-### FASE 5 — Infraestrutura e operação (2 semanas)
+### FASE 5 — Operação e confiança (1 a 2 semanas) *(reescrita em 2026-09-10)*
 
-- Docker Compose: web, workers, redis, monitoramento
-- Caddy com TLS automático
-- Cloudflare: DNS, WAF, subdomínios por serviço
-- GitHub Actions: lint → testes → build → imagem → deploy
-- `/health`, `/ready`, `/metrics` em cada serviço
-- Logs estruturados e alerta quando job falha ou worker cai
-- Backup automatizado e **restore testado** — backup não testado não é backup
+> A versão anterior desta fase previa Docker Compose, Caddy com TLS, Redis e uma VPS.
+> **A decisão de hospedagem eliminou os quatro** (ver FASE 0): a Vercel faz TLS e
+> deploy, e a fila é `pgmq`. O que sobra não é menos importante — é outra coisa.
+>
+> Sem VPS, o problema deixa de ser "como subir a infraestrutura" e passa a ser
+> **"como saber que algo parou"**. Hoje o sistema tem várias peças que falham em
+> silêncio: automação que não dispara, fila que não é drenada, indexação que para.
+> Todas registram `console.error` num log que ninguém lê.
 
-**Pronto quando:** um deploy inteiro sair de um merge na `main`, sem passo manual, e o
-alerta chegar antes de o usuário perceber.
+---
+
+#### 🔴 5.0 — Backup, e a descoberta que move isto para o topo
+
+Verificado em 2026-09-10 pela API do Supabase:
+
+```
+pitr_enabled: false      backups listados: 0
+```
+
+**Os dados do cliente não têm cópia que eu tenha conseguido verificar.** São 10 obras,
+8 fornecedores e 80 pagamentos — e, a partir de 16/09, lançamentos reais entrando por
+WhatsApp todo dia.
+
+O plano de graça da Supabase faz backup diário, mas não expõe PITR nem lista os arquivos
+por API. Isso significa que ninguém confirmou que existe backup **nem que ele restaura**.
+
+- [ ] Confirmar no painel da Supabase o que existe de backup hoje, e a retenção *(humano)*
+- [ ] Se o plano permitir, **ligar PITR** *(humano; exige Supabase Pro)*
+- [x] Um dump semanal para fora da Supabase — **feito em 2026-09-10 (PR #14)**:
+      `.github/workflows/backup-banco.yml`, `pg_dump` 17 pelo pooler em modo sessão,
+      cifrado com AES-256, artifact por 90 dias. Provado: run 34520394787 gerou 24
+      tabelas, e o artifact foi decifrado e extraído localmente com contagens iguais
+      à produção. Runbook em `docs/RUNBOOK-BACKUP.md`
+- [ ] **Restaurar num projeto descartável e conferir as contagens.** Backup não testado
+      não é backup, e é a única linha desta fase que não admite "provavelmente funciona"
+      *(humano — não há `pg_restore` nesta máquina; o runbook diz como)*
+
+**Pronto quando:** existir um restore feito, com data, e as contagens conferidas contra
+produção.
+
+---
+
+#### 🔴 5.1 — Saber que parou
+
+O sistema tem quatro relógios que podem parar sem barulho:
+
+| Peça | Como falha em silêncio |
+|---|---|
+| `pg_cron` (2 jobs) | Job desativado ou erro no `pg_net` — a fila para de ser drenada |
+| Automações | Regra falha três vezes e vira linha no log que ninguém abre |
+| Fila `pgmq` | Mensagem arquivada na dead-letter sem ninguém olhar |
+| Indexação | Embedding sem chave, ou chave expirada — a busca simplesmente não acha |
+
+- [x] `/api/health` — **feito (PR #12, 2026-09-10)**. `saude_sistema()` no banco +
+      integrações no processo. 503 quando doente. Verificado em produção: 401 sem auth,
+      200 com auth, `problemas: []`.
+- [x] `pg_cron` diário `saude-alerta` → `alertar_se_doente()` → fila `whatsapp_outbound`
+      **(PR #12)**. Só dispara de verdade quando a UAZAPI tiver credencial.
+- [x] Dead-letter entra como aviso em `saude_sistema()` **(PR #12)**
+
+> **Por que WhatsApp e não e-mail:** o cliente vive no WhatsApp — é a premissa do
+> produto inteiro. Um alerta por e-mail chegaria na mesma caixa que ninguém abre.
+
+**Pronto quando:** desligar um `cron.job` de propósito fizer chegar um WhatsApp em até
+24h, sem ninguém ter olhado nada.
+
+---
+
+#### 🟠 5.2 — Logs que dá para procurar
+
+Hoje tudo é `console.error('[automacao:x] falhou:', msg)` — texto livre. Procurar "todas
+as falhas da regra de cobrança na semana passada" é impossível.
+
+- [x] Um helper de log estruturado — **feito (PR #13, 2026-09-10)**: `apps/web/lib/log.ts`,
+      uma linha JSON por evento, nunca lança, mascara telefone. 14 testes.
+- [x] Trocados os 45 `console.*` de inbound, uazapi, fila, automações, RAG, assistente,
+      transcrição, classificador, confirmações, webhook e crons **(PR #13)**
+- [x] Correlação por id via `AsyncLocalStorage` (`comContexto`): webhook e handler da
+      fila usam o mesmo `correlacao` = id da mensagem no provider **(PR #13)**
+
+Sem servidor de log novo: a Vercel já indexa o que sai em JSON. No painel de logs,
+`area:fila nivel:erro` ou `correlacao:<id>` já filtram.
+
+---
+
+#### 🟠 5.3 — CI que volta a servir
+
+O workflow de E2E falha desde sempre. O Node 22 foi corrigido em `0dce4d5`, mas ele
+agora morre em "Wait for Vercel Preview" e, atrás disso, na Fase 15 nunca provisionada.
+
+Duas saídas, e a escolha é de custo:
+
+| Opção | O que envolve |
+|---|---|
+| **Provisionar staging** | Um segundo projeto Supabase + secrets no GitHub. O E2E roda de verdade contra preview |
+| **Trocar o E2E por testes de rota** | Sem browser e sem staging: exercitar as rotas com service-role num schema descartável. Cobre menos, roda sempre |
+
+- [x] **Decidido (2026-09-10, PR #14): testes que rodam sempre, agora; staging depois,
+      se um dia valer o custo.** O E2E ficou só em `workflow_dispatch`.
+- [x] CI **verde**: `ci.yml` roda em todo PR e push na `main` — typecheck, vitest,
+      `next build`, e lint do Biome **só nos arquivos do diff** (o repo tem ~450 erros
+      pré-existentes; lintar tudo nunca ficaria verde). Primeiro run: sucesso.
+
+---
+
+#### 🟡 5.4 — Cloudflare, e o que ela resolve
+
+A decisão da FASE 0 é DNS na Cloudflare. Vale fazer junto:
+
+- [ ] DNS apontando para a Vercel, com domínio próprio (hoje é `crm-cavalcanti.vercel.app`)
+      *(humano: escolher o domínio e criar o registro na Cloudflare. O lado da API —
+      Vercel, `NEXT_PUBLIC_APP_URL`, Supabase Auth, Vault, redeploy — é
+      `scripts/configurar-dominio.mjs --dominio=… --aplicar`, PR #15)*
+- [ ] Regra de WAF no `/api/webhooks/uazapi`: rate limit por IP como camada extra ao HMAC
+      *(humano; o script imprime a regra exata)*
+- [ ] **Não** esperar que a Cloudflare resolva latência de banco — ela acelera estático e
+      resolução de nome, não encurta os 7.600 km entre `iad1` e `sa-east-1`
+
+---
+
+#### 🟡 5.5 — A região, que é a dívida técnica mais cara
+
+Medido em produção: **394 ms de mediana para uma única consulta**, porque a função roda
+na Virgínia e o banco em São Paulo. A primeira indexação levou 24,7s por causa disso.
+
+- [ ] Migrar as funções para `gru1` — exige plano pago da Vercel, que já é necessário
+      para tornar o repositório privado. **São a mesma conversa, com dois motivos.**
+      *(humano: o upgrade. Depois dele, `scripts/pos-vercel-pro.mjs --repo-privado`
+      faz região + redeploy + medição + repo privado, PR #15)*
+- [ ] Medir de novo depois, e registrar o antes e depois *(o script mede; baseline
+      reconfirmado em 2026-09-10: 393–409 ms de mediana em `iad1`)*
+
+---
+
+### O que NÃO entra nesta fase
+
+- **Docker, Caddy, Redis, VPS** — eliminados pela decisão de hospedagem
+- **`/metrics` em formato Prometheus** — não há quem colete. Métrica sem coletor é
+  arquivo de texto
+- **Alerta por e-mail** — o canal do produto é WhatsApp
+
+---
+
+**Pronto quando:** um `cron.job` desligado de propósito virar um WhatsApp para o gestor,
+e existir um restore de backup feito e conferido.
 
 ---
 

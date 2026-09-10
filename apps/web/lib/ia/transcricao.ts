@@ -1,4 +1,7 @@
 import 'server-only';
+import { logger } from '@/lib/log';
+
+const log = logger('transcricao');
 
 /**
  * Transcrição de áudio recebido pelo WhatsApp.
@@ -84,7 +87,9 @@ async function transcreverComOpenAI(
 ): Promise<ResultadoTranscricao> {
   const chave = process.env.OPENAI_API_KEY;
   if (!chave) {
-    console.warn('[transcricao] IA_TRANSCRICAO_PROVIDER=openai mas OPENAI_API_KEY está vazia.');
+    log.aviso('sem_chave', {
+      dica: 'IA_TRANSCRICAO_PROVIDER=openai mas OPENAI_API_KEY está vazia.',
+    });
     return { ok: false, motivo: 'sem_chave' };
   }
 
@@ -92,7 +97,11 @@ async function transcreverComOpenAI(
 
   try {
     const form = new FormData();
-    form.append('file', new Blob([bytes as BlobPart], { type: mime }), `audio.${extensaoPara(mime)}`);
+    form.append(
+      'file',
+      new Blob([bytes as BlobPart], { type: mime }),
+      `audio.${extensaoPara(mime)}`,
+    );
     form.append('model', modelo);
     // Fixar o idioma melhora bastante a precisão em áudio de obra, que tem
     // ruído de fundo e vocabulário regional.
@@ -107,7 +116,7 @@ async function transcreverComOpenAI(
 
     if (!res.ok) {
       const corpo = await res.text().catch(() => '');
-      console.error(`[transcricao] OpenAI respondeu HTTP ${res.status}`, corpo.slice(0, 300));
+      log.erro('http_falhou', { status: res.status, corpo: corpo.slice(0, 300) });
       return { ok: false, motivo: 'http', detalhe: `HTTP ${res.status}` };
     }
 
@@ -118,7 +127,7 @@ async function transcreverComOpenAI(
     return { ok: true, texto, provider: `openai:${modelo}` };
   } catch (err) {
     const detalhe = err instanceof Error ? err.message : String(err);
-    console.error('[transcricao] exceção:', detalhe);
+    log.erro('excecao', { detalhe });
     return { ok: false, motivo: 'excecao', detalhe };
   }
 }

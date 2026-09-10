@@ -25,6 +25,7 @@ export const cobrarDocumentoFornecedor: AutomacaoAgendada = {
   descricao: 'Cobra por WhatsApp a nota ou comprovante de pagamentos sem documento.',
   gatilhos: ['pagamento.sem_documento'],
   apenasAgendada: true,
+  efeitoExterno: true,
   configPadrao: { dias_sem_documento: DIAS_PADRAO, limite_por_rodada: LIMITE_POR_RODADA },
 
   /**

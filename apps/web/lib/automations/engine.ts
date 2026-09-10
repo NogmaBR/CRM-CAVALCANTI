@@ -1,7 +1,10 @@
 import 'server-only';
 import { type Evento, entidadeDoEvento } from '@/lib/events/tipos';
+import { comContexto, logger } from '@/lib/log';
 import { AUTOMACOES, buscarAutomacao } from './registry';
 import { type Automacao, type Client, type ContextoExecucao, ehAgendada } from './tipos';
+
+const log = logger('automacoes');
 
 /**
  * Motor de automações.
@@ -65,8 +68,24 @@ async function rodarUma(
   config: Record<string, unknown>,
   simular: boolean,
 ): Promise<void> {
-  const inicio = Date.now();
   const entidadeId = entidadeDoEvento(evento);
+  // Tudo que a regra registrar (inclusive dentro da ação, que pode enfileirar
+  // WhatsApp) sai com estes três campos. É o que responde "todas as falhas da
+  // regra de cobrança na semana passada" numa busca só.
+  return comContexto({ regra: automacao.chave, evento: evento.nome, entidadeId, simular }, () =>
+    rodarUmaComContexto(supabase, automacao, evento, config, simular, entidadeId),
+  );
+}
+
+async function rodarUmaComContexto(
+  supabase: Client,
+  automacao: Automacao,
+  evento: Evento,
+  config: Record<string, unknown>,
+  simular: boolean,
+  entidadeId: string | null,
+): Promise<void> {
+  const inicio = Date.now();
 
   const ctx: ContextoExecucao = {
     supabase,
@@ -137,7 +156,7 @@ async function rodarUma(
     });
   } catch (err) {
     const motivo = err instanceof Error ? err.message : String(err);
-    console.error(`[automacao:${automacao.chave}] falhou:`, motivo);
+    log.erro('regra_falhou', { motivo });
     await registrar(supabase, {
       regra_chave: automacao.chave,
       evento: evento.nome,
@@ -183,7 +202,7 @@ export async function executarAgendadas(
     try {
       eventos = await automacao.varrer({ supabase, config, simular: opcoes.simular });
     } catch (err) {
-      console.error(`[automacao:${automacao.chave}] varredura falhou:`, err);
+      log.erro('varredura_falhou', { regra: automacao.chave, err });
       await registrar(supabase, {
         regra_chave: automacao.chave,
         evento: 'varredura',
@@ -230,7 +249,7 @@ async function carregarHabilitadas(
   if (error) {
     // Falha fechada: sem conseguir ler o estado, não age. O contrário seria
     // rodar automação com config default numa hora em que o banco está ruim.
-    console.error('[automacoes] não foi possível ler as regras:', error.message);
+    log.erro('ler_regras_falhou', { erro: error.message });
     return mapa;
   }
 
@@ -271,7 +290,7 @@ async function jaAgiuHoje(supabase: Client, chave: string, entidadeId: string): 
   if (error) {
     // Falha fechada: sem conseguir confirmar que ainda não agiu, não age.
     // Deixar de mandar uma cobrança é recuperável; mandar duas, não.
-    console.error('[automacoes] checagem de idempotência falhou:', error.message);
+    log.erro('idempotencia_falhou', { erro: error.message });
     return true;
   }
 
@@ -308,7 +327,7 @@ async function registrar(supabase: Client, linha: LinhaLog): Promise<void> {
     // hoje. Não é erro — é a trava funcionando, e o log da primeira vez já
     // está lá.
     if (error.code === '23505') return;
-    console.error('[automacoes] falha ao gravar log de execução:', error.message);
+    log.erro('registrar_execucao_falhou', { erro: error.message });
   }
 }
 

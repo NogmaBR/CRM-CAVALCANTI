@@ -1,4 +1,5 @@
 import 'server-only';
+import { comContexto, logger } from '@/lib/log';
 import { UazapiInboundSchema, normalizeTelefone } from '@/lib/schemas/uazapi';
 import { LIMITES, ipDaRequest, resposta429, verificarLimite } from '@/lib/security/rate-limit';
 import { processarInbound } from '@/lib/services/inbound-whatsapp';
@@ -9,6 +10,8 @@ import { type NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+const log = logger('webhook');
 
 /**
  * Webhook inbound do UAZAPI.
@@ -81,13 +84,50 @@ export async function POST(request: NextRequest) {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const resultado = await processarInbound(supabase, payload).catch((err) => {
-    console.error('[webhook/uazapi] processamento falhou:', err);
-    return {
-      acao: 'erro' as const,
-      detalhe: err instanceof Error ? err.message : String(err),
-    };
-  });
+  // -------------------------------------------------------------------------
+  // Assíncrono, quando ligado
+  // -------------------------------------------------------------------------
+  // Com `FILA_WHATSAPP=true`, o webhook para de processar e passa a só
+  // enfileirar. É a razão de existir da Fase 3: hoje download de mídia,
+  // transcrição e chamada de LLM rodam aqui dentro, e se qualquer um demorar o
+  // provider dá timeout e reenvia — a idempotência segura a duplicata, mas o
+  // trabalho é refeito do zero.
+  //
+  // A chave existe porque isto muda o coração do produto. Mergear com ela
+  // desligada deixa o código pronto, testado e em produção sem mudar
+  // comportamento nenhum; ligar depois é uma variável de ambiente e um
+  // redeploy, sem tocar em código.
+  //
+  // Quando desligada, o caminho abaixo é exatamente o de sempre.
+  //
+  // A correlação é o id da mensagem no provider. O mesmo id vai para o
+  // handler da fila, então uma busca por ele no log mostra a mensagem
+  // chegando aqui, entrando na fila, sendo processada e respondida.
+  return comContexto({ correlacao: payload.id, canal: 'webhook' }, async () => {
+    if (process.env.FILA_WHATSAPP === 'true') {
+      try {
+        const { enfileirar } = await import('@/lib/queue/fila');
+        const msgId = await enfileirar(supabase, 'whatsapp_inbound', { payload });
+        log.info('enfileirada', { fila: 'whatsapp_inbound', msgId });
+        return NextResponse.json({ ok: true, acao: 'enfileirada', jobId: msgId });
+      } catch (err) {
+        // Não conseguiu enfileirar: cai para o processamento síncrono em vez de
+        // perder a mensagem. Pior um webhook lento que uma nota fiscal que
+        // nunca chegou — e este é o único caminho em que a degradação vale mais
+        // que a consistência.
+        log.erro('fila_indisponivel_processando_sincrono', { err });
+      }
+    }
 
-  return NextResponse.json({ ok: true, ...resultado });
+    const resultado = await processarInbound(supabase, payload).catch((err) => {
+      log.erro('processamento_falhou', { err });
+      return {
+        acao: 'erro' as const,
+        detalhe: err instanceof Error ? err.message : String(err),
+      };
+    });
+
+    log.info('processada', { acao: resultado.acao, detalhe: resultado.detalhe });
+    return NextResponse.json({ ok: true, ...resultado });
+  });
 }

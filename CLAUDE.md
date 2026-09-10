@@ -4,7 +4,8 @@
 > **Mantenha-o atualizado**: ao terminar um trabalho relevante, atualize a §7 (estado)
 > e acrescente em §8 (armadilhas) qualquer erro novo que você cometeu.
 >
-> Última atualização: **2026-09-10**, após o motor de automações (Fase 2) ir para branch.
+> Última atualização: **2026-09-10 (noite)**, após a Fase 5 inteira ir para PR
+> (#13 logs, #14 CI + backup, #15 scripts de operação).
 
 ---
 
@@ -71,7 +72,11 @@ em relação ao seu treino. Os docs vêm no pacote: `apps/web/node_modules/next/
 | `docs/BLOCO-2-FLUXO-WHATSAPP.md` | Como o fluxo do WhatsApp funciona ponta a ponta |
 | `docs/PROTOTIPO-PORTADO.md` | O que veio do protótipo aprovado, e o que ficou de fora de propósito |
 | `docs/RUNBOOK-ROTACAO-SECRETS.md` | Procedimento de rotação de credenciais |
-| `docs/MANUAL-PENDENCIAS.md` | Tudo que precisa ser feito fora do VS Code |
+| **`docs/SO-FALTA-VOCE.md`** | **A lista única do que é ação humana**, na ordem, com como conferir. Substitui `MANUAL-PENDENCIAS.md` (08/09, desatualizado) |
+| `docs/PLANO-ARQUITETURA-CODE-FIRST.md` | O plano por fases (0–6) com o estado de cada checkbox |
+| `docs/RUNBOOK-BACKUP.md` | Backup semanal: baixar, decifrar, restaurar, registrar o teste |
+| `docs/RUNBOOK-VERCEL-PRO.md` | Pro → região `gru1` → repo privado (e o script que faz os dois últimos) |
+| `docs/PLANO-CLOUDFLARE.md` | Por que a Cloudflare ficou só como DNS (ela não vende VPS) |
 | `docs/N8N-COMPLETO.md` | 7 workflows n8n (documentação executável, não está rodando) |
 
 ---
@@ -101,6 +106,15 @@ node --env-file=.env.local scripts/apply-migration.mjs 20260909150000_planilha_c
 ```
 
 Multi-statement funciona, mas **só o resultado da última statement volta**.
+
+### Next.js e middleware
+
+- **Rota nova em `/api/` precisa entrar na lista de rotas públicas do middleware**
+  (`apps/web/lib/supabase/middleware.ts`), senão ela é redirecionada para `/login` e
+  responde **200 com HTML**. Não há erro em log nenhum: quem chama vê "200" e conclui
+  que funcionou. Aconteceu com `/api/queue/consume`, e só apareceu porque o `pg_net`
+  guarda a resposta e eu fui ler o corpo. Compare sempre com uma rota que já funciona:
+  `/api/cron/automacoes` devolve JSON, a nova devolvia HTML.
 
 ### Vercel (API REST, token em `VERCEL_TOKEN`)
 
@@ -145,7 +159,19 @@ aqui — não invente uma integração.
 | **Classificador IA** | ⚠️ **modo mock** | `IA_PROVIDER=mock`. Com `anthropic` + `ANTHROPIC_API_KEY` vira real (`claude-opus-5`) |
 | **Transcrição de áudio** | ❌ desligada | `IA_TRANSCRICAO_PROVIDER=none`. Com `openai` + `OPENAI_API_KEY` liga |
 | n8n | ❌ não provisionado | Opcional; o CRM faz tudo sozinho agora |
-| CI E2E (Playwright) | ❌ falha sempre | Morre no setup: o workflow fixa Node 20 e o pnpm 11.7 exige ≥ 22.13. Atrás disso ainda faltam os secrets de staging (Fase 15). **Ignore o check vermelho** |
+| CI (`ci.yml`) | ✅ verde (PR #14) | typecheck, vitest, build, lint do diff. Sem segredo. É o check que vale |
+| CI E2E (Playwright) | ⏸ só por dispatch | Precisa de staging Supabase (Fase 15) que nunca existiu. Saiu do gatilho de PR no PR #14 para parar de pintar tudo de vermelho |
+| Backup semanal (`backup-banco.yml`) | ✅ provado | Domingo 03:00 UTC, cifrado, artifact 90 dias. Restore de teste ainda é ação humana |
+
+**Para saber o que falta agora, sem abrir painel:**
+
+```bash
+node --env-file=.env.local scripts/checar-integracoes.mjs
+```
+
+Ele diz quais variáveis faltam, o que a falta causa, e — o mais útil — se há
+variável alterada **depois** do último deploy, que é a armadilha do redeploy.
+Nunca imprime valor de credencial.
 
 **Nada disso quebra o build.** Todas as integrações ausentes degradam com log e default
 seguro. É proposital: `IA_AUTO_APROVAR=false`, `IA_PROVIDER=mock`, transcrição `none`.
@@ -158,9 +184,17 @@ Rode os três antes de dizer que algo está pronto:
 
 ```bash
 pnpm --filter web typecheck          # tsc --noEmit
-pnpm --filter web exec vitest run    # 174 testes, 8 arquivos (Vitest 4)
+pnpm --filter web exec vitest run    # 240 testes, 13 arquivos (Vitest 4)
 pnpm --filter web build              # next build
 ```
+
+O `ci.yml` (PR #14) roda exatamente estes três em todo PR, mais o lint do diff.
+
+**Log em produção é JSON estruturado** (`lib/log.ts`, PR #13). Não escreva
+`console.error` em código de operação; use `const log = logger('area')` e
+`log.erro('evento_em_snake_case', { campos })`. Dentro de `comContexto({...})` os
+campos vão para todo log emitido lá dentro — é como se correlaciona uma mensagem do
+webhook até a resposta. Campos chamados `telefone` saem mascarados sozinhos.
 
 **Não rode `pnpm lint` no repo inteiro.** O Biome acusa **448 erros pré-existentes**
 em 325 arquivos (ordenação de import, `role="status"` etc.) — não é um baseline limpo.
@@ -238,12 +272,97 @@ Verificado **em produção**, não por leitura de config:
 - Os dois crons registrados no deployment de produção.
 
 **O motor está ligado mas inerte, de propósito:** as duas regras estão com
-`ativo = false`. Ligar é um UPDATE em `automation_rules` — e a de cobrança manda
-WhatsApp, que ainda não tem credencial.
+`ativo = false`. A de cobrança manda WhatsApp, que ainda não tem credencial.
 
-**`emitir()` continua sem chamador.** Fiar nos services existentes muda caminho
-em produção, e o congelamento até 16/09 vale. É o primeiro passo depois da
-entrega.
+### PRs abertos, aguardando decisão de merge
+
+| PR | O que é | Pode mergear? |
+|---|---|---|
+| **#6** `feat/painel-automacoes` | Tela `/config/automacoes`: ligar/desligar, ajustar parâmetros, botão "Ensaiar sem agir" e histórico de cada avaliação. Sem ela, ligar regra exige SQL no console. | **Sim.** Aditivo, nenhum caminho existente muda |
+| **#7** `feat/emitir-eventos` | `emitir()` ganha chamadores em pagamento/documento/confirmação. Tira `lib/events/` de código morto. | **Não antes de 16/09.** Muda caminho em produção |
+PRs #8 e #9 mergeados em 2026-09-10 — **a Fase 3 está em produção**.
+
+### Fase 3: o que está no ar, e o que falta ligar
+
+O ciclo inteiro foi observado rodando **sozinho** em produção: um job de ensaio
+foi enfileirado às 16:10, o `pg_cron` tentou a cada minuto, e às 16:16 a
+mensagem desistiu e foi para a dead-letter — tentativas 2, 3 e o arquivamento
+na quarta, sem ninguém tocar em nada.
+
+| Peça | Estado |
+|---|---|
+| Filas `pgmq` + wrappers `fila_*` | ✅ 4 filas, whitelist, só `service_role` |
+| `/api/queue/consume` | ✅ 401 sem auth, JSON com auth |
+| Agendador `pg_cron` → `pg_net` | ✅ ativo, só chama quando há job na fila |
+| Segredos no Vault | ✅ `fila_consumidor_url` e `_secret` |
+| `/config/filas` | ✅ métricas e dead-letter |
+| **Webhook enfileirando** | ⏸ **atrás de `FILA_WHATSAPP`, que não existe em produção** |
+
+**Falta só ligar a chave**, e isso é depois de 16/09: criar `FILA_WHATSAPP=true`
+na Vercel e redeployar. Enquanto não existir, o webhook processa síncrono como
+sempre — verificado depois do merge (`test-webhook-uazapi.mjs` devolve
+`ignorada_nao_autorizada`, que é o esperado com a lista de autorizados vazia).
+
+`midia` e `ia_classificacao` ficaram **reservadas, sem handler**: picar o fluxo
+exigiria reordenar as etapas de `processarInbound`, e a transcrição precisa
+estar pronta antes de decidir se a mensagem é um "SIM". Há teste afirmando que
+elas seguem sem handler — dar handler a elas passa a ser decisão consciente.
+
+O PR #7 também corrigiu um erro de desenho que só apareceu ao fiar: `emitir`
+recebia o cliente Supabase do chamador, mas `automation_executions` não tem
+policy de INSERT para sessão de usuário — toda emissão vinda de server action
+perderia o log **em silêncio**. Agora `emitir` monta o cliente de serviço
+sozinho e o parâmetro sumiu: não há como errar porque não há o que passar.
+
+### FASE 0 do plano de arquitetura — decidida em 2026-09-10
+
+| Decisão | Resposta |
+|---|---|
+| Domínio | **Cenário A — Expansão.** Obras e vendas convivem; `obras`↔`empreendimentos` é a ponte. A Fase 6 passa a valer |
+| Hospedagem | **Só Vercel, DNS na Cloudflare.** Sem VPS. Sem processo vivo não há BullMQ, então a fila é `pgmq` no próprio Postgres + `pg_cron` + `pg_net` — testado neste banco. A Fase 3 foi reescrita para isso |
+| API | **Manter Next.js.** Sem NestJS enquanto o front for o único consumidor |
+
+`pg_cron` 1.6.4, `pg_net` 0.20.4, `pgvector` 0.8.2 e `pgmq` 1.5.1
+**instaladas** em 2026-09-10 e verificadas no catálogo.
+
+**Quatro filas criadas** (`whatsapp_inbound`, `midia`, `ia_classificacao`,
+`whatsapp_outbound`), vazias, com wrappers `fila_*` em `public` — o PostgREST
+não expõe o schema `pgmq`, então o app fala com cinco funções e uma whitelist.
+Só `service_role` tem execute.
+A extensão `http` foi deixada de fora de propósito: ela é síncrona e segura a
+conexão do pool; o `pg_net` faz o mesmo de forma assíncrona.
+
+**Atenção ao schema:** a Supabase põe `pg_cron` em `pg_catalog` ignorando o
+`WITH SCHEMA` sem reclamar. As funções ficam em `cron.*`; as do `pg_net` em
+`net.*` (`net.http_post`), não em `extensions`. O `pgmq` fica em `pgmq.*`, e
+`pgmq.read` tem **4** argumentos (`queue_name, vt, qty, conditional`) — o 4º
+com default, então `to_regprocedure` com 3 args devolve `NULL` e parece que a
+função não existe.
+
+**As regiões não batem:** funções da Vercel em `iad1` (Virgínia), Supabase em
+`sa-east-1` (São Paulo). Medido em produção: **mediana de 394 ms** para uma
+única consulta. Mover as funções para `gru1` exige plano pago — a mesma
+conversa de tornar o repositório privado.
+
+### Roteiro de go-live
+
+`docs/ROTEIRO-GO-LIVE.md` tem o passo a passo de popular o banco, ligar o
+WhatsApp e ligar as automações, com como conferir cada passo. Os dados prontos
+(SQL das 10 obras + 8 fornecedores, CSV dos 80 pagamentos) estão em
+`dados-iniciais/`, **fora do Git** — o repo é público e eles têm nome de
+cliente e contato.
+
+**A carga foi feita em 2026-09-10** (pelo usuário — escrever em massa no banco
+de produção é barrado pelo classificador). Conferida obra a obra e fornecedor a
+fornecedor contra o protótipo: 10 obras, 8 fornecedores, 80 pagamentos,
+R$ 453.500,00, zero nulos.
+
+Dois fatos que a carga revelou e que mudam o que se liga:
+- **Consumo de orçamento entre 4,4% e 9,3%.** A regra `orcamento-em-risco` a
+  80% não vai disparar em nenhuma obra. Não é defeito.
+- **Os 80 pagamentos estão sem documento** e todos com mais de 7 dias, ou seja
+  são 80 alvos da regra de cobrança — que mandaria 25 WhatsApp por dia para os
+  telefones placeholder do protótipo. Trocar os telefones vem antes de ligar.
 
 **Ainda não provado:** uma regra LIGADA rodando ponta a ponta em produção. Duas
 razões — o banco não tem nenhuma obra nem pagamento (dado do cliente é o item 1
@@ -260,19 +379,37 @@ de configuração, que o classificador barra e é decisão do usuário.
    webhook com HMAC antigo devolve 401, com o novo devolve 200
 ✅ Signup público desabilitado (`disable_signup: true`)
 
+### Fase 5 — Operação e confiança (2026-09-10, em PR)
+
+| Item | Estado | Onde |
+|---|---|---|
+| 5.1 Saber que parou | ✅ em produção (PR #12) | `/api/health` 503 quando doente; cron `saude-alerta` → WhatsApp |
+| 5.2 Logs pesquisáveis | 🟢 PR #13 | `lib/log.ts`: JSON por linha, `comContexto` para correlação, telefone mascarado. 45 `console.*` trocados |
+| 5.3 CI verde | 🟢 PR #14 | `ci.yml` (typecheck, vitest, build, lint do diff). E2E só por dispatch até existir staging |
+| 5.0 Backup externo | 🟢 PR #14 | `backup-banco.yml`: pg_dump semanal cifrado, artifact 90 dias. **Provado**: artifact decifrado localmente, contagens iguais à produção |
+| 5.5 Região `gru1` | ⏸ humano + script | Upgrade Pro (billing) → `scripts/pos-vercel-pro.mjs --repo-privado` (PR #15) |
+| 5.4 Domínio + Cloudflare | ⏸ humano + script | Escolher domínio → `scripts/configurar-dominio.mjs --aplicar` (PR #15) → DNS/WAF na Cloudflare |
+
+Secrets `BACKUP_DB_URL` e `BACKUP_PASSPHRASE` existem no repositório do GitHub. A
+frase está em `.env.local` e em mais lugar nenhum — sem ela os backups são ilegíveis.
+
+**Fase 6 (domínio de vendas) não foi iniciada de propósito.** É um produto novo
+(8–12 semanas) e depende de definição do cliente sobre o que ele vende; não há o
+que codar sem isso. Está como decisão em `docs/SO-FALTA-VOCE.md`.
+
 ### O que falta — e é ação humana, não código
 
-1. **Repositório é público.** Vai virar privado quando a Vercel for paga.
+1. **Repositório é público.** Vai virar privado quando a Vercel for paga
+   (`scripts/pos-vercel-pro.mjs --repo-privado` faz isso depois do upgrade).
 2. **Senha do banco tem 16 chars.** Com o repo público e o host publicado em 15+
    arquivos, é o elo mais fraco. O ideal é usar o *Generate a password* do Supabase.
+   **Ao rotacionar, regrave o secret `BACKUP_DB_URL` no GitHub** — senão o backup
+   semanal para de funcionar.
 3. **Credenciais UAZAPI** — sem elas o WhatsApp não fecha o ciclo.
 4. **`ANTHROPIC_API_KEY`** — para sair do classificador mock.
 5. **Cadastrar a equipe em `/config/autorizados`** — sem isso, toda mensagem é ignorada.
-6. **CI E2E** — falha em dois níveis. O visível: `.github/workflows/*.yml` pede
-   `node-version: "20"` e o pnpm 11.7 recusa (`requires at least Node.js v22.13`),
-   então o job morre antes de rodar teste. Trocar para `"22"` é uma linha — e aí
-   aparece o segundo nível, que é a Fase 15 (staging Supabase) nunca provisionada.
-   Corrigir o Node sozinho não deixa o check verde.
+6. **Restore de teste do backup** num projeto descartável (`docs/RUNBOOK-BACKUP.md`).
+   Até existir um registrado, o backup é hipótese.
 
 ---
 
@@ -294,6 +431,19 @@ de configuração, que o classificador barra e é decisão do usuário.
   quebra com o certificado do Supabase — passe `ssl:{rejectUnauthorized:false}` e
   remova o `sslmode` da string.
 - **`gh auth refresh` exige `-h github.com`** em modo não-interativo.
+- **`biome check --fix` com a lista de caminhos errada roda no repositório INTEIRO** e
+  reescreve centenas de arquivos que você não tocou (aconteceu: 170 arquivos, por um
+  `sed` que montou os caminhos errado). Antes de rodar, `echo` a lista e confira que
+  são só os seus arquivos; depois, `git status --short | wc -l` tem que bater com o
+  número que você esperava. Se passou do ponto, `git checkout --` nos que não são seus.
+- **Heredoc do Bash também quebra** com conteúdo grande contendo aspas simples e
+  acentos misturados — a ferramenta Write é mais segura para arquivos inteiros.
+- **`gh workflow run <arquivo>` só acha workflows que já estão na branch padrão.** Para
+  provar um workflow novo antes do merge, use um gatilho `push` temporário na branch e
+  remova-o no commit seguinte.
+- **`gh run download -D pasta/` cria uma subpasta com o nome do artifact** e põe o
+  arquivo dentro. `find -name '*.enc' | head -1` devolve a pasta, não o arquivo — use
+  `-type f`.
 
 ### Git e GitHub
 
