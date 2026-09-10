@@ -7,10 +7,12 @@ import {
   toIsoDate,
 } from '@/lib/schemas/uazapi';
 import { uploadDocumentBuffer } from '@/lib/storage/documents';
+import { interpretarComando } from '@/lib/whatsapp/comandos';
 import { interpretarResposta } from '@/lib/whatsapp/resposta';
 import type { Database } from '@nogma/db';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { classifyAndPersist } from './classify-and-persist';
+import { executarComando } from './comandos-whatsapp';
 import { aplicarConfirmacao, buscarConfirmacaoAberta, recusarConfirmacao } from './confirmacoes';
 import { baixarMidia, enviarTexto } from './uazapi';
 
@@ -43,6 +45,7 @@ export type AcaoInbound =
   | 'confirmou_pendencia'
   | 'recusou_pendencia'
   | 'classificada'
+  | 'comando'
   | 'erro';
 
 export interface ResultadoInbound {
@@ -142,7 +145,24 @@ export async function processarInbound(
   }
 
   // ---------------------------------------------------------------------
-  // 5. Mensagem nova: grava e classifica.
+  // 5. É um comando de consulta?
+  // ---------------------------------------------------------------------
+  // Depois da resposta a pendência (um "sim" em aberto vence tudo) e antes da
+  // classificação: "pendências" é pergunta, não lançamento, e não pode virar
+  // pagamento nem abrir confirmação. Consultas não são persistidas como
+  // mensagem — encheriam a fila do gestor com coisa que já foi respondida.
+  const comando = interpretarComando(textoEfetivo);
+  if (comando) {
+    const resposta = await executarComando(supabase, comando).catch((err) => {
+      console.error('[inbound] comando falhou:', err);
+      return 'Não consegui consultar isso agora. Tente de novo em instantes.';
+    });
+    await enviarTexto(telefone, resposta);
+    return { acao: 'comando', detalhe: comando.tipo };
+  }
+
+  // ---------------------------------------------------------------------
+  // 6. Mensagem nova: grava e classifica.
   // ---------------------------------------------------------------------
   const mensagemId = await gravarMensagem({
     supabase,
@@ -164,7 +184,7 @@ export async function processarInbound(
   }));
 
   // ---------------------------------------------------------------------
-  // 6. Se abriu pendência, faz a pergunta no WhatsApp.
+  // 7. Se abriu pendência, faz a pergunta no WhatsApp.
   // ---------------------------------------------------------------------
   // Sem este envio o cliente nunca fica sabendo que precisa confirmar, e o
   // fluxo automático morre na primeira etapa.

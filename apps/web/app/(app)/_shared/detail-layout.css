@@ -25,6 +25,16 @@
   margin-bottom: 20px;
 }
 
+.detail-layout__success {
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--success, #2FA36B) 12%, transparent);
+  color: var(--success, #2FA36B);
+  font-size: 13px;
+  border: 1px solid color-mix(in srgb, var(--success, #2FA36B) 30%, transparent);
+  margin-bottom: 20px;
+}
+
 .detail-layout__header {
   display: flex;
   align-items: center;

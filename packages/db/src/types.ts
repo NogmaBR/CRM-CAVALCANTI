@@ -539,6 +539,53 @@ export type Database = {
         }
         Relationships: []
       }
+      obra_compartilhamentos: {
+        Row: {
+          acessos: number
+          created_at: string | null
+          criado_por_user_id: string | null
+          descricao: string | null
+          expira_em: string | null
+          id: string
+          obra_id: string
+          revogado_em: string | null
+          token: string
+          ultimo_acesso_em: string | null
+        }
+        Insert: {
+          acessos?: number
+          created_at?: string | null
+          criado_por_user_id?: string | null
+          descricao?: string | null
+          expira_em?: string | null
+          id?: string
+          obra_id: string
+          revogado_em?: string | null
+          token: string
+          ultimo_acesso_em?: string | null
+        }
+        Update: {
+          acessos?: number
+          created_at?: string | null
+          criado_por_user_id?: string | null
+          descricao?: string | null
+          expira_em?: string | null
+          id?: string
+          obra_id?: string
+          revogado_em?: string | null
+          token?: string
+          ultimo_acesso_em?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obra_compartilhamentos_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       obras: {
         Row: {
           apelidos: string[] | null
@@ -812,6 +859,10 @@ export type Database = {
       rate_limit_purge: {
         Args: { p_idade_horas?: number }
         Returns: number
+      }
+      registrar_acesso_compartilhamento: {
+        Args: { p_token: string }
+        Returns: undefined
       }
       merge_fornecedores_atomic: {
         Args: { p_keep_id: string; p_drop_id: string }

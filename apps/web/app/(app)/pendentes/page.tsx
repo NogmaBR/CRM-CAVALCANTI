@@ -1,8 +1,8 @@
-import { Inbox, Check, X, Paperclip, FileWarning, Clock } from 'lucide-react';
-import Link from 'next/link';
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
-import { listPendentes, listPagamentosSemDocumento } from '@/lib/data/pendentes';
+import { listPagamentosSemDocumento, listPendentes } from '@/lib/data/pendentes';
+import { Check, Clock, FileWarning, Inbox, Paperclip, X } from 'lucide-react';
+import Link from 'next/link';
 import { confirmarPendencia, rejeitarPendencia } from './actions';
 import './pendentes.css';
 
@@ -56,10 +56,7 @@ export default async function PendentesPage({
 
   return (
     <>
-      <TopBar
-        title="Pendentes"
-        subtitle="Confirmações do WhatsApp e pagamentos sem documento"
-      />
+      <TopBar title="Pendentes" subtitle="Confirmações do WhatsApp e pagamentos sem documento" />
 
       <div className="nos-page-body">
         {errorMsg ? (
@@ -93,9 +90,7 @@ export default async function PendentesPage({
                     <span className="pendente-card__telefone">
                       {formatTelefone(item.telefone_from)}
                     </span>
-                    <span className="pendente-card__data">
-                      {formatDateTime(item.recebida_em)}
-                    </span>
+                    <span className="pendente-card__data">{formatDateTime(item.recebida_em)}</span>
                     {item.midia_mime ? (
                       <span className="pendente-card__badge">
                         <Paperclip size={11} />
@@ -115,7 +110,9 @@ export default async function PendentesPage({
                       <div className="pendente-extracted__field">
                         <span className="pendente-extracted__label">Valor</span>
                         <span className="pendente-extracted__value">
-                          {de?.valor != null ? formatBRL(de.valor) : (
+                          {de?.valor != null ? (
+                            formatBRL(de.valor)
+                          ) : (
                             <span className="pendente-extracted__value--empty">nao informado</span>
                           )}
                         </span>
@@ -124,7 +121,9 @@ export default async function PendentesPage({
                       <div className="pendente-extracted__field">
                         <span className="pendente-extracted__label">Data pagamento</span>
                         <span className="pendente-extracted__value">
-                          {de?.data_pagamento ? formatDate(de.data_pagamento) : (
+                          {de?.data_pagamento ? (
+                            formatDate(de.data_pagamento)
+                          ) : (
                             <span className="pendente-extracted__value--empty">nao informada</span>
                           )}
                         </span>
@@ -134,7 +133,9 @@ export default async function PendentesPage({
                         <span className="pendente-extracted__label">Obra</span>
                         <span className="pendente-extracted__value">
                           {item.obra_nome ?? (
-                            <span className="pendente-extracted__value--empty">nao identificada</span>
+                            <span className="pendente-extracted__value--empty">
+                              nao identificada
+                            </span>
                           )}
                         </span>
                       </div>
@@ -143,7 +144,9 @@ export default async function PendentesPage({
                         <span className="pendente-extracted__label">Fornecedor</span>
                         <span className="pendente-extracted__value">
                           {item.fornecedor_nome ?? (
-                            <span className="pendente-extracted__value--empty">nao identificado</span>
+                            <span className="pendente-extracted__value--empty">
+                              nao identificado
+                            </span>
                           )}
                         </span>
                       </div>
@@ -235,11 +238,18 @@ export default async function PendentesPage({
                       'Sem descrição'}
                   </span>
 
+                  {/*
+                    Limiares validados com o cliente no protótipo: acima de 3
+                    dias vira âmbar, acima de 7 vira vermelho. São os prazos
+                    que ele já usa pra cobrar o fornecedor.
+                  */}
                   <span
                     className={
-                      p.dias >= 15
+                      p.dias > 7
                         ? 'pendentes-sem-doc__dias pendentes-sem-doc__dias--critico'
-                        : 'pendentes-sem-doc__dias'
+                        : p.dias > 3
+                          ? 'pendentes-sem-doc__dias pendentes-sem-doc__dias--alerta'
+                          : 'pendentes-sem-doc__dias'
                     }
                   >
                     <Clock size={12} aria-hidden="true" />

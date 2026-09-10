@@ -253,6 +253,11 @@
   color: var(--text-muted, #666);
 }
 
+.pendentes-sem-doc__dias--alerta {
+  color: var(--warning, #e8a317);
+  font-weight: 600;
+}
+
 .pendentes-sem-doc__dias--critico {
   color: var(--danger, #d6483b);
   font-weight: 600;

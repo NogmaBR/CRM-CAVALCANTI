@@ -1,0 +1,207 @@
+/* Gestão dos links read-only da planilha da obra. */
+
+.cp-bloco {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cp-intro {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.cp-vazio {
+  margin: 0;
+  padding: 14px;
+  border: 1px dashed var(--border-default);
+  border-radius: 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.cp-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cp-item {
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cp-item__topo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.cp-item__desc {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cp-tag {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.cp-tag--on {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.cp-tag--off {
+  background: var(--bg-muted);
+  color: var(--text-muted);
+}
+
+.cp-url-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.cp-url {
+  flex: 1 1 260px;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+}
+
+.cp-acao {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.cp-acao:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.cp-acao:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.cp-acao--perigo:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.cp-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.cp-revogar {
+  display: flex;
+}
+
+.cp-form {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+
+.cp-input {
+  flex: 1 1 240px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.cp-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.cp-aviso {
+  margin: 0;
+  font-size: 11px;
+  color: var(--warning);
+}
+
+/* ---------------------------------------------------------------------------
+   Barra de consumo do orçamento (inventário do protótipo, item 11).
+   Leitura instantânea de risco: âmbar em 80%, vermelho ao estourar.
+   --------------------------------------------------------------------------- */
+
+.obra-orcamento {
+  margin-top: 10px;
+}
+
+.obra-orcamento__topo {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.obra-orcamento__barra {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--bg-muted);
+  overflow: hidden;
+}
+
+.obra-orcamento__preenchida {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.obra-orcamento__preenchida--alerta {
+  background: var(--warning);
+}
+
+.obra-orcamento__preenchida--estouro {
+  background: var(--danger);
+}

@@ -1,18 +1,19 @@
-import { Plus, Building2, FileText, MessageSquare, ArrowRight } from 'lucide-react';
-import Link from 'next/link';
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
-import { Stat } from '@/components/nogma/Stat';
 import { Sparkline } from '@/components/nogma/Sparkline';
-import { createClient } from '@/lib/supabase/server';
+import { Stat } from '@/components/nogma/Stat';
 import {
+  type KpiCard,
+  getAtividadeRecente,
+  getGastoPorCategoria,
   getKpisResumo,
   getSerieMensal,
-  getGastoPorCategoria,
-  getAtividadeRecente,
   relativeTime,
-  type KpiCard,
 } from '@/lib/data/painel';
+import { listPagamentosSemDocumento } from '@/lib/data/pendentes';
+import { createClient } from '@/lib/supabase/server';
+import { ArrowRight, Building2, FileText, MessageSquare, Plus, TriangleAlert } from 'lucide-react';
+import Link from 'next/link';
 import { BarSerieMensal } from './charts/bar-serie-mensal';
 import { DonutCategoria } from './charts/donut-categoria';
 import { LineAcumulado } from './charts/line-acumulado';
@@ -38,13 +39,45 @@ const TIPO_ICON = {
 export default async function PainelPage() {
   const supabase = await createClient();
 
-  const [kpis, serieMensal, categorias, atividade, userR] = await Promise.all([
-    getKpisResumo(),
-    getSerieMensal(12),
-    getGastoPorCategoria(5),
-    getAtividadeRecente(10),
-    supabase.auth.getUser(),
-  ]);
+  const [kpis, serieMensal, categorias, atividade, userR, semDocumento, confirmacoesR] =
+    await Promise.all([
+      getKpisResumo(),
+      getSerieMensal(12),
+      getGastoPorCategoria(5),
+      getAtividadeRecente(10),
+      supabase.auth.getUser(),
+      listPagamentosSemDocumento(),
+      supabase
+        .from('confirmacoes_pendentes')
+        .select('*', { count: 'exact', head: true })
+        .eq('resolvida', false),
+    ]);
+
+  // Banner de alertas: o que precisa de ação humana hoje, montado a partir do
+  // que já é consultado em outras telas. Aparece só quando há algo — banner
+  // permanente vira ruído e para de ser lido.
+  const aguardandoConfirmacao = confirmacoesR.count ?? 0;
+  const semDocCriticos = semDocumento.filter((p) => p.dias > 7).length;
+
+  const alertas: Array<{ texto: string; href: string }> = [];
+  if (aguardandoConfirmacao > 0) {
+    alertas.push({
+      texto:
+        aguardandoConfirmacao === 1
+          ? '1 mensagem aguardando confirmação'
+          : `${aguardandoConfirmacao} mensagens aguardando confirmação`,
+      href: '/pendentes',
+    });
+  }
+  if (semDocCriticos > 0) {
+    alertas.push({
+      texto:
+        semDocCriticos === 1
+          ? '1 pagamento sem nota há mais de 7 dias'
+          : `${semDocCriticos} pagamentos sem nota há mais de 7 dias`,
+      href: '/pendentes',
+    });
+  }
 
   const email = userR.data.user?.email ?? 'voce';
   const primeiroNomeRaw = email.split('@')[0]?.split('.')[0] ?? 'voce';
@@ -81,6 +114,21 @@ export default async function PainelPage() {
           Bom dia, <span className="mark-lime">{primeiroNome}</span>
         </h2>
 
+        {alertas.length > 0 ? (
+          <div className="painel-alertas" role="status">
+            <TriangleAlert size={16} aria-hidden="true" className="painel-alertas__icone" />
+            <ul className="painel-alertas__lista">
+              {alertas.map((a) => (
+                <li key={a.texto}>
+                  <Link href={a.href} className="painel-alertas__link">
+                    {a.texto}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
         {/* KPI Grid */}
         <div className="nos-kpi-grid" style={{ marginTop: 28 }}>
           <div className="nos-stat-wrap nos-fade-up" style={{ ['--i' as string]: 0 }}>
@@ -108,10 +156,7 @@ export default async function PainelPage() {
               caption={kpis.gasto_mes.caption}
             />
             <div className="nos-stat-spark">
-              <Sparkline
-                data={kpis.gasto_mes.trend8m}
-                ariaLabel="Tendencia gasto mensal"
-              />
+              <Sparkline data={kpis.gasto_mes.trend8m} ariaLabel="Tendencia gasto mensal" />
             </div>
           </div>
 
@@ -124,10 +169,7 @@ export default async function PainelPage() {
               caption={kpis.gasto_total.caption}
             />
             <div className="nos-stat-spark">
-              <Sparkline
-                data={kpis.gasto_total.trend8m}
-                ariaLabel="Total acumulado"
-              />
+              <Sparkline data={kpis.gasto_total.trend8m} ariaLabel="Total acumulado" />
             </div>
           </div>
 

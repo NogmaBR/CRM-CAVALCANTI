@@ -39,3 +39,50 @@
   color: var(--text-muted);
   font-size: 14px;
 }
+
+/* ---------------------------------------------------------------------------
+   Banner de alertas — o que precisa de ação hoje.
+   Só renderiza quando há algo: banner permanente vira ruído e para de ser lido.
+   --------------------------------------------------------------------------- */
+
+.painel-alertas {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--warning) 35%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
+}
+
+.painel-alertas__icone {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--warning);
+}
+
+.painel-alertas__lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.painel-alertas__link {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.painel-alertas__link:hover {
+  border-bottom-color: currentColor;
+}
+
+.painel-alertas__link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
