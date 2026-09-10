@@ -13,15 +13,20 @@
 #   STAGING_SUPABASE_ANON_KEY       — Anon key do projeto Supabase staging
 #   STAGING_SUPABASE_SERVICE_ROLE_KEY — Service-role key (usado no cleanup)
 #
-# Nota Fase 15: até Supabase staging ser provisionado, este
-# workflow ficará pausado (os secrets acima não existem ainda).
-# Descomente/ative o trigger quando a Fase 15 estiver completa.
+# DECISÃO da Fase 5.3 (2026-09-10): este workflow roda SÓ por disparo
+# manual até existir um Supabase de staging. Ele falhou em 100% dos PRs
+# desde que foi criado — primeiro pelo Node 20 (corrigido em 0dce4d5),
+# depois por "Wait for Vercel Preview" e pelos secrets de staging que nunca
+# foram provisionados. Check vermelho permanente treina todo mundo a
+# ignorar check, então a verificação que roda em todo PR passou a ser o
+# `ci.yml` (typecheck, testes, build, lint do diff), que fica verde.
+#
+# Para reativar em PR: provisione o staging (os secrets acima), rode este
+# workflow por `workflow_dispatch` até passar, e só então devolva o
+# gatilho `pull_request` abaixo.
 # ============================================================
 
 on:
-  pull_request:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       base_url:
