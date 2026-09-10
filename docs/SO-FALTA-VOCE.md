@@ -23,8 +23,8 @@ SÓ FALTA VOCÊ
   🔴 1. Telefones reais dos fornecedores      ← antes de qualquer automação
   🔴 2. Credenciais (UAZAPI, Anthropic, OpenAI) + redeploy
   🔴 3. Cadastrar a equipe em /config/autorizados
-  🟠 4. Mergear PR #10 (RAG)                  ← pode agora
-  🟡 5. Indexar a base de conhecimento
+  🟠 4. Mergear PR #11 (perf da indexação)    ← pode agora
+  🟡 5. Indexar a base de conhecimento (textos já criados)
   🟡 6. Ligar as automações, com cuidado
   ⏳ 7. Depois de 16/09: PR #7 e a chave FILA_WHATSAPP
   🟢 8. Plano pago da Vercel: repo privado + região São Paulo
@@ -148,11 +148,16 @@ aparecer em `/pagamentos` sem ninguém tocar no painel.
 
 ---
 
-# 🟠 4. Mergear o PR #10
+# 🟠 4. Mergear o PR #11
 
-<https://github.com/NogmaBR/CRM-CAVALCANTI/pull/10> — base de conhecimento e assistente.
+O **PR #10** (base de conhecimento) já foi mergeado em 2026-09-10, e os 98 documentos de
+texto já foram criados — 80 pagamentos, 10 obras, 8 fornecedores.
 
-Aditivo e inerte: sem as credenciais do item 2, o bloco de pergunta livre não age.
+Falta o <https://github.com/NogmaBR/CRM-CAVALCANTI/pull/11>: a primeira indexação levou
+**24,7 segundos** porque fazia um INSERT por documento, cada um atravessando a distância
+entre a função (Virgínia) e o banco (São Paulo). Em lote, cai para duas requisições.
+
+Aditivo, sem mudança de comportamento.
 
 ---
 
@@ -160,7 +165,10 @@ Aditivo e inerte: sem as credenciais do item 2, o bloco de pergunta livre não a
 
 Só depois do PR #10 mergeado **e** das credenciais do item 2.
 
-### Primeiro sem gastar nada
+> **Os textos já estão criados** (98 documentos, feito em 2026-09-10). O que falta é
+> gerar os embeddings, e isso exige a chave do item 2.
+
+### Se precisar refazer os textos, não custa nada
 
 ```bash
 node --env-file=.env.local -e "fetch('https://crm-cavalcanti.vercel.app/api/cron/indexar?apenas=texto',{headers:{Authorization:'Bearer '+process.env.CRON_SECRET}}).then(r=>r.text()).then(console.log)"
