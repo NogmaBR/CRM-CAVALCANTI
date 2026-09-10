@@ -150,8 +150,11 @@ vai valer. Só não precisa ser o primeiro passo.
 - `pgvector` **0.8.2 disponível**, não instalado — RAG é uma migration de distância
 - `pg_cron`, `pg_net`, `http` disponíveis, não instalados
 - Supabase em `sa-east-1`, PostgreSQL 17.6, `ACTIVE_HEALTHY`
-- 159 testes passando, typecheck limpo, build ok
-- O banco de produção está **sem dados reais** (0 obras, 0 fornecedores, 0 pagamentos)
+- 177 testes passando, typecheck limpo, build ok
+- O banco de produção **foi populado em 2026-09-10**: 10 obras, 8 fornecedores,
+  80 pagamentos (R$ 453.500,00), 9 categorias. Conferido obra a obra contra o
+  protótipo. Nenhum documento anexado ainda — os PDFs seguem no OneDrive, então
+  os 80 pagamentos contam como "sem nota" para efeito de automação
 
 ---
 
