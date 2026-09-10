@@ -238,12 +238,31 @@ Verificado **em produção**, não por leitura de config:
 - Os dois crons registrados no deployment de produção.
 
 **O motor está ligado mas inerte, de propósito:** as duas regras estão com
-`ativo = false`. Ligar é um UPDATE em `automation_rules` — e a de cobrança manda
-WhatsApp, que ainda não tem credencial.
+`ativo = false`. A de cobrança manda WhatsApp, que ainda não tem credencial.
 
-**`emitir()` continua sem chamador.** Fiar nos services existentes muda caminho
-em produção, e o congelamento até 16/09 vale. É o primeiro passo depois da
-entrega.
+### PRs abertos, aguardando decisão de merge
+
+| PR | O que é | Pode mergear? |
+|---|---|---|
+| **#6** `feat/painel-automacoes` | Tela `/config/automacoes`: ligar/desligar, ajustar parâmetros, botão "Ensaiar sem agir" e histórico de cada avaliação. Sem ela, ligar regra exige SQL no console. | **Sim.** Aditivo, nenhum caminho existente muda |
+| **#7** `feat/emitir-eventos` | `emitir()` ganha chamadores em pagamento/documento/confirmação. Tira `lib/events/` de código morto. | **Não antes de 16/09.** Muda caminho em produção |
+
+O PR #7 também corrigiu um erro de desenho que só apareceu ao fiar: `emitir`
+recebia o cliente Supabase do chamador, mas `automation_executions` não tem
+policy de INSERT para sessão de usuário — toda emissão vinda de server action
+perderia o log **em silêncio**. Agora `emitir` monta o cliente de serviço
+sozinho e o parâmetro sumiu: não há como errar porque não há o que passar.
+
+### Roteiro de go-live
+
+`docs/ROTEIRO-GO-LIVE.md` tem o passo a passo de popular o banco, ligar o
+WhatsApp e ligar as automações, com como conferir cada passo. Os dados prontos
+(SQL das 10 obras + 8 fornecedores, CSV dos 80 pagamentos) estão em
+`dados-iniciais/`, **fora do Git** — o repo é público e eles têm nome de
+cliente e contato.
+
+**Ainda não rodei a carga.** Escrever em massa no banco de produção é barrado
+pelo classificador; a Parte 1 do roteiro é ação humana.
 
 **Ainda não provado:** uma regra LIGADA rodando ponta a ponta em produção. Duas
 razões — o banco não tem nenhuma obra nem pagamento (dado do cliente é o item 1
