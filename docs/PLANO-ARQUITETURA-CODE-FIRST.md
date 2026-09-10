@@ -440,13 +440,16 @@ WhatsApp todo dia.
 O plano de graça da Supabase faz backup diário, mas não expõe PITR nem lista os arquivos
 por API. Isso significa que ninguém confirmou que existe backup **nem que ele restaura**.
 
-- [ ] Confirmar no painel da Supabase o que existe de backup hoje, e a retenção
-- [ ] Se o plano permitir, **ligar PITR**
-- [ ] Um dump semanal para fora da Supabase (`pg_dump` agendado, guardado noutro lugar) —
-      backup no mesmo fornecedor do banco protege contra erro humano, não contra perda
-      do fornecedor
+- [ ] Confirmar no painel da Supabase o que existe de backup hoje, e a retenção *(humano)*
+- [ ] Se o plano permitir, **ligar PITR** *(humano; exige Supabase Pro)*
+- [x] Um dump semanal para fora da Supabase — **feito em 2026-09-10 (PR #14)**:
+      `.github/workflows/backup-banco.yml`, `pg_dump` 17 pelo pooler em modo sessão,
+      cifrado com AES-256, artifact por 90 dias. Provado: run 34520394787 gerou 24
+      tabelas, e o artifact foi decifrado e extraído localmente com contagens iguais
+      à produção. Runbook em `docs/RUNBOOK-BACKUP.md`
 - [ ] **Restaurar num projeto descartável e conferir as contagens.** Backup não testado
       não é backup, e é a única linha desta fase que não admite "provavelmente funciona"
+      *(humano — não há `pg_restore` nesta máquina; o runbook diz como)*
 
 **Pronto quando:** existir um restore feito, com data, e as contagens conferidas contra
 produção.
@@ -464,13 +467,12 @@ O sistema tem quatro relógios que podem parar sem barulho:
 | Fila `pgmq` | Mensagem arquivada na dead-letter sem ninguém olhar |
 | Indexação | Embedding sem chave, ou chave expirada — a busca simplesmente não acha |
 
-- [ ] `/api/health` — checagem funda, protegida por segredo: banco responde, `cron.job`
-      tem os jobs ativos e rodaram na última hora, nenhuma fila com mensagem parada há
-      mais de 15 min, `automation_executions` sem `falha` recente, integrações
-      configuradas. Devolve 200 ou 503 com o motivo.
-- [ ] Um `pg_cron` diário que chama o `/api/health` e, se vier 503, **manda WhatsApp para
-      o gestor** — usando a fila `whatsapp_outbound` que já existe
-- [ ] Alerta específico para dead-letter: mensagem arquivada é sempre digna de nota
+- [x] `/api/health` — **feito (PR #12, 2026-09-10)**. `saude_sistema()` no banco +
+      integrações no processo. 503 quando doente. Verificado em produção: 401 sem auth,
+      200 com auth, `problemas: []`.
+- [x] `pg_cron` diário `saude-alerta` → `alertar_se_doente()` → fila `whatsapp_outbound`
+      **(PR #12)**. Só dispara de verdade quando a UAZAPI tiver credencial.
+- [x] Dead-letter entra como aviso em `saude_sistema()` **(PR #12)**
 
 > **Por que WhatsApp e não e-mail:** o cliente vive no WhatsApp — é a premissa do
 > produto inteiro. Um alerta por e-mail chegaria na mesma caixa que ninguém abre.
@@ -485,12 +487,15 @@ O sistema tem quatro relógios que podem parar sem barulho:
 Hoje tudo é `console.error('[automacao:x] falhou:', msg)` — texto livre. Procurar "todas
 as falhas da regra de cobrança na semana passada" é impossível.
 
-- [ ] Um helper de log estruturado (JSON: `nivel`, `area`, `evento`, `detalhe`, ids)
-- [ ] Trocar os `console.error` dos caminhos críticos: inbound, fila, automações, RAG
-- [ ] Correlacionar por id: a mesma mensagem do WhatsApp atravessa webhook, fila,
-      classificador e resposta — hoje não dá para seguir o rastro
+- [x] Um helper de log estruturado — **feito (PR #13, 2026-09-10)**: `apps/web/lib/log.ts`,
+      uma linha JSON por evento, nunca lança, mascara telefone. 14 testes.
+- [x] Trocados os 45 `console.*` de inbound, uazapi, fila, automações, RAG, assistente,
+      transcrição, classificador, confirmações, webhook e crons **(PR #13)**
+- [x] Correlação por id via `AsyncLocalStorage` (`comContexto`): webhook e handler da
+      fila usam o mesmo `correlacao` = id da mensagem no provider **(PR #13)**
 
-Sem servidor de log novo: a Vercel já indexa o que sai em JSON.
+Sem servidor de log novo: a Vercel já indexa o que sai em JSON. No painel de logs,
+`area:fila nivel:erro` ou `correlacao:<id>` já filtram.
 
 ---
 
@@ -506,9 +511,11 @@ Duas saídas, e a escolha é de custo:
 | **Provisionar staging** | Um segundo projeto Supabase + secrets no GitHub. O E2E roda de verdade contra preview |
 | **Trocar o E2E por testes de rota** | Sem browser e sem staging: exercitar as rotas com service-role num schema descartável. Cobre menos, roda sempre |
 
-- [ ] Decidir qual
-- [ ] Fazer o CI ficar **verde**, porque check vermelho permanente treina todo mundo a
-      ignorar check
+- [x] **Decidido (2026-09-10, PR #14): testes que rodam sempre, agora; staging depois,
+      se um dia valer o custo.** O E2E ficou só em `workflow_dispatch`.
+- [x] CI **verde**: `ci.yml` roda em todo PR e push na `main` — typecheck, vitest,
+      `next build`, e lint do Biome **só nos arquivos do diff** (o repo tem ~450 erros
+      pré-existentes; lintar tudo nunca ficaria verde). Primeiro run: sucesso.
 
 ---
 
@@ -517,7 +524,11 @@ Duas saídas, e a escolha é de custo:
 A decisão da FASE 0 é DNS na Cloudflare. Vale fazer junto:
 
 - [ ] DNS apontando para a Vercel, com domínio próprio (hoje é `crm-cavalcanti.vercel.app`)
+      *(humano: escolher o domínio e criar o registro na Cloudflare. O lado da API —
+      Vercel, `NEXT_PUBLIC_APP_URL`, Supabase Auth, Vault, redeploy — é
+      `scripts/configurar-dominio.mjs --dominio=… --aplicar`, PR #15)*
 - [ ] Regra de WAF no `/api/webhooks/uazapi`: rate limit por IP como camada extra ao HMAC
+      *(humano; o script imprime a regra exata)*
 - [ ] **Não** esperar que a Cloudflare resolva latência de banco — ela acelera estático e
       resolução de nome, não encurta os 7.600 km entre `iad1` e `sa-east-1`
 
@@ -530,7 +541,10 @@ na Virgínia e o banco em São Paulo. A primeira indexação levou 24,7s por cau
 
 - [ ] Migrar as funções para `gru1` — exige plano pago da Vercel, que já é necessário
       para tornar o repositório privado. **São a mesma conversa, com dois motivos.**
-- [ ] Medir de novo depois, e registrar o antes e depois
+      *(humano: o upgrade. Depois dele, `scripts/pos-vercel-pro.mjs --repo-privado`
+      faz região + redeploy + medição + repo privado, PR #15)*
+- [ ] Medir de novo depois, e registrar o antes e depois *(o script mede; baseline
+      reconfirmado em 2026-09-10: 393–409 ms de mediana em `iad1`)*
 
 ---
 

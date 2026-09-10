@@ -14,6 +14,20 @@
 3. Repositório privado  ← independente, mas melhor por último
 ```
 
+## O atalho: os passos 2 e 3 num comando
+
+Depois do upgrade (passo 1, que é billing e só você faz), **um comando faz o
+resto** — troca a região, redeploya, espera READY, confere a região no
+deployment, mede a latência e torna o repositório privado:
+
+```bash
+node --env-file=.env.local scripts/pos-vercel-pro.mjs --repo-privado
+```
+
+Se a Vercel recusar a região, o script diz que o plano ainda é Hobby e para
+sem mexer em nada. O passo a passo manual abaixo continua valendo, como
+referência e como plano B.
+
 O passo 3 fica por último de propósito: se algo der errado no deploy durante a
 troca de região, é mais fácil investigar com o repositório ainda público — links
 de commit abrem sem login, e o suporte enxerga.

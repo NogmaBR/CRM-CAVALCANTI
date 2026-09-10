@@ -4,7 +4,8 @@
 > **Mantenha-o atualizado**: ao terminar um trabalho relevante, atualize a §7 (estado)
 > e acrescente em §8 (armadilhas) qualquer erro novo que você cometeu.
 >
-> Última atualização: **2026-09-10**, após o motor de automações (Fase 2) ir para branch.
+> Última atualização: **2026-09-10 (noite)**, após a Fase 5 inteira ir para PR
+> (#13 logs, #14 CI + backup, #15 scripts de operação).
 
 ---
 
@@ -154,7 +155,9 @@ aqui — não invente uma integração.
 | **Classificador IA** | ⚠️ **modo mock** | `IA_PROVIDER=mock`. Com `anthropic` + `ANTHROPIC_API_KEY` vira real (`claude-opus-5`) |
 | **Transcrição de áudio** | ❌ desligada | `IA_TRANSCRICAO_PROVIDER=none`. Com `openai` + `OPENAI_API_KEY` liga |
 | n8n | ❌ não provisionado | Opcional; o CRM faz tudo sozinho agora |
-| CI E2E (Playwright) | ❌ falha sempre | Morre no setup: o workflow fixa Node 20 e o pnpm 11.7 exige ≥ 22.13. Atrás disso ainda faltam os secrets de staging (Fase 15). **Ignore o check vermelho** |
+| CI (`ci.yml`) | ✅ verde (PR #14) | typecheck, vitest, build, lint do diff. Sem segredo. É o check que vale |
+| CI E2E (Playwright) | ⏸ só por dispatch | Precisa de staging Supabase (Fase 15) que nunca existiu. Saiu do gatilho de PR no PR #14 para parar de pintar tudo de vermelho |
+| Backup semanal (`backup-banco.yml`) | ✅ provado | Domingo 03:00 UTC, cifrado, artifact 90 dias. Restore de teste ainda é ação humana |
 
 **Para saber o que falta agora, sem abrir painel:**
 
@@ -177,9 +180,17 @@ Rode os três antes de dizer que algo está pronto:
 
 ```bash
 pnpm --filter web typecheck          # tsc --noEmit
-pnpm --filter web exec vitest run    # 174 testes, 8 arquivos (Vitest 4)
+pnpm --filter web exec vitest run    # 240 testes, 13 arquivos (Vitest 4)
 pnpm --filter web build              # next build
 ```
+
+O `ci.yml` (PR #14) roda exatamente estes três em todo PR, mais o lint do diff.
+
+**Log em produção é JSON estruturado** (`lib/log.ts`, PR #13). Não escreva
+`console.error` em código de operação; use `const log = logger('area')` e
+`log.erro('evento_em_snake_case', { campos })`. Dentro de `comContexto({...})` os
+campos vão para todo log emitido lá dentro — é como se correlaciona uma mensagem do
+webhook até a resposta. Campos chamados `telefone` saem mascarados sozinhos.
 
 **Não rode `pnpm lint` no repo inteiro.** O Biome acusa **448 erros pré-existentes**
 em 325 arquivos (ordenação de import, `role="status"` etc.) — não é um baseline limpo.
@@ -364,19 +375,37 @@ de configuração, que o classificador barra e é decisão do usuário.
    webhook com HMAC antigo devolve 401, com o novo devolve 200
 ✅ Signup público desabilitado (`disable_signup: true`)
 
+### Fase 5 — Operação e confiança (2026-09-10, em PR)
+
+| Item | Estado | Onde |
+|---|---|---|
+| 5.1 Saber que parou | ✅ em produção (PR #12) | `/api/health` 503 quando doente; cron `saude-alerta` → WhatsApp |
+| 5.2 Logs pesquisáveis | 🟢 PR #13 | `lib/log.ts`: JSON por linha, `comContexto` para correlação, telefone mascarado. 45 `console.*` trocados |
+| 5.3 CI verde | 🟢 PR #14 | `ci.yml` (typecheck, vitest, build, lint do diff). E2E só por dispatch até existir staging |
+| 5.0 Backup externo | 🟢 PR #14 | `backup-banco.yml`: pg_dump semanal cifrado, artifact 90 dias. **Provado**: artifact decifrado localmente, contagens iguais à produção |
+| 5.5 Região `gru1` | ⏸ humano + script | Upgrade Pro (billing) → `scripts/pos-vercel-pro.mjs --repo-privado` (PR #15) |
+| 5.4 Domínio + Cloudflare | ⏸ humano + script | Escolher domínio → `scripts/configurar-dominio.mjs --aplicar` (PR #15) → DNS/WAF na Cloudflare |
+
+Secrets `BACKUP_DB_URL` e `BACKUP_PASSPHRASE` existem no repositório do GitHub. A
+frase está em `.env.local` e em mais lugar nenhum — sem ela os backups são ilegíveis.
+
+**Fase 6 (domínio de vendas) não foi iniciada de propósito.** É um produto novo
+(8–12 semanas) e depende de definição do cliente sobre o que ele vende; não há o
+que codar sem isso. Está como decisão em `docs/SO-FALTA-VOCE.md`.
+
 ### O que falta — e é ação humana, não código
 
-1. **Repositório é público.** Vai virar privado quando a Vercel for paga.
+1. **Repositório é público.** Vai virar privado quando a Vercel for paga
+   (`scripts/pos-vercel-pro.mjs --repo-privado` faz isso depois do upgrade).
 2. **Senha do banco tem 16 chars.** Com o repo público e o host publicado em 15+
    arquivos, é o elo mais fraco. O ideal é usar o *Generate a password* do Supabase.
+   **Ao rotacionar, regrave o secret `BACKUP_DB_URL` no GitHub** — senão o backup
+   semanal para de funcionar.
 3. **Credenciais UAZAPI** — sem elas o WhatsApp não fecha o ciclo.
 4. **`ANTHROPIC_API_KEY`** — para sair do classificador mock.
 5. **Cadastrar a equipe em `/config/autorizados`** — sem isso, toda mensagem é ignorada.
-6. **CI E2E** — falha em dois níveis. O visível: `.github/workflows/*.yml` pede
-   `node-version: "20"` e o pnpm 11.7 recusa (`requires at least Node.js v22.13`),
-   então o job morre antes de rodar teste. Trocar para `"22"` é uma linha — e aí
-   aparece o segundo nível, que é a Fase 15 (staging Supabase) nunca provisionada.
-   Corrigir o Node sozinho não deixa o check verde.
+6. **Restore de teste do backup** num projeto descartável (`docs/RUNBOOK-BACKUP.md`).
+   Até existir um registrado, o backup é hipótese.
 
 ---
 
@@ -398,6 +427,19 @@ de configuração, que o classificador barra e é decisão do usuário.
   quebra com o certificado do Supabase — passe `ssl:{rejectUnauthorized:false}` e
   remova o `sslmode` da string.
 - **`gh auth refresh` exige `-h github.com`** em modo não-interativo.
+- **`biome check --fix` com a lista de caminhos errada roda no repositório INTEIRO** e
+  reescreve centenas de arquivos que você não tocou (aconteceu: 170 arquivos, por um
+  `sed` que montou os caminhos errado). Antes de rodar, `echo` a lista e confira que
+  são só os seus arquivos; depois, `git status --short | wc -l` tem que bater com o
+  número que você esperava. Se passou do ponto, `git checkout --` nos que não são seus.
+- **Heredoc do Bash também quebra** com conteúdo grande contendo aspas simples e
+  acentos misturados — a ferramenta Write é mais segura para arquivos inteiros.
+- **`gh workflow run <arquivo>` só acha workflows que já estão na branch padrão.** Para
+  provar um workflow novo antes do merge, use um gatilho `push` temporário na branch e
+  remova-o no commit seguinte.
+- **`gh run download -D pasta/` cria uma subpasta com o nome do artifact** e põe o
+  arquivo dentro. `find -name '*.enc' | head -1` devolve a pasta, não o arquivo — use
+  `-type f`.
 
 ### Git e GitHub
 
