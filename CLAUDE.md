@@ -147,6 +147,16 @@ aqui — não invente uma integração.
 | n8n | ❌ não provisionado | Opcional; o CRM faz tudo sozinho agora |
 | CI E2E (Playwright) | ❌ falha sempre | Morre no setup: o workflow fixa Node 20 e o pnpm 11.7 exige ≥ 22.13. Atrás disso ainda faltam os secrets de staging (Fase 15). **Ignore o check vermelho** |
 
+**Para saber o que falta agora, sem abrir painel:**
+
+```bash
+node --env-file=.env.local scripts/checar-integracoes.mjs
+```
+
+Ele diz quais variáveis faltam, o que a falta causa, e — o mais útil — se há
+variável alterada **depois** do último deploy, que é a armadilha do redeploy.
+Nunca imprime valor de credencial.
+
 **Nada disso quebra o build.** Todas as integrações ausentes degradam com log e default
 seguro. É proposital: `IA_AUTO_APROVAR=false`, `IA_PROVIDER=mock`, transcrição `none`.
 

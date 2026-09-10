@@ -196,6 +196,21 @@ Uma instância desconectada devolve erro em todo envio.
 > público. Se colar por engano em algum lugar versionado, o certo é **rotacionar
 > o token na UAZAPI**, não apagar o commit.
 
+## 2.2b — Conferir o que falta, sem abrir o painel
+
+A qualquer momento, no terminal:
+
+```bash
+node --env-file=.env.local scripts/checar-integracoes.mjs
+```
+
+Ele lista cada integração, o que falta e **o que a falta causa**. E compara a
+data da última variável alterada com a do último deploy — que é a única forma
+de saber se o passo 2.3 abaixo foi mesmo feito.
+
+Nunca imprime valor de credencial: `sensitive` nem retorna pela API da Vercel,
+e qualquer nome com KEY, TOKEN ou SECRET aparece como "(definida)".
+
 ## 2.3 — Redeployar (o passo que todo mundo esquece)
 
 **Variável de ambiente na Vercel só passa a valer depois de um novo deploy.**
@@ -206,6 +221,31 @@ Salvar e não redeployar é exatamente o motivo pelo qual se conclui, errado, qu
 2. No deployment do topo (o de Production), clique nos **três pontinhos** → **Redeploy**
 3. **Desmarque** "Use existing Build Cache"
 4. Confirme e espere ficar **Ready**
+
+## 2.3b — As outras duas chaves (IA e transcrição)
+
+O WhatsApp sozinho fecha o ciclo "manda → bot pergunta → SIM → lança", mas com
+os dados **simulados**. Para a extração ser real, faltam duas configurações —
+cada uma com **duas** variáveis, e é aí que se erra: definir só a chave deixa
+tudo como estava, e a chave passa a ser cobrada à toa.
+
+| Integração | Variáveis | Sem isso |
+|---|---|---|
+| **Classificador** | `IA_PROVIDER` = `anthropic` **e** `ANTHROPIC_API_KEY` | Extração da nota é simulada |
+| **Transcrição** | `IA_TRANSCRICAO_PROVIDER` = `openai` **e** `OPENAI_API_KEY` | Áudio vira pendência para alguém ouvir |
+
+Opcionais, com padrão razoável: `IA_MODEL` (`claude-opus-5`) e
+`OPENAI_TRANSCRICAO_MODEL` (`whisper-1`).
+
+Marque **sensitive** nas duas chaves; `IA_PROVIDER` e `IA_TRANSCRICAO_PROVIDER`
+são configuração, não segredo.
+
+> **Não defina `IA_AUTO_APROVAR=true`.** O padrão é `false`, e é decisão de
+> produto: o briefing define a confirmação do remetente como parte do fluxo.
+> Auto-aprovar por confiança gravaria no financeiro do cliente sem ninguém
+> dizer "sim".
+
+Depois destas, **redeploy de novo** (passo 2.3). Vale a mesma regra.
 
 ## 2.4 — Apontar o webhook da UAZAPI para o CRM
 
@@ -419,7 +459,10 @@ Marque só o que você **conferiu**, não o que você fez.
 - [ ] `pagamentos = 80`, total `453.500,00`
 - [ ] Telefones dos fornecedores trocados pelos **reais** (os do protótipo são falsos)
 - [ ] `UAZAPI_BASE_URL` e `UAZAPI_TOKEN` na Vercel, em Production
+- [ ] `IA_PROVIDER=anthropic` **e** `ANTHROPIC_API_KEY` (as duas, senão continua mock)
+- [ ] `IA_TRANSCRICAO_PROVIDER=openai` **e** `OPENAI_API_KEY` (as duas)
 - [ ] **Redeploy feito** depois de cadastrar as variáveis
+- [ ] `scripts/checar-integracoes.mjs` saindo sem nenhum ✗
 - [ ] Webhook da UAZAPI apontado, com HMAC — e `test-webhook-uazapi.mjs` devolvendo 200
 - [ ] Equipe cadastrada em `/config/autorizados`, com os números certos
 - [ ] Teste com celular real: foto → bot pergunta → "SIM" → lançamento no painel
