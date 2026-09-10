@@ -3,6 +3,10 @@
    Primary:  Verde petróleo #0C4651 (base escura) · Lime #CCFF00 (accent)
    Neutrals: Preto #000000 · Cinza #A1A1A1 · Branco #FFFFFF
    Rule: Lime is accent/highlight only — never a base for long text.
+
+   Cliente Cavalcanti Construções: no tema claro (light, default), o accent
+   usa o azul da marca do cliente (#283078, extraído da logo) em vez do
+   lime — pedido do briefing de alinhamento 16/09. Dark e black mantêm lime.
    ========================================================================== */
 
 :root {
@@ -12,6 +16,12 @@
   --black:            #000000;
   --gray:             #A1A1A1;   /* cinza — muted / secondary         */
   --white:            #FFFFFF;
+
+  /* ---- Cavalcanti brand blue (client accent, light theme only) ---- */
+  --cavalcanti-blue-600: #1F2560;   /* pressed / hover-dark               */
+  --cavalcanti-blue-500: #283078;   /* = client blue (medido da logo)     */
+  --cavalcanti-blue-300: #404090;   /* face iluminada da logo             */
+  --cavalcanti-blue-100: #E4E5F3;   /* faint tint background              */
 
   /* ---- Petroleum scale (derived, harmonic) ---- */
   --petroleum-950:    #041F25;   /* deepest — near-black petroleum     */
@@ -79,15 +89,21 @@
   --border-strong:    var(--neutral-400);
   --border-focus:     var(--petroleum-600);
 
-  --accent:           var(--lime-500);
-  --accent-hover:     var(--lime-600);
-  --accent-text:      var(--petroleum-950);   /* text on lime accent  */
+  --accent:           var(--cavalcanti-blue-500);
+  --accent-hover:     var(--cavalcanti-blue-600);
+  --accent-text:      var(--white);   /* text on client-blue accent (dark bg) */
+  --shadow-accent:    0 8px 24px rgba(40, 48, 120, 0.35);   /* client-blue glow on CTAs */
 
-  --brand:            var(--petroleum-800);
-  --brand-hover:      var(--petroleum-700);
+  /* --brand segue --accent no tema claro (client blue) — mesma convenção
+     dos temas black/dark, onde --brand e --accent já são o mesmo lime.
+     Antes disso, --brand ficava no petróleo próprio da Nogma e vazava
+     verde/petróleo em estados "selecionado" (categorias, perfil, chips
+     de apelido, duplicatas de fornecedor) mesmo com --accent já azul. */
+  --brand:            var(--cavalcanti-blue-500);
+  --brand-hover:      var(--cavalcanti-blue-600);
   --brand-text:       var(--white);
 
-  --ring:             color-mix(in srgb, var(--petroleum-600) 45%, transparent);
+  --ring:             color-mix(in srgb, var(--cavalcanti-blue-500) 45%, transparent);
   --overlay:          color-mix(in srgb, var(--petroleum-950) 55%, transparent);
 }
 
@@ -119,6 +135,7 @@
   --accent:           var(--lime-500);
   --accent-hover:     var(--lime-300);
   --accent-text:      var(--black);
+  --shadow-accent:    var(--shadow-lime);
 
   --brand:            var(--lime-500);
   --brand-hover:      var(--lime-300);
@@ -154,6 +171,7 @@
   --accent:           var(--lime-500);
   --accent-hover:     var(--lime-300);
   --accent-text:      var(--petroleum-950);
+  --shadow-accent:    var(--shadow-lime);
 
   --brand:            var(--lime-500);
   --brand-hover:      var(--lime-300);

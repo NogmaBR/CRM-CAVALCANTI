@@ -4,6 +4,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Menu, X } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { IconButton } from '@/components/nogma/IconButton';
 import type { ReactNode } from 'react';
 import { SidebarNav } from './sidebar-nav';
@@ -33,16 +34,14 @@ export function MobileNav({ userMenu }: { userMenu?: ReactNode }) {
             <Dialog.Title>Menu de navegação</Dialog.Title>
           </VisuallyHidden>
           <div className="nos-drawer__brand">
-            <span className="nos-brand__mark">
-              <Image src="/logos/isotype-n-lime.png" alt="Nogma" width={28} height={28} />
-            </span>
-            <Image
-              className="nos-brand__word"
-              src="/logos/logo-nogma-lime.png"
-              alt="nogma"
-              width={100}
-              height={24}
-            />
+            <Dialog.Close asChild>
+              <Link href="/painel" className="nos-brand" aria-label="Ir para o painel">
+                <span className="nos-brand__mark">
+                  <Image src="/logos/cavalcanti-mark-light.png" alt="" width={28} height={28} />
+                </span>
+                <span className="nos-brand__wordtext">Cavalcanti</span>
+              </Link>
+            </Dialog.Close>
             <Dialog.Close asChild>
               <IconButton icon={<X size={18} />} label="Fechar menu" className="nos-drawer__close" />
             </Dialog.Close>

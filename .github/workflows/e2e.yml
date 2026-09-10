@@ -1,0 +1,238 @@
+# ============================================================
+# E2E Playwright — CRM Nogma-Cavalcanti
+# ============================================================
+# Roda a suite completa de testes E2E contra o Vercel Preview
+# URL do PR (que aponta para o Supabase staging provisionado
+# manualmente na Fase 15).
+#
+# Secrets obrigatórios (Settings → Secrets → Actions):
+#   VERCEL_TOKEN                    — Personal token Vercel (pra consultar preview URL)
+#   STAGING_AUTH_EMAIL              — Email do admin no Supabase staging
+#   STAGING_AUTH_PASSWORD           — Senha do admin no Supabase staging
+#   STAGING_SUPABASE_URL            — URL do projeto Supabase staging
+#   STAGING_SUPABASE_ANON_KEY       — Anon key do projeto Supabase staging
+#   STAGING_SUPABASE_SERVICE_ROLE_KEY — Service-role key (usado no cleanup)
+#
+# Nota Fase 15: até Supabase staging ser provisionado, este
+# workflow ficará pausado (os secrets acima não existem ainda).
+# Descomente/ative o trigger quando a Fase 15 estiver completa.
+# ============================================================
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "URL base do Playwright (deixe vazio para aguardar preview Vercel)"
+        required: false
+        default: ""
+
+name: E2E Playwright (staging)
+
+jobs:
+  e2e:
+    name: Playwright E2E — staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      # ----------------------------------------------------------
+      # 1. Checkout do código-fonte completo
+      # ----------------------------------------------------------
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ----------------------------------------------------------
+      # 2. Configurar pnpm v11 (alinhado com packageManager no root)
+      # ----------------------------------------------------------
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: "11"
+
+      # ----------------------------------------------------------
+      # 3. Node 20 + cache pnpm integrado via setup-node
+      # ----------------------------------------------------------
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+
+      # ----------------------------------------------------------
+      # 4. Instalar dependências do monorepo (frozen — sem bump de lock)
+      # ----------------------------------------------------------
+      - name: Install dependencies
+        timeout-minutes: 5
+        run: pnpm install --frozen-lockfile
+
+      # ----------------------------------------------------------
+      # 5. Cache dos browsers Playwright (Chromium ~115 MB)
+      #    Key baseada no pnpm-lock.yaml → invalida apenas quando
+      #    @playwright/test mudar de versão.
+      # ----------------------------------------------------------
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      # ----------------------------------------------------------
+      # 6. Instalar Chromium (só se cache miss)
+      #    test:e2e:install = playwright install --with-deps chromium
+      # ----------------------------------------------------------
+      - name: Install Chromium browser
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 5
+        run: pnpm test:e2e:install
+
+      # ----------------------------------------------------------
+      # 7. Aguardar Vercel Preview estar READY
+      #
+      #    Usa o action patrickedqvist/wait-for-vercel-preview@v1.3.1.
+      #    Escolha: action estabelecida, polled-interval configurável,
+      #    output `url` direto, compatível com PRs do GitHub.
+      #
+      #    Fallback manual: se a action for deprecated, substitua por:
+      #      run: |
+      #        # consulta Vercel API até o deployment estar READY
+      #        VERCEL_TEAM="" # setar se usar team scope
+      #        for i in $(seq 1 20); do
+      #          URL=$(curl -s -H "Authorization: Bearer $VERCEL_TOKEN" \
+      #            "https://api.vercel.com/v6/deployments?limit=1&meta-githubCommitSha=${{ github.sha }}" \
+      #            | jq -r '.deployments[0] | select(.state=="READY") | .url')
+      #          [ -n "$URL" ] && echo "url=https://$URL" >> $GITHUB_OUTPUT && break
+      #          echo "Aguardando Vercel... tentativa $i/20"
+      #          sleep 30
+      #        done
+      #        [ -z "$URL" ] && echo "::error::Vercel preview não ficou READY em 10 min" && exit 1
+      # ----------------------------------------------------------
+      - name: Wait for Vercel Preview
+        id: wait-for-preview
+        # Pula se workflow_dispatch forneceu URL manualmente
+        if: github.event_name != 'workflow_dispatch' || inputs.base_url == ''
+        uses: patrickedqvist/wait-for-vercel-preview@v1.3.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          max_timeout: 600
+          check_interval: 30
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+      # ----------------------------------------------------------
+      # 7b. Resolver URL base: preview Vercel OU input manual
+      # ----------------------------------------------------------
+      - name: Resolve base URL
+        id: base-url
+        run: |
+          if [ -n "${{ inputs.base_url }}" ]; then
+            echo "url=${{ inputs.base_url }}" >> $GITHUB_OUTPUT
+          else
+            echo "url=${{ steps.wait-for-preview.outputs.url }}" >> $GITHUB_OUTPUT
+          fi
+
+      # ----------------------------------------------------------
+      # 8. Rodar suite E2E contra staging
+      #
+      #    test:e2e:staging = cross-env PLAYWRIGHT_ENV=staging pnpm --filter web test:e2e
+      #    playwright.config.ts lê PLAYWRIGHT_BASE_URL (preview URL)
+      #    e PLAYWRIGHT_ENV=staging (carrega .env.staging).
+      #    hCaptcha: staging deve usar test-sitekey ou ter hCaptcha
+      #    desabilitado — PLAYWRIGHT_ALLOW_HCAPTCHA=1 como safety net
+      #    caso a var NEXT_PUBLIC_HCAPTCHA_SITE_KEY esteja definida.
+      # ----------------------------------------------------------
+      - name: Run E2E tests
+        timeout-minutes: 15
+        run: pnpm test:e2e:staging
+        env:
+          CI: "true"
+          PLAYWRIGHT_BASE_URL: ${{ steps.base-url.outputs.url }}
+          PLAYWRIGHT_ENV: staging
+          AUTH_TEST_EMAIL: ${{ secrets.STAGING_AUTH_EMAIL }}
+          AUTH_TEST_PASSWORD: ${{ secrets.STAGING_AUTH_PASSWORD }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+          # Safety net: permite login mesmo se hCaptcha test-key estiver
+          # ativa no staging (global.setup.ts verifica esta flag)
+          PLAYWRIGHT_ALLOW_HCAPTCHA: "1"
+
+      # ----------------------------------------------------------
+      # 9. Cleanup de dados E2E (SEMPRE executa, mesmo em falha)
+      #
+      #    Remove todos os registros com prefixo e2e_test_ criados
+      #    durante o run. Ordem respeita FKs (ver helpers.ts).
+      #    Script: scripts/e2e-cleanup.mjs (não depende do Playwright).
+      # ----------------------------------------------------------
+      - name: Cleanup E2E test data
+        if: always()
+        run: pnpm e2e:cleanup
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+
+      # ----------------------------------------------------------
+      # 10. Upload Playwright HTML report (apenas em falha)
+      #     Contém screenshots + video + trace de cada teste falho.
+      #     Retenção 7 dias (suficiente pra investigar + corrigir).
+      # ----------------------------------------------------------
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_id }}
+          path: apps/web/e2e-report/
+          retention-days: 7
+
+      # ----------------------------------------------------------
+      # 11. Upload screenshots e vídeos (apenas em falha)
+      #     outputDir do playwright.config.ts = e2e-results/
+      #     Retenção 3 dias (evidência de curto prazo).
+      # ----------------------------------------------------------
+      - name: Upload test results (screenshots + video)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results-${{ github.run_id }}
+          path: apps/web/e2e-results/
+          retention-days: 3
+
+      # ----------------------------------------------------------
+      # 12. Comentar no PR com status + link para o report
+      #     Executa sempre (sucesso ou falha) para dar visibilidade.
+      #     Usa GITHUB_TOKEN embutido — sem secret extra necessário.
+      # ----------------------------------------------------------
+      - name: Comment PR with E2E status
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const success = '${{ job.status }}' === 'success';
+            const icon = success ? '✅' : '❌';
+            const status = success ? 'Passed' : 'Failed';
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const artifactNote = success
+              ? ''
+              : `\n\n**Artifacts** (disponíveis por 7 dias): [playwright-report-${context.runId}](${runUrl}#artifacts)`;
+
+            const body = [
+              `## ${icon} E2E Playwright — ${status}`,
+              '',
+              `| Campo | Valor |`,
+              `|---|---|`,
+              `| Preview URL | \`${{ steps.base-url.outputs.url }}\` |`,
+              `| Ambiente | staging |`,
+              `| Run | [#${context.runId}](${runUrl}) |`,
+              artifactNote,
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });

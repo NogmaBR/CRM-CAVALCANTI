@@ -52,7 +52,7 @@ export interface AuditListItem extends AuditLog {
 
 /**
  * Lista audit_log com JOIN em profiles pra pegar nome+papel do user.
- * RLS ativa (admin/gestor only via policy audit_admin_gestor_select).
+ * RLS ativa (admin/gestor only via policy audit_admin_select).
  *
  * Diff é JSONB — sem type strict (varia por tabela). UI faz safe render.
  */

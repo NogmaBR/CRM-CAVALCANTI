@@ -1,8 +1,10 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { LIMITES, verificarLimite, ipDaRequest } from '@/lib/security/rate-limit';
 
 const SenhaSchema = z
   .object({
@@ -28,6 +30,17 @@ export async function definirSenha(formData: FormData) {
 
   const supabase = await createClient();
   const { data: userData } = await supabase.auth.getUser();
+
+  // Rate limit por IP (finding M-3) — antes de gastar chamada na Admin API.
+  const limite = await verificarLimite(LIMITES.definirSenha, ipDaRequest(await headers()));
+  if (!limite.permitido) {
+    redirect(
+      `/definir-senha?error=${encodeURIComponent(
+        'Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.',
+      )}`,
+    );
+  }
+
   if (!userData.user) {
     redirect(
       '/login?error=Sess%C3%A3o%20expirada.%20Solicite%20novo%20convite%20ao%20administrador.',
@@ -36,7 +49,12 @@ export async function definirSenha(formData: FormData) {
 
   const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
   if (error) {
-    redirect(`/definir-senha?error=${encodeURIComponent(`Falha ao definir senha: ${error.message}`)}`);
+    console.error('[definir-senha] updateUser falhou:', error.message);
+    redirect(
+      `/definir-senha?error=${encodeURIComponent(
+        'Não foi possível definir a senha. Verifique se ela tem ao menos 8 caracteres e tente de novo.',
+      )}`,
+    );
   }
 
   redirect('/painel?success=Senha%20definida.%20Bem-vindo%20ao%20Gestor%20de%20Obras.');

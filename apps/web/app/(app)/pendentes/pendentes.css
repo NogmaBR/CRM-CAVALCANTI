@@ -128,42 +128,6 @@
   grid-column: 1 / -1;
 }
 
-.pendente-card__confidence {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.pendente-confidence__label {
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-
-.pendente-confidence__track {
-  height: 6px;
-  border-radius: 99px;
-  background: var(--surface-2, rgba(0,0,0,0.08));
-  overflow: hidden;
-}
-
-.pendente-confidence__fill {
-  height: 100%;
-  border-radius: 99px;
-  transition: width 300ms ease;
-}
-
-.pendente-confidence__fill--low {
-  background: var(--danger, #ef4444);
-}
-
-.pendente-confidence__fill--mid {
-  background: var(--warning, #eab308);
-}
-
-.pendente-confidence__fill--high {
-  background: var(--success, #22c55e);
-}
-
 .pendente-card__actions {
   display: flex;
   align-items: center;
@@ -201,5 +165,111 @@
   .pendente-card__actions {
     flex-direction: column-reverse;
     align-items: stretch;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Pagamentos sem NF/comprovante (briefing §3 — "pendência com contagem de dias")
+   --------------------------------------------------------------------------- */
+
+.pendentes-sem-doc {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.pendentes-sem-doc__titulo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-strong, inherit);
+}
+
+.pendentes-sem-doc__contagem {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--warning, #e8a317) 22%, transparent);
+  color: var(--warning, #e8a317);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.pendentes-sem-doc__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pendentes-sem-doc__item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 120ms ease;
+}
+
+.pendentes-sem-doc__item:hover {
+  border-color: var(--accent);
+}
+
+.pendentes-sem-doc__item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.pendentes-sem-doc__valor {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.pendentes-sem-doc__meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-muted, #666);
+}
+
+.pendentes-sem-doc__dias {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted, #666);
+}
+
+.pendentes-sem-doc__dias--alerta {
+  color: var(--warning, #e8a317);
+  font-weight: 600;
+}
+
+.pendentes-sem-doc__dias--critico {
+  color: var(--danger, #d6483b);
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .pendentes-sem-doc__item {
+    grid-template-columns: 1fr auto;
+  }
+
+  .pendentes-sem-doc__meta {
+    grid-column: 1 / -1;
+    order: 3;
   }
 }

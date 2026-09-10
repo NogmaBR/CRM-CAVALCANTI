@@ -4,25 +4,17 @@ import Link from 'next/link';
 import { useMemo } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Pencil } from 'lucide-react';
-import { Badge, type BadgeVariant } from '@/components/nogma/Badge';
+import { Badge } from '@/components/nogma/Badge';
 import { DataTable } from '@/components/data-table';
 import type { Categoria } from '@/lib/data/categorias';
 import type { Fornecedor } from '@/lib/data/fornecedores';
 import type { Obra } from '@/lib/data/obras';
 import type { Pagamento } from '@/lib/data/pagamentos';
 import { formatBRL } from '@/lib/schemas/pagamento';
-
-const STATUS_VARIANT: Record<NonNullable<Pagamento['status_pagto']>, BadgeVariant> = {
-  confirmado: 'success',
-  aguardando: 'warning',
-  erro: 'danger',
-};
-
-const STATUS_LABEL: Record<NonNullable<Pagamento['status_pagto']>, string> = {
-  confirmado: 'Confirmado',
-  aguardando: 'Aguardando',
-  erro: 'Erro',
-};
+import {
+  PAGAMENTO_STATUS_LABEL as STATUS_LABEL,
+  PAGAMENTO_STATUS_VARIANT as STATUS_VARIANT,
+} from '@/lib/status-labels';
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return '—';

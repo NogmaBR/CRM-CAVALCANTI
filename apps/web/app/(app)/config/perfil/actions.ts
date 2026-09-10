@@ -23,20 +23,12 @@ export async function salvarPerfil(formData: FormData) {
   const tema = String(formData.get('tema') ?? '').trim();
   const timezone = String(formData.get('timezone') ?? '').trim();
 
-  // Checkboxes: absent from FormData when unchecked — explicitly default to false
-  const email_prefs = {
-    pagamentos_aguardando: formData.get('email_prefs.pagamentos_aguardando') === 'on',
-    pendencias_novas: formData.get('email_prefs.pendencias_novas') === 'on',
-    digest_semanal: formData.get('email_prefs.digest_semanal') === 'on',
-  };
-
   // Build raw object for Zod — only include defined non-empty values
   const raw: Record<string, unknown> = {};
   if (nome) raw.nome = nome;
   raw.telefone = telefone;
   if (tema) raw.tema = tema;
   if (timezone) raw.timezone = timezone;
-  raw.email_prefs = email_prefs;
 
   const parsed = PerfilUpdateSchema.safeParse(raw);
   if (!parsed.success) {
@@ -54,9 +46,6 @@ export async function salvarPerfil(formData: FormData) {
   }
   if (parsed.data.tema !== undefined) update.tema_preferido = parsed.data.tema;
   if (parsed.data.timezone !== undefined) update.timezone = parsed.data.timezone;
-  if (parsed.data.email_prefs !== undefined) {
-    update.email_prefs = parsed.data.email_prefs as Database['public']['Tables']['profiles']['Update']['email_prefs'];
-  }
 
   const { error } = await supabase
     .from('profiles')

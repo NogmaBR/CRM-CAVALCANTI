@@ -147,9 +147,12 @@ export type Database = {
           mensagem_id: string
           msg_id_pergunta_uazapi: string | null
           pergunta_enviada: string
+          pagamento_id: string | null
           resolvida: boolean | null
+          resolvida_via: string | null
           respondida_em: string | null
           resposta_bruta: string | null
+          resultado: string | null
         }
         Insert: {
           created_at?: string | null
@@ -157,9 +160,12 @@ export type Database = {
           mensagem_id: string
           msg_id_pergunta_uazapi?: string | null
           pergunta_enviada: string
+          pagamento_id?: string | null
           resolvida?: boolean | null
+          resolvida_via?: string | null
           respondida_em?: string | null
           resposta_bruta?: string | null
+          resultado?: string | null
         }
         Update: {
           created_at?: string | null
@@ -167,9 +173,12 @@ export type Database = {
           mensagem_id?: string
           msg_id_pergunta_uazapi?: string | null
           pergunta_enviada?: string
+          pagamento_id?: string | null
           resolvida?: boolean | null
+          resolvida_via?: string | null
           respondida_em?: string | null
           resposta_bruta?: string | null
+          resultado?: string | null
         }
         Relationships: [
           {
@@ -391,6 +400,24 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          chave: string
+          hits: number
+          janela_inicio: string
+        }
+        Insert: {
+          chave: string
+          hits?: number
+          janela_inicio?: string
+        }
+        Update: {
+          chave?: string
+          hits?: number
+          janela_inicio?: string
+        }
+        Relationships: []
+      }
       mensagens_whats: {
         Row: {
           autorizado_id: string | null
@@ -409,6 +436,7 @@ export type Database = {
           telefone_from: string
           tentativas_reprocessamento: number | null
           texto_bruto: string | null
+          texto_transcrito: string | null
           tipo: Database["public"]["Enums"]["msg_tipo"]
           updated_at: string | null
         }
@@ -429,6 +457,7 @@ export type Database = {
           telefone_from: string
           tentativas_reprocessamento?: number | null
           texto_bruto?: string | null
+          texto_transcrito?: string | null
           tipo: Database["public"]["Enums"]["msg_tipo"]
           updated_at?: string | null
         }
@@ -449,6 +478,7 @@ export type Database = {
           telefone_from?: string
           tentativas_reprocessamento?: number | null
           texto_bruto?: string | null
+          texto_transcrito?: string | null
           tipo?: Database["public"]["Enums"]["msg_tipo"]
           updated_at?: string | null
         }
@@ -508,6 +538,53 @@ export type Database = {
           id?: string
         }
         Relationships: []
+      }
+      obra_compartilhamentos: {
+        Row: {
+          acessos: number
+          created_at: string | null
+          criado_por_user_id: string | null
+          descricao: string | null
+          expira_em: string | null
+          id: string
+          obra_id: string
+          revogado_em: string | null
+          token: string
+          ultimo_acesso_em: string | null
+        }
+        Insert: {
+          acessos?: number
+          created_at?: string | null
+          criado_por_user_id?: string | null
+          descricao?: string | null
+          expira_em?: string | null
+          id?: string
+          obra_id: string
+          revogado_em?: string | null
+          token: string
+          ultimo_acesso_em?: string | null
+        }
+        Update: {
+          acessos?: number
+          created_at?: string | null
+          criado_por_user_id?: string | null
+          descricao?: string | null
+          expira_em?: string | null
+          id?: string
+          obra_id?: string
+          revogado_em?: string | null
+          token?: string
+          ultimo_acesso_em?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obra_compartilhamentos_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       obras: {
         Row: {
@@ -767,6 +844,26 @@ export type Database = {
         Args: { p_webhook_id: string; p_status: number; p_erro: string | null }
         Returns: undefined
       }
+      rate_limit_hit: {
+        Args: { p_chave: string; p_janela_segundos: number; p_max: number }
+        Returns: {
+          permitido: boolean
+          hits: number
+          reset_em: string
+        }[]
+      }
+      rate_limit_reset: {
+        Args: { p_chave: string }
+        Returns: undefined
+      }
+      rate_limit_purge: {
+        Args: { p_idade_horas?: number }
+        Returns: number
+      }
+      registrar_acesso_compartilhamento: {
+        Args: { p_token: string }
+        Returns: undefined
+      }
       merge_fornecedores_atomic: {
         Args: { p_keep_id: string; p_drop_id: string }
         Returns: {
@@ -785,13 +882,14 @@ export type Database = {
         | "processando"
         | "classificada"
         | "confirmada"
+        | "recusada"
         | "erro"
       msg_tipo: "texto" | "imagem" | "pdf" | "audio"
       obra_status: "ativa" | "pausada" | "concluida" | "arquivada"
       obra_tipo: "nova" | "reforma"
       origem_fornecedor: "manual" | "auto_detectado"
       pagamento_origem: "whatsapp" | "manual" | "importado"
-      pagamento_status: "confirmado" | "aguardando" | "erro"
+      pagamento_status: "confirmado" | "aguardando" | "recusado" | "erro"
       papel_usuario: "admin" | "gestor" | "financeiro" | "leitura"
       tema_preferido: "light" | "black" | "dark"
     }

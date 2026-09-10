@@ -1,31 +1,20 @@
 import Link from 'next/link';
 import { MessageSquare, Paperclip, ArrowRight } from 'lucide-react';
 import { TopBar } from '@/components/layout/topbar';
-import { Badge, type BadgeVariant } from '@/components/nogma/Badge';
+import { Badge } from '@/components/nogma/Badge';
 import { listMensagens, type MensagemFeedItem, type MsgStatus } from '@/lib/data/mensagens';
+import {
+  MSG_STATUS_LABEL as STATUS_LABEL,
+  MSG_STATUS_VARIANT as STATUS_VARIANT,
+} from '@/lib/status-labels';
 import './whatsapp.css';
-
-const STATUS_VARIANT: Record<MsgStatus, BadgeVariant> = {
-  recebida: 'neutral',
-  processando: 'warning',
-  classificada: 'warning',
-  confirmada: 'success',
-  erro: 'danger',
-};
-
-const STATUS_LABEL: Record<MsgStatus, string> = {
-  recebida: 'Recebida',
-  processando: 'Processando',
-  classificada: 'Aguarda confirmação',
-  confirmada: 'Confirmada',
-  erro: 'Erro / rejeitada',
-};
 
 const FILTER_OPTIONS: Array<{ value: string; label: string }> = [
   { value: '', label: 'Todas' },
   { value: 'classificada', label: 'Aguarda confirmação' },
   { value: 'confirmada', label: 'Confirmadas' },
-  { value: 'erro', label: 'Erro' },
+  { value: 'recusada', label: 'Recusadas' },
+  { value: 'erro', label: 'Erro no processamento' },
 ];
 
 function formatTelefone(digits: string): string {
@@ -135,9 +124,6 @@ function MensagemRow({ m }: { m: MensagemFeedItem }) {
       </div>
       <div className="wa-item__meta">
         <Badge variant={STATUS_VARIANT[m.status]}>{STATUS_LABEL[m.status]}</Badge>
-        {m.confianca_ia != null ? (
-          <span>Confiança IA: {Math.round(Number(m.confianca_ia) * 100)}%</span>
-        ) : null}
         {m.pagamento_id ? (
           <Link href={`/pagamentos/${m.pagamento_id}`} className="wa-item__link">
             {formatBRL(m.pagamento_valor)}

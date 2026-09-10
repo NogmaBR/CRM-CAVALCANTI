@@ -24,7 +24,7 @@
 }
 
 .relatorio-card__icon {
-  color: var(--accent, #84cc16);
+  color: var(--accent);
   margin-bottom: 12px;
   flex-shrink: 0;
 }
@@ -32,7 +32,7 @@
 .relatorio-card__title {
   font-size: 16px;
   font-weight: 700;
-  color: var(--heading-color, var(--accent, #84cc16));
+  color: var(--heading-color, var(--accent));
   margin: 0 0 4px;
   line-height: 1.2;
 }

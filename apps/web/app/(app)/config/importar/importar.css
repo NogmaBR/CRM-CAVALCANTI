@@ -30,16 +30,16 @@
   border-radius: 8px;
   font-size: 13px;
   font-weight: 500;
-  color: var(--accent, #a3e635);
-  border: 1px solid color-mix(in srgb, var(--accent, #a3e635) 35%, transparent);
-  background: color-mix(in srgb, var(--accent, #a3e635) 8%, transparent);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
   text-decoration: none;
   transition: background 120ms ease, border-color 120ms ease;
 }
 
 .importar-template-btn:hover {
-  background: color-mix(in srgb, var(--accent, #a3e635) 14%, transparent);
-  border-color: color-mix(in srgb, var(--accent, #a3e635) 50%, transparent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
 }
 
 /* ── Client wrapper ── */
@@ -211,7 +211,7 @@
 }
 
 .importar-match--ok {
-  color: #22c55e;
+  color: var(--success);
 }
 
 .importar-match--fail {
@@ -271,9 +271,9 @@
 }
 
 .importar-done__banner--success {
-  background: color-mix(in srgb, #22c55e 12%, transparent);
-  color: #22c55e;
-  border: 1px solid color-mix(in srgb, #22c55e 30%, transparent);
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
 }
 
 .importar-done__banner--error {

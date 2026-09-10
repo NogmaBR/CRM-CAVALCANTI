@@ -1,0 +1,204 @@
+import 'server-only';
+import Anthropic from '@anthropic-ai/sdk';
+import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
+// `zod/v4`, e não `zod`: o helper `zodOutputFormat` do SDK exige os tipos do
+// Zod 4, e o resto do projeto está no Zod 3 (o pacote 3.25 expõe as duas APIs
+// em subpaths separados). Importar de 'zod' aqui compila em erro de tipo.
+import { z } from 'zod/v4';
+import type { Classifier, ClassifierInput, ClassifierOutput } from './classifier';
+
+/**
+ * Classificador de mensagens de WhatsApp usando Claude.
+ *
+ * Substitui o `MockClassifier` quando `IA_PROVIDER=anthropic`. Até aqui o
+ * branch existia só como comentário em `classifier.ts` ("reservado — quando
+ * as credenciais chegarem"), e a factory lançava erro pra qualquer provider
+ * que não fosse `mock`. Ou seja: o CRM nunca classificou nada de verdade.
+ *
+ * ## Structured outputs, não parsing de texto
+ *
+ * A saída é presa a um schema Zod via `output_config.format`. Isso importa
+ * porque o resultado vai direto pra `dados_extraidos`, que alimenta o INSERT
+ * em `pagamentos` — um `valor` que volte como "R$ 1.500,00" em vez de número,
+ * ou um `obra_id` inventado, viraria lançamento errado no financeiro do
+ * cliente. Com schema, ou a resposta é válida ou falha explicitamente.
+ *
+ * ## Por que os IDs entram no prompt
+ *
+ * O modelo não escolhe texto livre pra obra/fornecedor: ele recebe a lista de
+ * obras ativas e fornecedores conhecidos com os UUIDs e devolve o UUID. Ainda
+ * assim validamos a resposta contra as listas antes de usar (ver
+ * `sanitizarIds`) — um UUID alucinado que passasse direto criaria pagamento
+ * numa obra aleatória.
+ */
+
+const MODELO_PADRAO = 'claude-opus-5';
+
+/** O classificador roda dentro do webhook; não pode demorar minutos. */
+const MAX_TOKENS = 2048;
+
+const SaidaSchema = z.object({
+  kind: z.enum(['pagamento_completo', 'pagamento_parcial', 'documento_apenas', 'nao_identificado']),
+  confidence: z.number().min(0).max(1),
+  valor: z.number().nullable(),
+  data_pagamento: z.string().nullable(),
+  obra_id: z.string().nullable(),
+  fornecedor_id: z.string().nullable(),
+  fornecedor_nome_novo: z.string().nullable(),
+  tipo_documento: z.enum(['nota_fiscal', 'comprovante', 'contrato', 'outro']).nullable(),
+  numero_nf: z.string().nullable(),
+  descricao: z.string().nullable(),
+  raciocinio: z.string(),
+  pergunta_confirmacao: z.string().nullable(),
+});
+
+type Saida = z.infer<typeof SaidaSchema>;
+
+const INSTRUCOES = `Você extrai lançamentos financeiros de mensagens que a equipe de uma construtora manda por WhatsApp.
+
+As mensagens são informais, ditadas ou digitadas no canteiro de obra. Exemplos reais do domínio:
+- "paguei 1200 de areia pro Zé da obra do Recreio"
+- "segue a nota do material" (com uma foto anexada)
+- "bom dia" (não é lançamento)
+
+Regras:
+1. valor sempre em reais, como número. "1.200,50" -> 1200.5. "1200 conto" -> 1200. Nunca invente valor.
+2. data_pagamento em YYYY-MM-DD. "ontem"/"hoje" resolvem contra a data informada no contexto. Sem data explícita, deixe null.
+3. obra_id e fornecedor_id DEVEM ser um dos UUIDs listados no contexto. Se o nome citado não bate com nenhum da lista, deixe o id null — e, no caso de fornecedor, escreva o nome citado em fornecedor_nome_novo.
+4. kind:
+   - pagamento_completo: tem valor E obra identificada com segurança.
+   - pagamento_parcial: fala de pagamento mas falta valor ou obra.
+   - documento_apenas: é NF/comprovante/contrato sem contexto de pagamento.
+   - nao_identificado: saudação, conversa, ou nada operacional.
+5. confidence reflete o quanto você tem certeza da EXTRAÇÃO inteira, não de um campo. Abaixo de 0.85 o sistema pede confirmação humana — use isso a seu favor: na dúvida, seja conservador.
+6. pergunta_confirmacao: uma frase curta, em português coloquial, que será enviada de volta no WhatsApp pedindo confirmação. Deve repetir os dados extraídos pra pessoa conferir e terminar pedindo SIM. Null quando kind = nao_identificado.
+7. raciocinio: uma frase explicando a decisão, para o gestor que revisa no painel.
+
+Nunca invente dados que não estão na mensagem. Faltou informação, o campo é null.`;
+
+export class AnthropicClassifier implements Classifier {
+  private readonly client: Anthropic;
+  private readonly modelo: string;
+
+  constructor() {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      throw new Error('IA_PROVIDER=anthropic exige ANTHROPIC_API_KEY configurada.');
+    }
+    this.client = new Anthropic({ apiKey });
+    this.modelo = process.env.IA_MODEL ?? MODELO_PADRAO;
+  }
+
+  async classify(input: ClassifierInput): Promise<ClassifierOutput> {
+    const hoje = new Date().toISOString().slice(0, 10);
+
+    const contexto = [
+      `Data de hoje: ${hoje}`,
+      '',
+      'Obras ativas (use o UUID exato):',
+      ...(input.contexto.obrasAtivas.length > 0
+        ? input.contexto.obrasAtivas.map((o) => `- ${o.id} — ${o.nome}`)
+        : ['- (nenhuma obra ativa cadastrada)']),
+      '',
+      'Fornecedores conhecidos (use o UUID exato):',
+      ...(input.contexto.fornecedoresConhecidos.length > 0
+        ? input.contexto.fornecedoresConhecidos.map((f) => `- ${f.id} — ${f.nome}`)
+        : ['- (nenhum fornecedor cadastrado)']),
+      '',
+      `Telefone do remetente: ${input.telefone}`,
+      input.midiaMime ? `Anexo recebido, tipo: ${input.midiaMime}` : 'Sem anexo.',
+      '',
+      'Mensagem:',
+      input.texto?.trim() || '(sem texto — só anexo)',
+    ].join('\n');
+
+    const resposta = await this.client.messages.parse({
+      model: this.modelo,
+      max_tokens: MAX_TOKENS,
+      system: INSTRUCOES,
+      // Adaptive thinking: a extração é curta, mas casar "obra do Recreio" com
+      // a obra certa entre várias parecidas é exatamente onde o raciocínio
+      // paga o custo. `effort: low` mantém a latência compatível com o webhook.
+      thinking: { type: 'adaptive' },
+      output_config: {
+        effort: 'low',
+        format: zodOutputFormat(SaidaSchema),
+      },
+      messages: [{ role: 'user', content: contexto }],
+    });
+
+    const saida = resposta.parsed_output;
+    if (!saida) {
+      // Sem saída válida não há como distinguir "não é lançamento" de "o
+      // modelo falhou" — devolvemos confiança zero pra cair em revisão humana.
+      console.error('[anthropic-classifier] resposta sem parsed_output', {
+        stop_reason: resposta.stop_reason,
+      });
+      return {
+        kind: 'nao_identificado',
+        confidence: 0,
+        extracted: { raciocinio: 'Classificador não retornou saída estruturada válida.' },
+      };
+    }
+
+    return montarSaida(saida, input);
+  }
+}
+
+/**
+ * Converte a saída do modelo no contrato interno, descartando IDs que não
+ * existem no contexto enviado.
+ *
+ * Exportada para teste: é a barreira entre "o que o modelo disse" e "o que
+ * vira linha no banco", e é a parte que dá pra verificar sem chamar a API.
+ */
+export function montarSaida(saida: Saida, input: ClassifierInput): ClassifierOutput {
+  const obrasValidas = new Set(input.contexto.obrasAtivas.map((o) => o.id));
+  const fornecedoresValidos = new Set(input.contexto.fornecedoresConhecidos.map((f) => f.id));
+
+  const obraId = saida.obra_id && obrasValidas.has(saida.obra_id) ? saida.obra_id : undefined;
+  const fornecedorId =
+    saida.fornecedor_id && fornecedoresValidos.has(saida.fornecedor_id)
+      ? saida.fornecedor_id
+      : undefined;
+
+  const alucinouId =
+    (saida.obra_id != null && obraId === undefined) ||
+    (saida.fornecedor_id != null && fornecedorId === undefined);
+
+  const extracted: ClassifierOutput['extracted'] = {
+    raciocinio: alucinouId
+      ? `${saida.raciocinio} [aviso: o classificador citou um id inexistente, que foi descartado]`
+      : saida.raciocinio,
+  };
+
+  if (saida.valor != null && saida.valor > 0) extracted.valor = saida.valor;
+  if (saida.data_pagamento && /^\d{4}-\d{2}-\d{2}$/u.test(saida.data_pagamento)) {
+    extracted.data_pagamento = saida.data_pagamento;
+  }
+  if (obraId) extracted.obra_id = obraId;
+  if (fornecedorId) extracted.fornecedor_id = fornecedorId;
+  else if (saida.fornecedor_nome_novo) extracted.fornecedor_nome_novo = saida.fornecedor_nome_novo;
+  if (saida.tipo_documento) extracted.tipo_documento = saida.tipo_documento;
+  if (saida.numero_nf) extracted.numero_nf = saida.numero_nf;
+  if (saida.descricao) extracted.descricao = saida.descricao;
+
+  // Um id descartado significa que a extração é menos confiável do que o
+  // modelo achou. Rebaixamos abaixo do limiar de auto-aprovação em vez de
+  // confiar no número que veio junto com o erro.
+  const confidence = alucinouId ? Math.min(saida.confidence, 0.5) : saida.confidence;
+
+  // Coerência: sem valor ou sem obra não existe "pagamento completo",
+  // independente do que o modelo tenha rotulado.
+  const kind =
+    saida.kind === 'pagamento_completo' && (extracted.valor == null || extracted.obra_id == null)
+      ? 'pagamento_parcial'
+      : saida.kind;
+
+  return {
+    kind,
+    confidence,
+    extracted,
+    ...(saida.pergunta_confirmacao ? { perguntaConfirmacao: saida.pergunta_confirmacao } : {}),
+  };
+}

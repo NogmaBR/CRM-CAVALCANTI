@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { sanitizarErroAdmin } from '@/lib/schemas/errors';
 import {
   inviteUsuarioAdmin,
   resendInviteAdmin,
@@ -59,14 +60,8 @@ export async function convidarUsuario(formData: FormData) {
   const result = await inviteUsuarioAdmin(parsed.data);
 
   if (!result.ok) {
-    // 422 / "User already registered" — email existente
-    const isExisting =
-      result.error.toLowerCase().includes('already') ||
-      result.error.toLowerCase().includes('422') ||
-      result.error.toLowerCase().includes('user already registered');
-    const msg = isExisting
-      ? 'Este email ja foi convidado ou ja e usuario'
-      : `Erro ao convidar: ${result.error}`;
+    // Finding M-4: erro cru da Admin API não vai mais pra URL.
+    const msg = sanitizarErroAdmin('convidar o usuário', result.error);
     redirect(`/config/usuarios/convidar?error=${encodeURIComponent(msg)}`);
   }
 
@@ -95,7 +90,7 @@ export async function reenviarConvite(formData: FormData) {
 
   const result = await resendInviteAdmin({ email: usuario.email });
   if (!result.ok) {
-    redirect(`/config/usuarios?error=${encodeURIComponent(`Erro ao reenviar convite: ${result.error}`)}`);
+    redirect(`/config/usuarios?error=${encodeURIComponent(sanitizarErroAdmin('reenviar o convite', result.error))}`);
   }
 
   revalidatePath('/config/usuarios');
@@ -125,7 +120,7 @@ export async function alterarPapelUsuario(formData: FormData) {
 
   const result = await updateUsuarioPapelAdmin(parsed.data.user_id, parsed.data.papel);
   if (!result.ok) {
-    redirect(`/config/usuarios?error=${encodeURIComponent(`Erro ao alterar papel: ${result.error}`)}`);
+    redirect(`/config/usuarios?error=${encodeURIComponent(sanitizarErroAdmin('alterar o papel', result.error))}`);
   }
 
   revalidatePath('/config/usuarios');
@@ -148,7 +143,7 @@ export async function arquivarUsuario(formData: FormData) {
 
   const result = await archiveUsuarioAdmin(parsed.data.user_id);
   if (!result.ok) {
-    redirect(`/config/usuarios?error=${encodeURIComponent(`Erro ao arquivar usuario: ${result.error}`)}`);
+    redirect(`/config/usuarios?error=${encodeURIComponent(sanitizarErroAdmin('arquivar o usuário', result.error))}`);
   }
 
   revalidatePath('/config/usuarios');
@@ -167,7 +162,7 @@ export async function restaurarUsuario(formData: FormData) {
 
   const result = await restoreUsuarioAdmin(parsed.data.user_id);
   if (!result.ok) {
-    redirect(`/config/usuarios?error=${encodeURIComponent(`Erro ao restaurar usuario: ${result.error}`)}`);
+    redirect(`/config/usuarios?error=${encodeURIComponent(sanitizarErroAdmin('restaurar o usuário', result.error))}`);
   }
 
   revalidatePath('/config/usuarios');

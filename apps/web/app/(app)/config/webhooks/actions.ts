@@ -5,6 +5,8 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { testWebhook, generateWebhookSecret } from '@/lib/services/dispatch-webhook';
+import { validarUrlWebhook } from '@/lib/security/ssrf';
+import { guardarSecretFlash } from '@/lib/security/flash-secret';
 
 const BASE_PATH = '/config/webhooks';
 
@@ -15,6 +17,8 @@ const EVENTOS_VALIDOS = [
   'documento_created',
   'obra_created',
   'obra_archived',
+  'confirmacao_resolvida',
+  'confirmacao_recusada',
 ] as const;
 
 async function assertAdmin(): Promise<string> {
@@ -75,6 +79,13 @@ export async function criarWebhook(formData: FormData) {
     redirect(`${BASE_PATH}/novo?error=${encodeURIComponent(first?.message ?? 'Dados inválidos')}`);
   }
 
+  // Finding A-4: resolve o host e recusa destino em rede interna antes de
+  // gravar. Sem isso o botão "Testar" vira um scanner da rede do Vercel.
+  const ssrf = await validarUrlWebhook(parsed.data.url);
+  if (!ssrf.ok) {
+    redirect(`${BASE_PATH}/novo?error=${encodeURIComponent(ssrf.motivo)}`);
+  }
+
   const secret = generateWebhookSecret();
   const supabase = await createClient();
   const { data: wh, error } = await supabase
@@ -93,8 +104,12 @@ export async function criarWebhook(formData: FormData) {
     redirect(`${BASE_PATH}/novo?error=${encodeURIComponent('Erro ao criar webhook. Tente novamente.')}`);
   }
 
+  // Finding A-3: o secret vai por cookie httpOnly de 60s, não pela query
+  // string (que ficaria no histórico do browser e nos logs do Vercel).
+  await guardarSecretFlash(secret);
+
   revalidatePath(BASE_PATH);
-  redirect(`${BASE_PATH}?created=${wh.id}&secret=${encodeURIComponent(secret)}`);
+  redirect(`${BASE_PATH}?created=${wh.id}`);
 }
 
 export async function atualizarWebhook(formData: FormData) {
@@ -116,6 +131,13 @@ export async function atualizarWebhook(formData: FormData) {
   if (!parsed.success) {
     const first = parsed.error.issues[0];
     redirect(`${BASE_PATH}/${id}/editar?error=${encodeURIComponent(first?.message ?? 'Dados inválidos')}`);
+  }
+
+  if (parsed.data.url !== undefined) {
+    const ssrf = await validarUrlWebhook(parsed.data.url);
+    if (!ssrf.ok) {
+      redirect(`${BASE_PATH}/${parsed.data.id}/editar?error=${encodeURIComponent(ssrf.motivo)}`);
+    }
   }
 
   const supabase = await createClient();
@@ -196,6 +218,8 @@ export async function regenerarSecret(formData: FormData) {
     redirect(`${BASE_PATH}/${id}/editar?error=${encodeURIComponent('Erro ao regenerar secret.')}`);
   }
 
+  await guardarSecretFlash(newSecret);
+
   revalidatePath(BASE_PATH);
-  redirect(`${BASE_PATH}?secret=${encodeURIComponent(newSecret)}`);
+  redirect(`${BASE_PATH}?regenerated=${id}`);
 }

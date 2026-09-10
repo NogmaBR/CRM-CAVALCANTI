@@ -24,25 +24,6 @@ export const TIMEZONE_OPTIONS = [
 
 const timezoneWhitelist = new Set<string>(TIMEZONE_OPTIONS.map((t) => t.value));
 
-export const EmailPrefsSchema = z.object({
-  pagamentos_aguardando: z.boolean(),
-  pendencias_novas: z.boolean(),
-  digest_semanal: z.boolean(),
-});
-export type EmailPrefs = z.infer<typeof EmailPrefsSchema>;
-
-export const DEFAULT_EMAIL_PREFS: EmailPrefs = {
-  pagamentos_aguardando: true,
-  pendencias_novas: true,
-  digest_semanal: false,
-};
-
-export const EMAIL_PREF_LABELS: Record<keyof EmailPrefs, string> = {
-  pagamentos_aguardando: 'Novo pagamento aguardando minha aprovação',
-  pendencias_novas: 'Nova mensagem WhatsApp na fila de pendências',
-  digest_semanal: 'Resumo semanal por email (Fase futura)',
-};
-
 /**
  * Schema pra update do próprio perfil. Todos os campos opcionais —
  * update parcial via `...(x !== undefined ? { x } : {})` pattern no action.
@@ -60,7 +41,6 @@ export const PerfilUpdateSchema = z.object({
     .string()
     .refine((v) => timezoneWhitelist.has(v), 'Timezone não suportado')
     .optional(),
-  email_prefs: EmailPrefsSchema.optional(),
 });
 
 export type PerfilUpdateInput = z.infer<typeof PerfilUpdateSchema>;

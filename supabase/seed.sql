@@ -6,6 +6,7 @@ INSERT INTO categorias (nome, cor, icone) VALUES
   ('Limpeza', '#10B981', 'sparkles'),
   ('Entulho', '#78716C', 'trash-2'),
   ('Mão de obra', '#8B5CF6', 'users'),
+  ('Frete', '#F97316', 'truck'),
   ('Equipamentos', '#EC4899', 'wrench'),
   ('Outros', '#6B7280', 'more-horizontal')
 ON CONFLICT (nome) DO NOTHING;

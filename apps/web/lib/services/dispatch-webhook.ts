@@ -2,6 +2,7 @@ import 'server-only';
 import { createHmac, randomBytes } from 'node:crypto';
 import type { Database } from '@nogma/db';
 import { createClient as createSbClient } from '@supabase/supabase-js';
+import { validarUrlWebhook } from '@/lib/security/ssrf';
 
 /**
  * Outbound webhook dispatch — usado pra notificar n8n/Zapier/Make.com etc
@@ -25,6 +26,8 @@ export type EventoWebhook =
   | 'documento_created'
   | 'obra_created'
   | 'obra_archived'
+  | 'confirmacao_resolvida'
+  | 'confirmacao_recusada'
   | 'test';
 
 export interface WebhookPayload {
@@ -77,6 +80,15 @@ export async function dispatchEvento(
   // Dispatch em paralelo, best-effort
   await Promise.allSettled(
     webhooks.map(async (wh) => {
+      // Finding A-4: revalidamos a cada disparo, não só no cadastro. Um
+      // domínio público cadastrado ontem pode estar apontando pra 10.0.0.5
+      // hoje (DNS rebinding) — validar só na criação não cobre isso.
+      const ssrf = await validarUrlWebhook(wh.url);
+      if (!ssrf.ok) {
+        await logWebhookExecution(supabase, wh.id, 0, `Destino bloqueado: ${ssrf.motivo}`);
+        return;
+      }
+
       const signature = sign(body, wh.secret);
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 10_000); // 10s max
@@ -149,6 +161,14 @@ export async function testWebhook(id: string): Promise<{
     .maybeSingle();
 
   if (!wh) return { ok: false, status: 0, latency_ms: 0, error: 'Webhook não encontrado' };
+
+  // Mesmo guard do dispatch: o botão "Testar" é justamente o oráculo que um
+  // atacante usaria pra varrer a rede interna do Vercel (finding A-4).
+  const ssrf = await validarUrlWebhook(wh.url);
+  if (!ssrf.ok) {
+    await logWebhookExecution(supabase, id, 0, `Destino bloqueado: ${ssrf.motivo}`);
+    return { ok: false, status: 0, latency_ms: 0, error: ssrf.motivo };
+  }
 
   const payload: WebhookPayload = {
     evento: 'test',

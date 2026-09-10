@@ -22,8 +22,8 @@
 .ng-btn--block{ width:100%; }
 
 /* variants */
-.ng-btn--primary{ --_bg:var(--lime-500); --_fg:var(--petroleum-950); }
-.ng-btn--primary:hover{ --_bg:var(--lime-300); box-shadow:var(--shadow-lime); }
+.ng-btn--primary{ --_bg:var(--accent); --_fg:var(--accent-text); }
+.ng-btn--primary:hover{ --_bg:var(--accent-hover); box-shadow:var(--shadow-accent, var(--shadow-lime)); }
 .ng-btn--solid{ --_bg:var(--petroleum-800); --_fg:var(--white); }
 .ng-btn--solid:hover{ --_bg:var(--petroleum-700); }
 .ng-btn--secondary{ --_bg:transparent; --_fg:var(--text-primary); --_bd:var(--border-default); }

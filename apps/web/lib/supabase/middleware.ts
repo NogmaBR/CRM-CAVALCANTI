@@ -1,6 +1,6 @@
-import { createServerClient } from '@supabase/ssr';
-import { NextResponse, type NextRequest } from 'next/server';
 import type { Database } from '@nogma/db';
+import { createServerClient } from '@supabase/ssr';
+import { type NextRequest, NextResponse } from 'next/server';
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -39,8 +39,12 @@ export async function updateSession(request: NextRequest) {
     url.pathname.startsWith('/api/webhooks/') ||
     url.pathname.startsWith('/api/cron/') ||
     url.pathname.startsWith('/api/exports/');
+  // Planilha compartilhada: o dono da obra abre por link, sem conta no CRM.
+  // A autorização é o token na própria URL, validado em `getPlanilhaPorToken`
+  // — mandar pro /login aqui quebraria justamente o entregável do cliente.
+  const isPlanilhaPublica = url.pathname.startsWith('/planilha/');
 
-  if (!user && !isAuthRoute && !isPublicApi) {
+  if (!user && !isAuthRoute && !isPublicApi && !isPlanilhaPublica) {
     url.pathname = '/login';
     return NextResponse.redirect(url);
   }

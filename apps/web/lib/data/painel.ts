@@ -336,7 +336,7 @@ export async function getAtividadeRecente(limit = 10): Promise<AtividadeItem[]> 
       .limit(limit),
     supabase
       .from('mensagens_whats')
-      .select('id, telefone_from, status, recebida_em, tipo')
+      .select('id, autorizado_id, status, recebida_em, tipo, pagamento_id, documento_id')
       .gte('recebida_em', cutoff)
       .order('recebida_em', { ascending: false })
       .limit(limit),
@@ -352,17 +352,35 @@ export async function getAtividadeRecente(limit = 10): Promise<AtividadeItem[]> 
   const fornIds = [
     ...new Set(pags.map((p) => p.fornecedor_id).filter((v): v is string => !!v)),
   ];
+  const autorizadoIds = [
+    ...new Set(msgs.map((m) => m.autorizado_id).filter((v): v is string => !!v)),
+  ];
 
-  const [obrasR, fornsR] = await Promise.all([
+  const [obrasR, fornsR, autorizadosR] = await Promise.all([
     obraIds.length > 0
       ? supabase.from('obras').select('id, nome').in('id', obraIds)
       : Promise.resolve({ data: [] as Array<{ id: string; nome: string }>, error: null }),
     fornIds.length > 0
       ? supabase.from('fornecedores').select('id, nome').in('id', fornIds)
       : Promise.resolve({ data: [] as Array<{ id: string; nome: string }>, error: null }),
+    autorizadoIds.length > 0
+      ? supabase.from('autorizados').select('id, nome').in('id', autorizadoIds)
+      : Promise.resolve({ data: [] as Array<{ id: string; nome: string }>, error: null }),
   ]);
   const obraMap = new Map((obrasR.data ?? []).map((o) => [o.id, o.nome]));
   const fornMap = new Map((fornsR.data ?? []).map((f) => [f.id, f.nome]));
+  const autorizadoMap = new Map((autorizadosR.data ?? []).map((a) => [a.id, a.nome]));
+
+  // Descreve a AÇÃO DO AGENTE sobre a mensagem, não a mensagem bruta —
+  // o gestor não deve ver "de quem veio o WhatsApp", e sim o que o
+  // agente fez com ele (briefing de alinhamento 16/09).
+  const AGENTE_ACAO: Record<string, string> = {
+    recebida: 'Mensagem recebida, aguardando classificação',
+    processando: 'Classificando mensagem recebida',
+    classificada: 'Mensagem classificada, aguardando confirmação',
+    confirmada: 'Registro confirmado a partir do WhatsApp',
+    erro: 'Falha ao processar mensagem do WhatsApp',
+  };
 
   const brl = (v: number) =>
     v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
@@ -388,16 +406,23 @@ export async function getAtividadeRecente(limit = 10): Promise<AtividadeItem[]> 
         href: `/documentos/${d.id}`,
       }),
     ),
-    ...msgs.map(
-      (m): AtividadeItem => ({
+    ...msgs.map((m): AtividadeItem => {
+      const quem = m.autorizado_id ? autorizadoMap.get(m.autorizado_id) : null;
+      const meta = quem ? `via ${quem}` : `via WhatsApp`;
+      const href = m.pagamento_id
+        ? `/pagamentos/${m.pagamento_id}`
+        : m.documento_id
+          ? `/documentos/${m.documento_id}`
+          : '/whatsapp';
+      return {
         id: `msg-${m.id}`,
         tipo: 'mensagem',
-        titulo: `Mensagem WhatsApp de ${m.telefone_from}`,
-        meta: `${m.tipo} · status ${m.status}`,
+        titulo: AGENTE_ACAO[m.status] ?? 'Mensagem processada pelo agente',
+        meta,
         timestamp: m.recebida_em ?? new Date().toISOString(),
-        href: '/whatsapp',
-      }),
-    ),
+        href,
+      };
+    }),
   ]
     .sort((a, b) => (a.timestamp > b.timestamp ? -1 : 1))
     .slice(0, limit);

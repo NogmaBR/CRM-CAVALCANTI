@@ -1,8 +1,10 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { LIMITES, verificarLimite, limparLimite, ipDaRequest } from '@/lib/security/rate-limit';
 
 export async function login(formData: FormData) {
   const email = String(formData.get('email') ?? '').trim();
@@ -16,6 +18,22 @@ export async function login(formData: FormData) {
     redirect(`/login?error=${encodeURIComponent('Confirme o captcha para continuar.')}`);
   }
 
+  // Rate limit (finding M-3). A chave junta e-mail e IP: limitar só por IP
+  // pune escritório atrás de NAT; limitar só por e-mail deixa um atacante
+  // varrer a lista de usuários um por um. Os dois juntos travam o brute force
+  // real sem derrubar o time inteiro por causa de um colega desmemoriado.
+  const ip = ipDaRequest(await headers());
+  const chave = `${email.toLowerCase()}|${ip}`;
+  const limite = await verificarLimite(LIMITES.login, chave);
+  if (!limite.permitido) {
+    const minutos = Math.ceil(limite.retryApos / 60);
+    redirect(
+      `/login?error=${encodeURIComponent(
+        `Muitas tentativas de login. Tente novamente em ${minutos} minuto${minutos > 1 ? 's' : ''}.`,
+      )}`,
+    );
+  }
+
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({
     email,
@@ -23,8 +41,16 @@ export async function login(formData: FormData) {
     options: { captchaToken },
   });
   if (error) {
-    redirect(`/login?error=${encodeURIComponent(error.message)}`);
+    // Mensagem genérica de propósito: `error.message` distingue "usuário não
+    // existe" de "senha errada" de "e-mail não confirmado", o que transforma
+    // a tela de login num oráculo de enumeração de contas.
+    console.error('[login] falha de autenticação:', error.message);
+    redirect(`/login?error=${encodeURIComponent('E-mail ou senha incorretos.')}`);
   }
+
+  // Login válido zera o contador — quem lembrou a senha não fica penalizado
+  // pelas tentativas anteriores.
+  await limparLimite(LIMITES.login, chave);
 
   revalidatePath('/', 'layout');
   redirect('/painel');

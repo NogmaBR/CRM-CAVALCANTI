@@ -1,30 +1,33 @@
 import 'server-only';
-import { NextResponse, type NextRequest } from 'next/server';
-import { createClient as createSbClient } from '@supabase/supabase-js';
-import type { Database } from '@nogma/db';
+import { UazapiInboundSchema, normalizeTelefone } from '@/lib/schemas/uazapi';
+import { LIMITES, ipDaRequest, resposta429, verificarLimite } from '@/lib/security/rate-limit';
+import { processarInbound } from '@/lib/services/inbound-whatsapp';
 import { verifyHmacSignature } from '@/lib/webhooks/hmac';
-import {
-  UazapiInboundSchema,
-  mapTipoToDb,
-  normalizeTelefone,
-  toIsoDate,
-} from '@/lib/schemas/uazapi';
-import { classifyAndPersist } from '@/lib/services/classify-and-persist';
+import type { Database } from '@nogma/db';
+import { createClient as createSbClient } from '@supabase/supabase-js';
+import { type NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
- * Webhook inbound do UAZAPI. Fluxo:
- *  1. Lê raw body pra verificar HMAC-SHA256 (header `x-signature`).
- *  2. Parse via Zod (permissivo com campos extras do provider).
- *  3. Upsert em `mensagens_whats` — `msg_id_uazapi` UNIQUE dá idempotência
- *     (mesma msg reenviada por retry do provider vira update no-op).
- *  4. Chama `classifyAndPersist` (aguarda pra garantir execução no serverless).
- *  5. Retorna 200 pra UAZAPI parar de retryar.
+ * Webhook inbound do UAZAPI.
  *
- * Segurança: HMAC-SHA256 hex do body com WEBHOOK_HMAC_SECRET. Sem secret
- * ambiente ou header ausente → 401. Payload inválido → 400.
+ * A rota faz só o que é responsabilidade de porta de entrada — autenticar,
+ * validar formato e limitar volume. Toda a regra de negócio (autorização do
+ * remetente, transcrição, resposta a pendência, classificação, resposta no
+ * WhatsApp) mora em `processarInbound`, que é testável sem HTTP.
+ *
+ *   1. HMAC-SHA256 do corpo cru contra `WEBHOOK_HMAC_SECRET` (header
+ *      `x-signature`). Sem secret no ambiente ou assinatura inválida → 401.
+ *   2. Rate limit por remetente (o provider faz retry legítimo, então o teto
+ *      é generoso; o que se quer barrar é inundação vinda de um número só).
+ *   3. Zod no payload → 400 se o formato mudou.
+ *   4. Delega e devolve 200.
+ *
+ * **Sempre 200 quando o processamento roda**, mesmo que a mensagem seja
+ * ignorada ou dê erro interno: um não-2xx faz o UAZAPI reenviar o evento em
+ * loop, e reprocessar não conserta nenhuma das falhas possíveis aqui.
  */
 export async function POST(request: NextRequest) {
   const secret = process.env.WEBHOOK_HMAC_SECRET;
@@ -49,53 +52,42 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     const first = parsed.error.issues[0];
     return NextResponse.json(
-      { error: 'schema validation failed', detail: first ? `${first.path.join('.')}: ${first.message}` : undefined },
+      {
+        error: 'schema validation failed',
+        detail: first ? `${first.path.join('.')}: ${first.message}` : undefined,
+      },
       { status: 400 },
     );
   }
 
-  const p = parsed.data;
+  const payload = parsed.data;
+
+  // Chave por remetente; cai pro IP quando o telefone vem inutilizável.
+  const identificador = normalizeTelefone(payload.from) || ipDaRequest(request.headers);
+  const limite = await verificarLimite(LIMITES.webhookInbound, identificador);
+  if (!limite.permitido) {
+    return resposta429(limite.retryApos);
+  }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) {
     return NextResponse.json({ error: 'supabase env missing' }, { status: 500 });
   }
+  // Service role: não há sessão de usuário num webhook. A autorização aqui é
+  // o HMAC (a request veio mesmo do provider) somada à checagem de
+  // `autorizados` lá dentro (o número pode mesmo lançar pagamento).
   const supabase = createSbClient<Database>(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const { data: row, error: upsertErr } = await supabase
-    .from('mensagens_whats')
-    .upsert(
-      {
-        msg_id_uazapi: p.id,
-        telefone_from: normalizeTelefone(p.from),
-        tipo: mapTipoToDb(p.type),
-        texto_bruto: p.text ?? null,
-        midia_mime: p.media?.mimetype ?? null,
-        midia_storage_path: null, // será preenchido no classifier após download+upload do arquivo
-        recebida_em: toIsoDate(p.timestamp),
-        status: 'recebida',
-        dados_extraidos: null,
-        confianca_ia: null,
-      },
-      { onConflict: 'msg_id_uazapi' },
-    )
-    .select('id')
-    .single();
+  const resultado = await processarInbound(supabase, payload).catch((err) => {
+    console.error('[webhook/uazapi] processamento falhou:', err);
+    return {
+      acao: 'erro' as const,
+      detalhe: err instanceof Error ? err.message : String(err),
+    };
+  });
 
-  if (upsertErr || !row) {
-    return NextResponse.json(
-      { error: 'db upsert failed', code: upsertErr?.code, msg: upsertErr?.message },
-      { status: 500 },
-    );
-  }
-
-  const classifyResult = await classifyAndPersist(row.id).catch((err) => ({
-    ok: false as const,
-    error: err instanceof Error ? err.message : String(err),
-  }));
-
-  return NextResponse.json({ ok: true, mensagem_id: row.id, classify: classifyResult });
+  return NextResponse.json({ ok: true, ...resultado });
 }

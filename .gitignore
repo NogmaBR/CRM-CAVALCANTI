@@ -61,3 +61,14 @@ supabase/.temp/
 # Docker
 infra/docker/.env
 .playwright-mcp/
+
+# Screenshots/capturas de sessão logada — nunca commitar (audit finding M-7)
+crm-cavalcanti-logado.png
+*-logado.png
+
+# Artefatos da extração do ZIP do cliente — não são código do projeto.
+# `__MACOSX` são resource forks do macOS (20k arquivos); `Cavalcanti
+# enegenharia/` é o protótipo Vite de referência, já inventariado em
+# docs/recuperacao/2026-09-09/inventario-prototipo-cavalcanti.md
+__MACOSX/
+Cavalcanti enegenharia/

@@ -63,10 +63,19 @@ export interface PreviewResult {
 /**
  * Fase 1: parse + valida + tenta matching. Zero writes.
  */
-export async function previewImport(csvText: string): Promise<PreviewResult> {
-  const parsed: ParsedCsv = parseCsv(csvText);
-  const objects = rowsToObjects(parsed);
-
+/**
+ * Resolve uma leva de linhas cruas do CSV: valida com Zod e casa
+ * obra/fornecedor/categoria por nome contra o banco.
+ *
+ * Extraída de `previewImport` porque `commitImport` precisa rodar exatamente
+ * o mesmo caminho (finding M-1 da auditoria 2026-09-09): antes o commit
+ * confiava nos IDs que voltavam do client, então bastava adulterar o payload
+ * do round-trip pra lançar pagamentos numa obra diferente da que estava no
+ * CSV. Agora o nome no arquivo é a única fonte de verdade, dos dois lados.
+ */
+async function resolverLinhas(
+  objects: Array<Record<string, string>>,
+): Promise<PreviewRow[]> {
   const supabase = serviceRoleClient();
 
   // Batched lookup de obras/fornecedores/categorias (uma query cada)
@@ -80,7 +89,7 @@ export async function previewImport(csvText: string): Promise<PreviewResult> {
   const fornByNome = new Map((fornsR.data ?? []).map((f) => [normalize(f.nome), f]));
   const catByNome = new Map((catsR.data ?? []).map((c) => [normalize(c.nome), c]));
 
-  const rows: PreviewRow[] = objects.map((raw, idx) => {
+  return objects.map((raw, idx) => {
     const linha = idx + 2; // +1 pra 1-based, +1 pro header
     const parsed = ImportPagamentoRowSchema.safeParse(raw);
     const errors: string[] = [];
@@ -94,7 +103,6 @@ export async function previewImport(csvText: string): Promise<PreviewResult> {
       data = parsed.data;
     }
 
-    // Matching (só faz se validação básica passou)
     const matched: PreviewRow['matched'] = {
       obra_id: null,
       obra_nome: null,
@@ -139,6 +147,15 @@ export async function previewImport(csvText: string): Promise<PreviewResult> {
 
     return { linha, raw, data, errors, matched };
   });
+}
+
+/**
+ * Fase 1: parse + valida + tenta matching. Zero writes.
+ */
+export async function previewImport(csvText: string): Promise<PreviewResult> {
+  const parsed: ParsedCsv = parseCsv(csvText);
+  const objects = rowsToObjects(parsed);
+  const rows = await resolverLinhas(objects);
 
   const ok = rows.filter((r) => r.data != null && r.matched.obra_id != null).length;
   return {
@@ -162,7 +179,14 @@ export async function commitImport(
 ): Promise<{ inserted: number; failed: number; errors: string[] }> {
   const supabase = serviceRoleClient();
 
-  const insertable = previewRows.filter(
+  // Finding M-1: reprocessamos as linhas cruas do zero. Tudo que o client
+  // mandou além de `raw` (os IDs casados, o valor já parseado, o status) é
+  // descartado — `commitImport` roda com service_role e bypassa RLS, então
+  // aceitar ID vindo do browser era o mesmo que deixar o browser escolher em
+  // qual obra lançar o pagamento.
+  const rowsRevalidadas = await resolverLinhas(previewRows.map((r) => r.raw));
+
+  const insertable = rowsRevalidadas.filter(
     (r) =>
       r.data != null &&
       r.matched.obra_id != null &&

@@ -1,0 +1,363 @@
+/* ===========================================================================
+   Planilha pública da obra.
+   Folha única, sem navegação — é o que o cliente final abre e imprime.
+   Usa os tokens do design system, então acompanha o azul da marca (#283078).
+   =========================================================================== */
+
+.pl-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+  color: var(--text-primary);
+  background: var(--bg-canvas);
+  min-height: 100vh;
+}
+
+/* --- Cabeçalho ----------------------------------------------------------- */
+
+.pl-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid var(--accent);
+}
+
+.pl-eyebrow {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.pl-titulo {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.15;
+  font-weight: 700;
+}
+
+.pl-cliente {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.pl-botao {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 9px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.pl-botao:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.pl-botao:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* --- KPIs ---------------------------------------------------------------- */
+
+.pl-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.pl-kpi {
+  padding: 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--surface-sunken);
+}
+
+.pl-kpi--largo {
+  grid-column: span 2;
+}
+
+.pl-kpi__rotulo {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.pl-kpi__valor {
+  display: block;
+  margin-top: 6px;
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.pl-kpi__nota {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.pl-barra {
+  margin-top: 10px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--bg-muted);
+  overflow: hidden;
+}
+
+.pl-barra__preenchida {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.pl-barra__preenchida--alerta {
+  background: var(--warning);
+}
+
+.pl-barra__preenchida--estouro {
+  background: var(--danger);
+}
+
+/* --- Tabela -------------------------------------------------------------- */
+
+.pl-tabela-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+}
+
+.pl-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.pl-caption {
+  padding: 12px 14px;
+  text-align: left;
+  font-size: 12px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.pl-tabela th {
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+
+.pl-tabela td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: top;
+}
+
+.pl-tabela tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.pl-tabela tbody tr:nth-child(even) {
+  background: var(--bg-subtle);
+}
+
+.pl-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.pl-centro {
+  text-align: center;
+}
+
+.pl-nowrap {
+  white-space: nowrap;
+}
+
+.pl-acumulado {
+  color: var(--text-secondary);
+}
+
+.pl-ausente {
+  color: var(--text-muted);
+}
+
+.pl-categoria {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--cavalcanti-blue-100);
+  color: var(--cavalcanti-blue-600);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.pl-total td {
+  padding: 12px;
+  font-weight: 700;
+  font-size: 14px;
+  background: var(--bg-muted);
+  border-top: 2px solid var(--accent);
+}
+
+.pl-tabela--compacta td,
+.pl-tabela--compacta th {
+  padding: 8px 12px;
+}
+
+/* --- Seções e rodapé ----------------------------------------------------- */
+
+.pl-secao {
+  margin-top: 28px;
+}
+
+.pl-secao__titulo {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.pl-vazio {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-secondary);
+  border: 1px dashed var(--border-default);
+  border-radius: 12px;
+}
+
+.pl-rodape {
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pl-rodape p {
+  margin: 0;
+}
+
+.pl-rodape__marca {
+  font-weight: 500;
+}
+
+@media (max-width: 640px) {
+  .pl-page {
+    padding: 20px 14px 48px;
+  }
+
+  .pl-kpi--largo {
+    grid-column: span 1;
+  }
+
+  .pl-titulo {
+    font-size: 21px;
+  }
+}
+
+/* ===========================================================================
+   Impressão — "manda o PDF" é o pedido real do cliente, então isto é feature.
+   =========================================================================== */
+
+@media print {
+  @page {
+    margin: 14mm;
+    size: A4 landscape; /* 8 colunas não cabem em retrato sem apertar demais */
+  }
+
+  .pl-page {
+    max-width: none;
+    padding: 0;
+    min-height: 0;
+    background: #fff;
+    color: #000;
+  }
+
+  /* O botão não faz sentido no papel. */
+  .pl-botao {
+    display: none;
+  }
+
+  .pl-tabela-wrap {
+    overflow: visible;
+    border: none;
+    border-radius: 0;
+  }
+
+  /* Repete o cabeçalho da tabela em cada página impressa — sem isto, a
+     partir da página 2 o leitor não sabe mais qual coluna é qual. */
+  .pl-tabela thead {
+    display: table-header-group;
+  }
+
+  .pl-tabela tfoot {
+    display: table-footer-group;
+  }
+
+  .pl-tabela tr {
+    break-inside: avoid;
+  }
+
+  .pl-secao {
+    break-inside: avoid;
+  }
+
+  .pl-tabela th {
+    background: #eee !important;
+    color: #000;
+  }
+
+  .pl-tabela tbody tr:nth-child(even) {
+    background: #f7f7f7 !important;
+  }
+
+  .pl-categoria {
+    background: transparent;
+    color: #000;
+    padding: 0;
+  }
+
+  .pl-kpi {
+    background: transparent;
+    border-color: #ccc;
+  }
+
+  /* Fundos coloridos de barra precisam sobreviver ao "economizar tinta". */
+  .pl-barra,
+  .pl-barra__preenchida,
+  .pl-total td {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

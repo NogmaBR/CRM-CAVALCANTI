@@ -240,6 +240,16 @@ export async function getMesData(ano: number, mes: number): Promise<MesData> {
 export interface FornecedorData {
   fornecedor: Fornecedor;
   pagamentos: Array<Pagamento & { obra_nome: string | null; categoria_nome: string | null }>;
+  /**
+   * Documentos recebidos deste fornecedor — notas fiscais, comprovantes e
+   * contratos.
+   *
+   * O relatório de obra já trazia esta seção; o de fornecedor não, embora o
+   * briefing peça "documentos recebidos" nos dois. Sem ela não dava pra
+   * responder a pergunta mais concreta que o gestor faz sobre um fornecedor:
+   * "ele já mandou a nota de tudo que a gente pagou?".
+   */
+  documentos: Array<Documento & { obra_nome: string | null }>;
   totais: {
     valorTotal: number;
     quantidade: number;
@@ -277,7 +287,31 @@ export async function getFornecedorData(
   const { data: pags } = await query;
   const pagamentos = pags ?? [];
 
-  const obraIds = [...new Set(pagamentos.map((p) => p.obra_id).filter(Boolean))];
+  // Um documento pode apontar pro fornecedor direto ou só pro pagamento dele
+  // (é o caso do que chega pelo WhatsApp, onde o vínculo com o fornecedor só
+  // aparece depois). Buscamos pelos dois caminhos e deduplicamos por id.
+  const pagamentoIds = pagamentos.map((p) => p.id);
+  const filtroDocs =
+    pagamentoIds.length > 0
+      ? `fornecedor_id.eq.${fornecedorId},pagamento_id.in.(${pagamentoIds.join(',')})`
+      : `fornecedor_id.eq.${fornecedorId}`;
+
+  const { data: docs } = await supabase
+    .from('documentos')
+    .select('*')
+    .or(filtroDocs)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false });
+
+  const documentos = [...new Map((docs ?? []).map((d) => [d.id, d])).values()];
+
+  const obraIds = [
+    ...new Set(
+      [...pagamentos.map((p) => p.obra_id), ...documentos.map((d) => d.obra_id)].filter(
+        (v): v is string => !!v,
+      ),
+    ),
+  ];
   const catIds = [...new Set(pagamentos.map((p) => p.categoria_id).filter((v): v is string => !!v))];
 
   const [obrasRes, catsRes] = await Promise.all([
@@ -318,9 +352,15 @@ export async function getFornecedorData(
   }
   const porObra = [...porObraMap.values()].sort((a, b) => b.total - a.total);
 
+  const documentosEnriched = documentos.map((d) => ({
+    ...d,
+    obra_nome: d.obra_id ? (obraMap.get(d.obra_id) ?? null) : null,
+  }));
+
   return {
     fornecedor,
     pagamentos: pagamentosEnriched,
+    documentos: documentosEnriched,
     totais: { valorTotal, quantidade, ticketMedio, primeiraCompra, ultimaCompra, porObra },
     filtros: { from: from ?? null, to: to ?? null },
   };

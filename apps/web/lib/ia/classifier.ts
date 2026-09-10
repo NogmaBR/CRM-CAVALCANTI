@@ -8,8 +8,8 @@ import 'server-only';
  * retorna uma classificação estruturada + confidence.
  *
  * Implementações:
- *   - `MockClassifier` (default hoje): heurística determinística para dev/testes.
- *   - `AnthropicClassifier` / `OpenAIClassifier` (Fase 8.x): produção com API real.
+ *   - `MockClassifier` (default): heurística determinística para dev/testes.
+ *   - `AnthropicClassifier`: produção, via Claude com structured outputs.
  *
  * Troca de implementação: um único ponto — factory `getClassifier()`.
  */
@@ -54,18 +54,25 @@ export interface Classifier {
 
 /**
  * Factory. Escolha do provider vem de env var — troca sem tocar em código chamador.
- *   - `IA_PROVIDER=mock` (default): MockClassifier determinístico
- *   - `IA_PROVIDER=anthropic`: (Fase 8.x) chama Claude Haiku 4.5
- *   - `IA_PROVIDER=openai`: (Fase 8.x) chama OpenAI GPT-4o-mini
+ *   - `IA_PROVIDER=mock` (default): MockClassifier determinístico, sem custo.
+ *   - `IA_PROVIDER=anthropic`: Claude com structured outputs. Modelo em
+ *     `IA_MODEL` (default `claude-opus-5`).
+ *
+ * O import é dinâmico pra que o SDK da Anthropic só entre no bundle da
+ * function quando o provider real estiver ligado.
  */
 export async function getClassifier(): Promise<Classifier> {
   const provider = process.env.IA_PROVIDER ?? 'mock';
+
   if (provider === 'mock') {
     const { MockClassifier } = await import('./mock-classifier');
     return new MockClassifier();
   }
-  // Reservado — quando as credenciais chegarem, ativar branches abaixo:
-  // if (provider === 'anthropic') { const { AnthropicClassifier } = await import('./anthropic-classifier'); return new AnthropicClassifier(); }
-  // if (provider === 'openai')    { const { OpenAIClassifier } = await import('./openai-classifier'); return new OpenAIClassifier(); }
-  throw new Error(`IA_PROVIDER desconhecido: ${provider}. Suportados: mock`);
+
+  if (provider === 'anthropic') {
+    const { AnthropicClassifier } = await import('./anthropic-classifier');
+    return new AnthropicClassifier();
+  }
+
+  throw new Error(`IA_PROVIDER desconhecido: ${provider}. Suportados: mock, anthropic`);
 }
