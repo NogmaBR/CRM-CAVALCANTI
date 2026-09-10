@@ -338,10 +338,21 @@ mudou** (ver FASE 0): sem VPS, a fila é `pgmq` no próprio Postgres.
 - [x] `lib/queue/` — catálogo tipado, acesso e consumidor com teto de tentativas
 - [x] Rota `/api/queue/consume`, protegida por `CRON_SECRET` como os crons de hoje
 - [x] Retry por omissão (visibility timeout) e arquivo (`pgmq.archive`) como dead-letter
-- [ ] Handlers de `midia` e `ia_classificacao`
-- [ ] O webhook passa a só validar HMAC, enfileirar e responder 200
-- [ ] `pg_cron` chamando a rota via `pg_net`, de minuto em minuto
-- [ ] Tela de observação sobre `fila_metricas()`
+- [x] Handler de `whatsapp_inbound` — é `processarInbound` inteiro
+- [x] O webhook enfileira e responde 200, atrás de `FILA_WHATSAPP=true`
+- [x] `pg_cron` chamando a rota via `pg_net`, **só quando há job na fila**
+- [x] `/config/filas` — métricas e dead-letter
+- [x] Segredos no Vault (`scripts/provisionar-vault.mjs`), fora do Git
+- [ ] **Ligar `FILA_WHATSAPP=true` em produção** — depois de 16/09
+
+> **`midia` e `ia_classificacao` ficaram reservadas, sem handler.** Picar o fluxo
+> exigiria reordenar as etapas de `processarInbound`, e a transcrição do áudio
+> precisa estar pronta *antes* de decidir se a mensagem é um "SIM". O ganho da
+> fila não estava na granularidade — estava em tirar download, transcrição e
+> chamada de LLM de dentro do request do provider, e isso um job só entrega.
+
+**Pronto quando:** com a chave ligada, o webhook responder em <100ms e o job
+aparecer sendo drenado em `/config/filas`.
 
 **Pronto quando:** o webhook responder em <100ms com a mídia sendo baixada depois, e um
 job que falha três vezes aparecer arquivado e visível numa tela.

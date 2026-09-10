@@ -27,6 +27,15 @@ interface LinhaFila {
   payload: unknown;
 }
 
+interface LinhaArquivada {
+  fila: string;
+  msg_id: number;
+  tentativas: number;
+  enfileirado_em: string;
+  arquivado_em: string;
+  payload: unknown;
+}
+
 interface LinhaMetrica {
   fila: string;
   na_fila: number;
@@ -135,6 +144,40 @@ export interface MetricaFila {
   visiveis: number;
   maisAntigaSeg: number | null;
   totalJaEnfileirado: number;
+}
+
+export interface Arquivada {
+  fila: string;
+  msgId: number;
+  tentativas: number;
+  enfileiradoEm: string;
+  arquivadoEm: string;
+  payload: unknown;
+}
+
+/**
+ * As que desistiram.
+ *
+ * Sem isto, arquivar seria só um jeito mais educado de perder: a mensagem sai
+ * do caminho e ninguém nunca mais a vê.
+ */
+export async function arquivadas(supabase: Client, limite = 50): Promise<Arquivada[]> {
+  const { data, error } = await supabase
+    .rpc('fila_arquivadas', { p_limite: limite })
+    .returns<LinhaArquivada[]>();
+
+  if (error) {
+    throw new Error(`Não foi possível ler as mensagens arquivadas: ${error.message}`);
+  }
+
+  return (data ?? []).map((a) => ({
+    fila: a.fila,
+    msgId: Number(a.msg_id),
+    tentativas: a.tentativas,
+    enfileiradoEm: a.enfileirado_em,
+    arquivadoEm: a.arquivado_em,
+    payload: a.payload,
+  }));
 }
 
 /** O que o painel do BullMQ daria pronto. */

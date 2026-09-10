@@ -948,6 +948,17 @@ export type Database = {
         Args: { p_fila: string; p_msg_id: number }
         Returns: boolean
       }
+      fila_arquivadas: {
+        Args: { p_limite?: number }
+        Returns: {
+          fila: string
+          msg_id: number
+          tentativas: number
+          enfileirado_em: string
+          arquivado_em: string
+          payload: Json
+        }[]
+      }
       fila_metricas: {
         Args: Record<PropertyKey, never>
         Returns: {

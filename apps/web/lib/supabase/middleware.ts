@@ -35,9 +35,18 @@ export async function updateSession(request: NextRequest) {
     url.pathname.startsWith('/login') ||
     url.pathname.startsWith('/definir-senha') ||
     url.pathname === '/';
+  // "Pública" aqui significa "não passa pela sessão do navegador" — cada uma
+  // tem a própria autenticação: HMAC nos webhooks, `CRON_SECRET` nos crons e
+  // no consumidor de filas, token na URL nos exports.
+  //
+  // `/api/queue/` precisa estar aqui, e a falta disso é silenciosa do pior
+  // jeito: sem a linha, o middleware manda a chamada do `pg_cron` para o
+  // `/login`, que responde **200 com HTML**. Nada registra erro, nenhuma fila
+  // é drenada, e quem investigar vai ver "200" e procurar em outro lugar.
   const isPublicApi =
     url.pathname.startsWith('/api/webhooks/') ||
     url.pathname.startsWith('/api/cron/') ||
+    url.pathname.startsWith('/api/queue/') ||
     url.pathname.startsWith('/api/exports/');
   // Planilha compartilhada: o dono da obra abre por link, sem conta no CRM.
   // A autorização é o token na própria URL, validado em `getPlanilhaPorToken`

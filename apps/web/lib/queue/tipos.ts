@@ -28,19 +28,38 @@
  */
 
 export interface MapaDeFilas {
-  /** Mensagem chegou pelo webhook; decidir o que fazer com ela. */
-  whatsapp_inbound: { mensagemId: string };
+  /**
+   * Uma mensagem chegou pelo webhook. Processá-la ponta a ponta.
+   *
+   * ## A exceção à regra do "só ids"
+   *
+   * Esta fila carrega o **payload cru do provider**, e não um id. É a única, e
+   * tem motivo: quando a mensagem é enfileirada, não existe id nenhum — nada
+   * foi persistido ainda. E não pode ser: `processarInbound` decide, na ordem,
+   * se aquilo é resposta a uma pendência, se é comando de consulta, ou se é
+   * lançamento novo — e **só o terceiro caso vira linha em `mensagens_whats`**.
+   * Consulta ("quanto gastei em X") não é registro, é pergunta.
+   *
+   * Persistir antes só para ter um id inverteria essa decisão e encheria a
+   * fila do gestor de coisa que já foi respondida.
+   */
+  whatsapp_inbound: { payload: unknown };
 
   /**
-   * Baixar o anexo antes que a URL do provider expire.
+   * Reservada. Baixar o anexo separadamente.
    *
-   * É a primeira da cadeia por um motivo concreto: a URL da UAZAPI tem prazo,
-   * e transcrever ou classificar antes de garantir o arquivo é arriscar
-   * perder o anexo para sempre por causa de uma chamada de IA lenta.
+   * Hoje o download acontece dentro do `whatsapp_inbound`, porque a ordem das
+   * etapas em `processarInbound` é deliberada: a transcrição do áudio precisa
+   * estar pronta antes de decidir se a mensagem é um "SIM". Separar exigiria
+   * reordenar o fluxo, e a ordem está comentada caso a caso lá.
+   *
+   * Fica declarada para quando o download provar precisar de política de
+   * retentativa própria — o caso concreto seria a URL do provider expirar com
+   * frequência.
    */
   midia: { mensagemId: string };
 
-  /** Transcrever áudio e classificar o conteúdo. A etapa mais lenta. */
+  /** Reservada, pelo mesmo motivo de `midia`. */
   ia_classificacao: { mensagemId: string };
 
   /** Responder ao remetente. */
@@ -53,6 +72,24 @@ export interface MapaDeFilas {
 }
 
 export type NomeFila = keyof MapaDeFilas;
+
+/**
+ * As filas, em valor e não só em tipo.
+ *
+ * Existe para poder ser percorrida em runtime — um teste consegue afirmar que
+ * toda fila declarada tem visibility timeout, coisa que um tipo sozinho não
+ * garante. O `satisfies` faz o TypeScript recusar a lista se ela divergir do
+ * mapa, então as duas não podem sair de sincronia em silêncio.
+ *
+ * **Esta lista precisa espelhar `fila_valida` no banco.** Acrescentar fila é
+ * mexer aqui e numa migration; a do banco é a trava de verdade.
+ */
+export const FILAS = [
+  'whatsapp_inbound',
+  'midia',
+  'ia_classificacao',
+  'whatsapp_outbound',
+] as const satisfies readonly (keyof MapaDeFilas)[];
 
 export type PayloadDe<F extends NomeFila> = MapaDeFilas[F];
 
