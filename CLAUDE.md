@@ -265,9 +265,33 @@ Verificado **em produção**, não por leitura de config:
 |---|---|---|
 | **#6** `feat/painel-automacoes` | Tela `/config/automacoes`: ligar/desligar, ajustar parâmetros, botão "Ensaiar sem agir" e histórico de cada avaliação. Sem ela, ligar regra exige SQL no console. | **Sim.** Aditivo, nenhum caminho existente muda |
 | **#7** `feat/emitir-eventos` | `emitir()` ganha chamadores em pagamento/documento/confirmação. Tira `lib/events/` de código morto. | **Não antes de 16/09.** Muda caminho em produção |
-| **#9** `feat/fila-corte-webhook` | Fecha a Fase 3: webhook enfileira atrás de `FILA_WHATSAPP`, agendador `pg_cron`+`pg_net` que só chama quando há job, tela `/config/filas`, correção do middleware. | **Sim.** A chave não existe em produção, então nada muda |
+PRs #8 e #9 mergeados em 2026-09-10 — **a Fase 3 está em produção**.
 
-O PR #8 (fila `pgmq`) foi mergeado em 2026-09-10.
+### Fase 3: o que está no ar, e o que falta ligar
+
+O ciclo inteiro foi observado rodando **sozinho** em produção: um job de ensaio
+foi enfileirado às 16:10, o `pg_cron` tentou a cada minuto, e às 16:16 a
+mensagem desistiu e foi para a dead-letter — tentativas 2, 3 e o arquivamento
+na quarta, sem ninguém tocar em nada.
+
+| Peça | Estado |
+|---|---|
+| Filas `pgmq` + wrappers `fila_*` | ✅ 4 filas, whitelist, só `service_role` |
+| `/api/queue/consume` | ✅ 401 sem auth, JSON com auth |
+| Agendador `pg_cron` → `pg_net` | ✅ ativo, só chama quando há job na fila |
+| Segredos no Vault | ✅ `fila_consumidor_url` e `_secret` |
+| `/config/filas` | ✅ métricas e dead-letter |
+| **Webhook enfileirando** | ⏸ **atrás de `FILA_WHATSAPP`, que não existe em produção** |
+
+**Falta só ligar a chave**, e isso é depois de 16/09: criar `FILA_WHATSAPP=true`
+na Vercel e redeployar. Enquanto não existir, o webhook processa síncrono como
+sempre — verificado depois do merge (`test-webhook-uazapi.mjs` devolve
+`ignorada_nao_autorizada`, que é o esperado com a lista de autorizados vazia).
+
+`midia` e `ia_classificacao` ficaram **reservadas, sem handler**: picar o fluxo
+exigiria reordenar as etapas de `processarInbound`, e a transcrição precisa
+estar pronta antes de decidir se a mensagem é um "SIM". Há teste afirmando que
+elas seguem sem handler — dar handler a elas passa a ser decisão consciente.
 
 O PR #7 também corrigiu um erro de desenho que só apareceu ao fiar: `emitir`
 recebia o cliente Supabase do chamador, mas `automation_executions` não tem
