@@ -53,9 +53,6 @@ on:
     # Domingo, 03:00 UTC = 00:00 em Brasília. Fora do horário de uso.
     - cron: "0 3 * * 0"
   workflow_dispatch:
-  # TEMPORÁRIO: só para provar o workflow antes do merge. Remover.
-  push:
-    branches: [ci/verde]
 
 concurrency:
   group: backup-banco
