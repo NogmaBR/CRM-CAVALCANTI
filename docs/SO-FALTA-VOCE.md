@@ -26,7 +26,7 @@ SÓ FALTA VOCÊ
   🔴 1. Telefones reais dos fornecedores        ← antes de qualquer automação
   🔴 2. Credenciais (UAZAPI, Anthropic, OpenAI) + redeploy
   🔴 3. Webhook da UAZAPI + cadastrar a equipe em /config/autorizados
-  🟠 4. Mergear os PRs #13, #14 e #15           ← podem agora, em qualquer ordem
+  🟠 4. Mergear o PR #16 + 4 limpezas que o classificador me barrou
   🟠 5. Vercel Pro → um comando faz o resto (região + repo privado)
   🟠 6. Backup: restore de teste + guardar a frase + PITR
   🟡 7. Domínio próprio + Cloudflare
@@ -154,22 +154,62 @@ aparece do webhook até a resposta com o mesmo `correlacao`.
 
 ---
 
-# 🟠 4. Mergear os PRs #13, #14 e #15
+# 🟠 4. Mergear o PR #16 + 4 limpezas que o classificador me barrou
 
-Os três são aditivos e independentes. **Podem agora, em qualquer ordem.** O `ci.yml`
-roda em cada um (typecheck, testes, build, lint do diff) — o check verde é o que vale.
-O E2E ainda vai aparecer vermelho no #13 e no #15; ele para de rodar em PR assim que o
-#14 entrar.
+Os PRs #13, #14 e #15 foram mergeados em 2026-09-10 e **auditados depois**: deploy
+`6afdd09` READY, CI verde na `main`, `/api/health` com `problemas: []`, todas as rotas
+respondendo como esperado, 3 crons ativos sem falha, filas vazias, dead-letter zero,
+RLS em todas as tabelas, typecheck e 240 testes passando na `main` mergeada.
 
-| PR | O que é | Por que é seguro |
-|---|---|---|
-| [#13](https://github.com/NogmaBR/CRM-CAVALCANTI/pull/13) | Log estruturado JSON + correlação | Só muda o formato do que vai para o log. 240 testes passam |
-| [#14](https://github.com/NogmaBR/CRM-CAVALCANTI/pull/14) | CI verde + backup semanal cifrado | Só `.github/` e um runbook. O backup já rodou com sucesso na branch |
-| [#15](https://github.com/NogmaBR/CRM-CAVALCANTI/pull/15) | `pos-vercel-pro.mjs` e `configurar-dominio.mjs` | Dois scripts novos em `scripts/`. Nada em produção muda ao mergear |
+### 4.1 — PR #16 (a migration já está em produção)
+
+<https://github.com/NogmaBR/CRM-CAVALCANTI/pull/16> — higiene apontada pelos advisors
+do Supabase: `search_path` fixo em 2 funções, EXECUTE revogado em 2 funções de trigger,
+índice em 9 chaves estrangeiras. **Já apliquei e conferi em produção**; o PR só versiona
+o arquivo. Os advisors de segurança caíram de 11 para 5, e os 5 que sobraram são
+intencionais (`has_role` é usada pela RLS) ou exigem plano Pro (item 4.5).
+
+### 4.2 — Apagar a tabela `pagamentos.csv`
+
+Quando você importou o CSV pelo painel do Supabase, ele criou uma **tabela** chamada
+`pagamentos.csv` (80 linhas, tudo `text`, sem chave primária). Os pagamentos de verdade
+estão em `pagamentos`; essa é uma cópia crua que só polui. Não apaguei porque não fui eu
+que criei — mas ela está no backup de 19:27, então é recuperável.
+
+No SQL Editor:
+
+```sql
+DROP TABLE public."pagamentos.csv";
+```
+
+### 4.3 — Remover 2 variáveis que a Vercel não usa
+
+`SUPABASE_DB_URL` e `SUPABASE_JWT_SECRET` estão em produção na Vercel e **nenhum código
+do app as lê** (conferido por `grep`). A primeira contém a senha do banco. Segredo que
+não é usado é só superfície de ataque.
+
+<https://vercel.com/nogma1/crm-cavalcanti/settings/environment-variables> → nas duas,
+**⋯ → Remove**. Não precisa de redeploy. Os valores continuam no `.env.local`.
+
+### 4.4 — Apagar as branches já mergeadas
+
+13 branches de PRs mergeados ou fechados continuam no GitHub. O classificador me
+barrou de apagá-las. Ative a limpeza automática e apague as atuais de uma vez:
+
+```bash
+gh repo edit NogmaBR/CRM-CAVALCANTI --delete-branch-on-merge
+git push origin --delete feat/scripts-operacao ci/verde feat/fase5-logs-estruturados feat/fase5-saude fix/indexador-lote feat/rag-fase4 feat/fila-corte-webhook feat/fila-pgmq feat/painel-automacoes feat/motor-automacoes feat/alinhamento-cavalcanti-16-09 dependabot/npm_and_yarn/vitest-4.1.11 dependabot/npm_and_yarn/apps/web/next-15.5.21 dependabot/npm_and_yarn/next-15.5.21
+```
+
+**Não apague `feat/emitir-eventos`** (PR #7, item 10).
+
+### 4.5 — Proteção contra senha vazada (Supabase Pro)
+
+O advisor pede `auth_leaked_password_protection`. A API respondeu **402: só no plano
+Pro**. Se o Supabase virar Pro (junto com o PITR do item 6.3), ligue em Authentication →
+Settings → *Leaked password protection*.
 
 ### Como conferir
-
-Depois do merge de cada um, a Vercel faz deploy da `main`. Confira:
 
 ```bash
 node --env-file=.env.local -e "fetch('https://crm-cavalcanti.vercel.app/api/health',{headers:{Authorization:'Bearer '+process.env.CRON_SECRET}}).then(r=>r.json()).then(j=>console.log(j.ok, j.problemas))"
@@ -341,7 +381,9 @@ Botão **Desligar** em cada regra. Ou: `UPDATE automation_rules SET ativo = fals
 Nada aqui antes da entrega.
 
 1. **Mergear o PR #7** — o barramento de eventos ganha chamadores.
-   <https://github.com/NogmaBR/CRM-CAVALCANTI/pull/7>
+   <https://github.com/NogmaBR/CRM-CAVALCANTI/pull/7>. Em 2026-09-10 eu trouxe a
+   `main` para dentro dele (um conflito de import, resolvido): typecheck e 240 testes
+   passam com o código de hoje, e o CI roda nele.
 2. **Criar `FILA_WHATSAPP=true`** na Vercel + redeploy. O webhook passa a só enfileirar.
 3. Conferir em <https://crm-cavalcanti.vercel.app/config/filas> que os jobs são drenados.
 
@@ -378,7 +420,7 @@ Marque só o que você **conferiu**, não o que fez.
 - [ ] `test-webhook-uazapi.mjs` devolvendo 200
 - [ ] Equipe em `/config/autorizados`, com os números certos
 - [ ] **Foto de nota → bot pergunta → "SIM" → lançamento no painel**
-- [ ] PRs #13, #14, #15 mergeados e `/api/health` com `ok: true`
+- [ ] PR #16 mergeado; `pagamentos.csv` apagada; 2 variáveis removidas da Vercel; branches limpas
 - [ ] Vercel Pro; `pos-vercel-pro.mjs` mostrando `gru1` e latência menor
 - [ ] Repositório PRIVATE e um deploy novo saiu depois disso
 - [ ] `BACKUP_PASSPHRASE` no gerenciador de senhas
