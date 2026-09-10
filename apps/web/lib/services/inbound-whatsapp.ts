@@ -8,6 +8,7 @@ import {
 } from '@/lib/schemas/uazapi';
 import { uploadDocumentBuffer } from '@/lib/storage/documents';
 import { interpretarComando } from '@/lib/whatsapp/comandos';
+import { ehPerguntaAoAssistente } from '@/lib/whatsapp/pergunta';
 import { interpretarResposta } from '@/lib/whatsapp/resposta';
 import type { Database } from '@nogma/db';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -46,6 +47,7 @@ export type AcaoInbound =
   | 'recusou_pendencia'
   | 'classificada'
   | 'comando'
+  | 'pergunta'
   | 'erro';
 
 export interface ResultadoInbound {
@@ -159,6 +161,45 @@ export async function processarInbound(
     });
     await enviarTexto(telefone, resposta);
     return { acao: 'comando', detalhe: comando.tipo };
+  }
+
+  // ---------------------------------------------------------------------
+  // 5b. É uma pergunta livre sobre os dados?
+  // ---------------------------------------------------------------------
+  // Depois dos comandos fixos (que são exatos e baratos) e antes da
+  // classificação (que trata a mensagem como lançamento).
+  //
+  // A ordem é obrigatória: uma pergunta que chegasse à classificação viraria
+  // `nao_identificado` e uma pendência boba no painel. E o reconhecimento é
+  // estreito de propósito — `ehPerguntaAoAssistente` recusa qualquer coisa que
+  // cheire a lançamento, porque o erro contrário perde um pagamento.
+  //
+  // Só age com as duas peças configuradas. Sem chave da Anthropic ou sem
+  // embeddings, a mensagem segue o caminho de sempre — este bloco é invisível.
+  if (ehPerguntaAoAssistente(textoEfetivo)) {
+    const [{ assistenteDisponivel, perguntar }, { embeddingsAtivo }] = await Promise.all([
+      import('@/lib/ia/assistente'),
+      import('@/lib/ia/embeddings'),
+    ]);
+
+    if (assistenteDisponivel() && embeddingsAtivo()) {
+      const resposta = await perguntar(supabase, {
+        pergunta: textoEfetivo ?? '',
+        canal: 'whatsapp',
+        autorizadoId: autorizado.id,
+      }).catch((err) => {
+        console.error('[inbound] assistente falhou:', err);
+        return null;
+      });
+
+      // Só responde se o assistente respondeu. Falhou? Cai para a
+      // classificação — melhor a pergunta virar pendência no painel do que
+      // a pessoa receber silêncio.
+      if (resposta) {
+        await enviarTexto(telefone, resposta.texto);
+        return { acao: 'pergunta', detalhe: `${resposta.fontes.length} fonte(s)` };
+      }
+    }
   }
 
   // ---------------------------------------------------------------------
