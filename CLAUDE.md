@@ -72,7 +72,11 @@ em relação ao seu treino. Os docs vêm no pacote: `apps/web/node_modules/next/
 | `docs/BLOCO-2-FLUXO-WHATSAPP.md` | Como o fluxo do WhatsApp funciona ponta a ponta |
 | `docs/PROTOTIPO-PORTADO.md` | O que veio do protótipo aprovado, e o que ficou de fora de propósito |
 | `docs/RUNBOOK-ROTACAO-SECRETS.md` | Procedimento de rotação de credenciais |
-| `docs/MANUAL-PENDENCIAS.md` | Tudo que precisa ser feito fora do VS Code |
+| **`docs/SO-FALTA-VOCE.md`** | **A lista única do que é ação humana**, na ordem, com como conferir. Substitui `MANUAL-PENDENCIAS.md` (08/09, desatualizado) |
+| `docs/PLANO-ARQUITETURA-CODE-FIRST.md` | O plano por fases (0–6) com o estado de cada checkbox |
+| `docs/RUNBOOK-BACKUP.md` | Backup semanal: baixar, decifrar, restaurar, registrar o teste |
+| `docs/RUNBOOK-VERCEL-PRO.md` | Pro → região `gru1` → repo privado (e o script que faz os dois últimos) |
+| `docs/PLANO-CLOUDFLARE.md` | Por que a Cloudflare ficou só como DNS (ela não vende VPS) |
 | `docs/N8N-COMPLETO.md` | 7 workflows n8n (documentação executável, não está rodando) |
 
 ---
