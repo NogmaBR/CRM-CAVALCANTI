@@ -1,7 +1,10 @@
 import 'server-only';
-import { createClient as createSbClient } from '@supabase/supabase-js';
+import { type ClassifierInput, getClassifier } from '@/lib/ia/classifier';
+import { logger } from '@/lib/log';
 import type { Database } from '@nogma/db';
-import { getClassifier, type ClassifierInput } from '@/lib/ia/classifier';
+import { createClient as createSbClient } from '@supabase/supabase-js';
+
+const log = logger('classificacao');
 
 const CONFIANCA_AUTO_APROVAR = 0.85;
 
@@ -184,7 +187,7 @@ export async function classifyAndPersist(mensagemId: string): Promise<
     .single();
 
   if (erroConfirmacao) {
-    console.error('[classify] falha ao abrir pendência:', erroConfirmacao.message);
+    log.erro('abrir_pendencia_falhou', { mensagemId, erro: erroConfirmacao.message });
   }
 
   await supabase

@@ -1,4 +1,7 @@
 import 'server-only';
+import { logger } from '@/lib/log';
+
+const log = logger('uazapi');
 
 /**
  * Cliente do UAZAPI — envio de mensagem e download de mídia.
@@ -62,10 +65,10 @@ export function whatsappConfigurado(): boolean {
 export async function enviarTexto(telefone: string, texto: string): Promise<ResultadoEnvio> {
   const cfg = config();
   if (!cfg) {
-    console.warn(
-      '[uazapi] envio ignorado: UAZAPI_BASE_URL/UAZAPI_TOKEN não configurados. ' +
-        'A mensagem foi processada, mas nenhuma resposta automática saiu.',
-    );
+    log.aviso('envio_ignorado_nao_configurado', {
+      telefone,
+      dica: 'UAZAPI_BASE_URL/UAZAPI_TOKEN ausentes: a mensagem foi processada, mas nenhuma resposta saiu.',
+    });
     return { ok: false, motivo: 'nao_configurado' };
   }
 
@@ -82,7 +85,7 @@ export async function enviarTexto(telefone: string, texto: string): Promise<Resu
 
     if (!res.ok) {
       const corpo = await res.text().catch(() => '');
-      console.error(`[uazapi] envio falhou: HTTP ${res.status}`, corpo.slice(0, 300));
+      log.erro('envio_falhou', { telefone, status: res.status, corpo: corpo.slice(0, 300) });
       return { ok: false, motivo: 'http', detalhe: `HTTP ${res.status}` };
     }
 
@@ -92,7 +95,7 @@ export async function enviarTexto(telefone: string, texto: string): Promise<Resu
     return { ok: true, msgId: json?.id ?? json?.messageid ?? null };
   } catch (err) {
     const detalhe = err instanceof Error ? err.message : String(err);
-    console.error('[uazapi] exceção no envio:', detalhe);
+    log.erro('envio_excecao', { telefone, detalhe });
     return { ok: false, motivo: 'excecao', detalhe };
   }
 }
@@ -143,7 +146,7 @@ export async function baixarMidia(url: string | null | undefined): Promise<Resul
     };
   } catch (err) {
     const detalhe = err instanceof Error ? err.message : String(err);
-    console.error('[uazapi] exceção no download de mídia:', detalhe);
+    log.erro('download_midia_excecao', { detalhe });
     return { ok: false, motivo: 'excecao', detalhe };
   }
 }

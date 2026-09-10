@@ -1,4 +1,5 @@
 import 'server-only';
+import { comContexto, logger } from '@/lib/log';
 import type { Database } from '@nogma/db';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { arquivar, concluir, ler } from './fila';
@@ -27,6 +28,8 @@ import { type JobLido, MAX_TENTATIVAS, type NomeFila } from './tipos';
  */
 
 type Client = SupabaseClient<Database>;
+
+const log = logger('fila');
 
 export type Handler<F extends NomeFila> = (supabase: Client, job: JobLido<F>) => Promise<void>;
 
@@ -61,31 +64,34 @@ export async function consumirFila<F extends NomeFila>(
   };
 
   for (const job of jobs) {
-    // A checagem vem ANTES de executar, não depois de falhar.
-    //
-    // `tentativa` conta esta entrega. Se já chegou ao teto, executar de novo
-    // seria fazer a quarta tentativa de algo que falhou três vezes — e, pior,
-    // com efeito colateral: no caso do envio de WhatsApp, uma quarta mensagem
-    // para alguém que já recebeu três.
-    if (job.tentativa > MAX_TENTATIVAS) {
-      console.error(`[fila:${fila}] msg ${job.msgId} arquivada após ${job.tentativa - 1} falhas.`);
-      await arquivar(supabase, fila, job.msgId);
-      resultado.arquivadas += 1;
-      continue;
-    }
+    // Todo log emitido pelo handler — e pelo que ele chamar — sai com a fila,
+    // o id e a tentativa. O handler pode acrescentar a correlação de negócio
+    // (o id da mensagem do WhatsApp) por cima.
+    await comContexto({ fila, msgId: job.msgId, tentativa: job.tentativa }, async () => {
+      // A checagem vem ANTES de executar, não depois de falhar.
+      //
+      // `tentativa` conta esta entrega. Se já chegou ao teto, executar de novo
+      // seria fazer a quarta tentativa de algo que falhou três vezes — e, pior,
+      // com efeito colateral: no caso do envio de WhatsApp, uma quarta mensagem
+      // para alguém que já recebeu três.
+      if (job.tentativa > MAX_TENTATIVAS) {
+        log.erro('arquivada', { tentativas: job.tentativa - 1 });
+        await arquivar(supabase, fila, job.msgId);
+        resultado.arquivadas += 1;
+        return;
+      }
 
-    try {
-      await handler(supabase, job);
-      await concluir(supabase, fila, job.msgId);
-      resultado.concluidas += 1;
-    } catch (err) {
-      // Devolvida por omissão: o visibility timeout expira e ela volta.
-      console.error(
-        `[fila:${fila}] msg ${job.msgId} falhou (tentativa ${job.tentativa}/${MAX_TENTATIVAS}):`,
-        err instanceof Error ? err.message : err,
-      );
-      resultado.devolvidas += 1;
-    }
+      try {
+        await handler(supabase, job);
+        await concluir(supabase, fila, job.msgId);
+        resultado.concluidas += 1;
+        log.info('concluida');
+      } catch (err) {
+        // Devolvida por omissão: o visibility timeout expira e ela volta.
+        log.erro('devolvida', { max: MAX_TENTATIVAS, err });
+        resultado.devolvidas += 1;
+      }
+    });
   }
 
   return resultado;

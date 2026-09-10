@@ -1,4 +1,5 @@
 import 'server-only';
+import { logger } from '@/lib/log';
 import { buscar, fontesDe, montarContexto } from '@/lib/rag/busca';
 import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
@@ -14,6 +15,8 @@ import {
   VERSAO,
   montarPrompt,
 } from './prompts/assistente-obra';
+
+const log = logger('assistente');
 
 /**
  * O assistente de obra: pergunta em português, resposta fundamentada.
@@ -75,7 +78,7 @@ export async function perguntar(
     if (busca.motivo === 'sem_embeddings') {
       return { texto: SEM_EMBEDDINGS, fontes: [], usouModelo: false };
     }
-    console.error('[assistente] busca falhou:', busca.detalhe);
+    log.erro('busca_falhou', { motivo: busca.motivo, detalhe: busca.detalhe });
     return { texto: SEM_CONTEXTO, fontes: [], usouModelo: false };
   }
 
@@ -127,9 +130,7 @@ export async function perguntar(
 
     const saida = resposta.parsed_output;
     if (!saida) {
-      console.error('[assistente] resposta sem parsed_output', {
-        stop_reason: resposta.stop_reason,
-      });
+      log.erro('sem_parsed_output', { stop_reason: resposta.stop_reason });
       return { texto: SEM_CONTEXTO, fontes, usouModelo: false };
     }
 
@@ -138,7 +139,7 @@ export async function perguntar(
     tokensEntrada = resposta.usage?.input_tokens ?? null;
     tokensSaida = resposta.usage?.output_tokens ?? null;
   } catch (err) {
-    console.error('[assistente] modelo falhou:', err instanceof Error ? err.message : err);
+    log.erro('modelo_falhou', { err });
     return { texto: SEM_CONTEXTO, fontes, usouModelo: false };
   }
 
@@ -181,7 +182,7 @@ async function registrar(
       .single();
 
     if (error || !conversa) {
-      console.error('[assistente] não consegui abrir a conversa:', error?.message);
+      log.erro('abrir_conversa_falhou', { erro: error?.message });
       return undefined;
     }
 
@@ -205,7 +206,7 @@ async function registrar(
 
     return conversa.id;
   } catch (err) {
-    console.error('[assistente] falha ao registrar:', err instanceof Error ? err.message : err);
+    log.erro('registrar_conversa_falhou', { err });
     return undefined;
   }
 }

@@ -1,5 +1,6 @@
 import 'server-only';
 import { MAX_LOTE, embeddingsAtivo, gerarEmbeddings, paraLiteralVetor } from '@/lib/ia/embeddings';
+import { logger } from '@/lib/log';
 import type { Database } from '@nogma/db';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
@@ -33,6 +34,8 @@ import {
  */
 
 type Client = SupabaseClient<Database>;
+
+const log = logger('rag');
 
 export interface ResultadoSincronizacao {
   lidos: number;
@@ -318,7 +321,7 @@ export async function gerarEmbeddingsPendentes(
     const corte = textos.length - MAX_LOTE;
     textos.length = MAX_LOTE;
     dono.length = MAX_LOTE;
-    console.warn(`[rag] ${corte} trecho(s) ficaram para a próxima leva.`);
+    log.aviso('lote_cortado', { sobraram: corte, maxLote: MAX_LOTE });
   }
 
   const emb = await gerarEmbeddings(textos);

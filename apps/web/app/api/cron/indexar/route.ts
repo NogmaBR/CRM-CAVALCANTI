@@ -1,4 +1,6 @@
 import 'server-only';
+import { randomUUID } from 'node:crypto';
+import { comContexto, logger } from '@/lib/log';
 import { gerarEmbeddingsPendentes, sincronizarDocumentos } from '@/lib/rag/indexador';
 import type { Database } from '@nogma/db';
 import { createClient as createSbClient } from '@supabase/supabase-js';
@@ -6,6 +8,8 @@ import { type NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+const log = logger('cron');
 
 /**
  * Mantém a base de conhecimento em dia.
@@ -50,29 +54,43 @@ export async function GET(request: NextRequest) {
 
   const inicio = Date.now();
 
-  try {
-    const textos = await sincronizarDocumentos(supabase);
+  return comContexto({ correlacao: randomUUID(), rota: 'cron/indexar' }, async () => {
+    try {
+      const textos = await sincronizarDocumentos(supabase);
 
-    if (apenasTexto) {
+      if (apenasTexto) {
+        log.info('indexar_rodou', { apenasTexto: true, duracao_ms: Date.now() - inicio, textos });
+        return NextResponse.json({
+          ok: true,
+          duracao_ms: Date.now() - inicio,
+          textos,
+          embeddings: null,
+        });
+      }
+
+      const embeddings = await gerarEmbeddingsPendentes(supabase, limite);
+
+      if (embeddings.erro) {
+        // A indexação parou sem lançar: chave ausente, quota, rede. Sem esta
+        // linha, a busca simplesmente "não acha" e ninguém sabe desde quando.
+        log.erro('indexar_embeddings_falhou', {
+          erro: embeddings.erro,
+          pendentes: embeddings.pendentes,
+        });
+      } else {
+        log.info('indexar_rodou', { duracao_ms: Date.now() - inicio, textos, embeddings });
+      }
+
       return NextResponse.json({
         ok: true,
         duracao_ms: Date.now() - inicio,
         textos,
-        embeddings: null,
+        embeddings,
       });
+    } catch (err) {
+      const detalhe = err instanceof Error ? err.message : String(err);
+      log.erro('indexar_falhou', { detalhe });
+      return NextResponse.json({ ok: false, error: detalhe }, { status: 500 });
     }
-
-    const embeddings = await gerarEmbeddingsPendentes(supabase, limite);
-
-    return NextResponse.json({
-      ok: true,
-      duracao_ms: Date.now() - inicio,
-      textos,
-      embeddings,
-    });
-  } catch (err) {
-    const detalhe = err instanceof Error ? err.message : String(err);
-    console.error('[cron/indexar] falhou:', detalhe);
-    return NextResponse.json({ ok: false, error: detalhe }, { status: 500 });
-  }
+  });
 }

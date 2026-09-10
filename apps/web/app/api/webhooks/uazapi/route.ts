@@ -1,4 +1,5 @@
 import 'server-only';
+import { comContexto, logger } from '@/lib/log';
 import { UazapiInboundSchema, normalizeTelefone } from '@/lib/schemas/uazapi';
 import { LIMITES, ipDaRequest, resposta429, verificarLimite } from '@/lib/security/rate-limit';
 import { processarInbound } from '@/lib/services/inbound-whatsapp';
@@ -9,6 +10,8 @@ import { type NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+const log = logger('webhook');
 
 /**
  * Webhook inbound do UAZAPI.
@@ -96,30 +99,35 @@ export async function POST(request: NextRequest) {
   // redeploy, sem tocar em código.
   //
   // Quando desligada, o caminho abaixo é exatamente o de sempre.
-  if (process.env.FILA_WHATSAPP === 'true') {
-    try {
-      const { enfileirar } = await import('@/lib/queue/fila');
-      const msgId = await enfileirar(supabase, 'whatsapp_inbound', { payload });
-      return NextResponse.json({ ok: true, acao: 'enfileirada', jobId: msgId });
-    } catch (err) {
-      // Não conseguiu enfileirar: cai para o processamento síncrono em vez de
-      // perder a mensagem. Pior um webhook lento que uma nota fiscal que
-      // nunca chegou — e este é o único caminho em que a degradação vale mais
-      // que a consistência.
-      console.error(
-        '[webhook/uazapi] fila indisponível, processando na hora:',
-        err instanceof Error ? err.message : err,
-      );
+  //
+  // A correlação é o id da mensagem no provider. O mesmo id vai para o
+  // handler da fila, então uma busca por ele no log mostra a mensagem
+  // chegando aqui, entrando na fila, sendo processada e respondida.
+  return comContexto({ correlacao: payload.id, canal: 'webhook' }, async () => {
+    if (process.env.FILA_WHATSAPP === 'true') {
+      try {
+        const { enfileirar } = await import('@/lib/queue/fila');
+        const msgId = await enfileirar(supabase, 'whatsapp_inbound', { payload });
+        log.info('enfileirada', { fila: 'whatsapp_inbound', msgId });
+        return NextResponse.json({ ok: true, acao: 'enfileirada', jobId: msgId });
+      } catch (err) {
+        // Não conseguiu enfileirar: cai para o processamento síncrono em vez de
+        // perder a mensagem. Pior um webhook lento que uma nota fiscal que
+        // nunca chegou — e este é o único caminho em que a degradação vale mais
+        // que a consistência.
+        log.erro('fila_indisponivel_processando_sincrono', { err });
+      }
     }
-  }
 
-  const resultado = await processarInbound(supabase, payload).catch((err) => {
-    console.error('[webhook/uazapi] processamento falhou:', err);
-    return {
-      acao: 'erro' as const,
-      detalhe: err instanceof Error ? err.message : String(err),
-    };
+    const resultado = await processarInbound(supabase, payload).catch((err) => {
+      log.erro('processamento_falhou', { err });
+      return {
+        acao: 'erro' as const,
+        detalhe: err instanceof Error ? err.message : String(err),
+      };
+    });
+
+    log.info('processada', { acao: resultado.acao, detalhe: resultado.detalhe });
+    return NextResponse.json({ ok: true, ...resultado });
   });
-
-  return NextResponse.json({ ok: true, ...resultado });
 }

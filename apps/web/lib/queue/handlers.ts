@@ -1,4 +1,5 @@
 import 'server-only';
+import { comContexto, logger } from '@/lib/log';
 import { UazapiInboundSchema } from '@/lib/schemas/uazapi';
 import { processarInbound } from '@/lib/services/inbound-whatsapp';
 import { enviarTexto, whatsappConfigurado } from '@/lib/services/uazapi';
@@ -21,6 +22,8 @@ import type { NomeFila } from './tipos';
  */
 
 type Registro = { [F in NomeFila]?: Handler<F> };
+
+const log = logger('inbound');
 
 /**
  * Envia uma mensagem de WhatsApp.
@@ -109,7 +112,14 @@ const processarMensagemRecebida: Handler<'whatsapp_inbound'> = async (supabase, 
     );
   }
 
-  const resultado = await processarInbound(supabase, parsed.data);
+  // A correlação é o id da mensagem no provider — o MESMO que o webhook usou
+  // ao enfileirar. Buscar por ele no log mostra a mensagem chegando, entrando
+  // na fila, sendo processada e respondida, em ordem.
+  const resultado = await comContexto({ correlacao: parsed.data.id, canal: 'fila' }, async () => {
+    const r = await processarInbound(supabase, parsed.data);
+    log.info('processada', { acao: r.acao, detalhe: r.detalhe });
+    return r;
+  });
 
   // `erro` é o único desfecho que merece retentativa: os outros — ignorada,
   // duplicada, comando, classificada — são conclusões legítimas do fluxo.
