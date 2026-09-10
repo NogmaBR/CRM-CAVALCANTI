@@ -366,15 +366,27 @@ nascer assim.
 
 ### FASE 4 — IA e RAG (3 a 4 semanas)
 
+> **O corpus mudou, e a razão é factual.** O plano previa "documento → parser →
+> chunking". Ao chegar aqui, o banco tem **zero documentos**: os PDFs de nota e
+> comprovante estão no OneDrive do cliente. Um parser indexaria nada.
+>
+> O que existe são 80 pagamentos, 10 obras e 8 fornecedores — e é sobre eles que
+> o gestor pergunta. O pipeline é o mesmo e a tabela tem `origem`: quando os PDFs
+> entrarem no sistema, basta um indexador novo.
+
 **Entregáveis:**
 
-- `CREATE EXTENSION vector` — já disponível no projeto
-- Tabelas `knowledge_documents`, `knowledge_chunks`, `embeddings`
-- Pipeline: documento → parser → chunking → embedding → pgvector
-- Busca vetorial + montagem de contexto
-- Tools com allowlist explícita, cada uma com schema e permissão
-- Prompts em arquivo, versionados
-- Tabelas `ai_conversations`, `ai_messages`, `ai_tool_calls` — separadas das de negócio
+- [x] `CREATE EXTENSION vector` — instalada 2026-09-10
+- [x] `knowledge_documents` + `knowledge_chunks` com `vector(1536)` e índice HNSW
+- [x] Pipeline: registro do CRM → texto → chunking → embedding → pgvector
+- [x] Busca vetorial com **corte de similaridade** + montagem de contexto numerado
+- [x] Prompts em arquivo, versionados (`lib/ia/prompts/`, com `VERSAO` gravada na resposta)
+- [x] `ai_conversations`, `ai_messages`, `ai_tool_calls` — sem FK para as de negócio
+- [x] Pergunta livre no WhatsApp → resposta com fonte citada
+- [x] `/api/cron/indexar` agendado por `pg_cron` (não pela Vercel: o plano Hobby
+      só permite dois crons, e os dois já estão usados)
+- [ ] Tools com allowlist explícita — `ai_tool_calls` existe e está vazia; nenhuma
+      ferramenta foi implementada ainda
 
 **Decisão dentro da fase:** TypeScript ou Python. Minha recomendação é começar em TS
 (a chamada de embeddings e a busca vetorial são triviais nas duas linguagens) e só
@@ -383,6 +395,10 @@ Python desde já, o serviço nasce isolado atrás de HTTP e a fase não muda de 
 
 **Pronto quando:** o gestor perguntar algo sobre um documento da obra no WhatsApp e
 receber resposta fundamentada, com a fonte citada.
+
+**Falta para isso valer:** `IA_EMBEDDINGS_PROVIDER=openai` + `OPENAI_API_KEY` (para a
+busca) e `IA_PROVIDER=anthropic` + `ANTHROPIC_API_KEY` (para a redação). Sem as duas
+duplas, o bloco de pergunta livre é invisível e o WhatsApp segue como sempre.
 
 ---
 

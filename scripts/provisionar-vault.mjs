@@ -114,9 +114,15 @@ async function upsertSegredo(nome, valor, descricao) {
   return 'criado';
 }
 
+const BASE = APP_URL.replace(/\/+$/u, '');
+
 const passos = [
   ['fila_consumidor_url', URL_CONSUMIDOR, 'Rota que o pg_cron chama para drenar as filas'],
-  ['fila_consumidor_secret', SECRET, 'CRON_SECRET, para autenticar essa chamada'],
+  ['fila_consumidor_secret', SECRET, 'CRON_SECRET, para autenticar as chamadas do pg_cron'],
+  // A base separada da rota: o agendador da indexação monta a própria URL.
+  // Guardar a rota inteira de novo faria duas cópias do mesmo domínio, e uma
+  // delas ficaria para trás no dia em que o domínio mudar.
+  ['app_base_url', BASE, 'Domínio público do app, para o pg_net montar as rotas'],
 ];
 
 for (const [nome, valor, descricao] of passos) {
@@ -135,7 +141,7 @@ for (const [nome, valor, descricao] of passos) {
 const conferencia = await sql(`
   SELECT
     (SELECT count(*) FROM vault.decrypted_secrets
-      WHERE name IN ('fila_consumidor_url','fila_consumidor_secret')
+      WHERE name IN ('fila_consumidor_url','fila_consumidor_secret','app_base_url')
         AND decrypted_secret IS NOT NULL AND decrypted_secret <> '') AS legiveis,
     (SELECT decrypted_secret FROM vault.decrypted_secrets
       WHERE name = 'fila_consumidor_url') AS url;
@@ -143,8 +149,8 @@ const conferencia = await sql(`
 
 const { legiveis, url } = conferencia[0];
 
-if (Number(legiveis) !== 2) {
-  console.error(`\n✗ Só ${legiveis} de 2 segredos legíveis pelo banco.`);
+if (Number(legiveis) !== 3) {
+  console.error(`\n✗ Só ${legiveis} de 3 segredos legíveis pelo banco.`);
   process.exit(1);
 }
 
@@ -153,5 +159,5 @@ if (url !== URL_CONSUMIDOR) {
   process.exit(1);
 }
 
-console.log('\n✓ Os dois segredos legíveis pelo banco, e a URL confere.');
-console.log('  O pg_cron chama o consumidor quando houver job na fila.');
+console.log('\n✓ Os três segredos legíveis pelo banco, e a URL confere.');
+console.log('  O pg_cron drena as filas quando houver job, e indexa de hora em hora.');

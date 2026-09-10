@@ -78,7 +78,10 @@ export class MockClassifier implements Classifier {
         descricao: texto,
         raciocinio: `MockClassifier: valor=${valor}, obra=${obra?.nome ?? '?'}, fornecedor=${forn?.nome ?? '?'}`,
       },
-      perguntaConfirmacao: `Achei pagamento de R$ ${valor.toFixed(2)} ${obra ? `para obra ${obra.nome}` : ''} ${forn ? `com ${forn.nome}` : ''}. Confirma? [S/N]`.replace(/\s+/gu, ' ').trim(),
+      perguntaConfirmacao:
+        `Achei pagamento de R$ ${valor.toFixed(2)} ${obra ? `para obra ${obra.nome}` : ''} ${forn ? `com ${forn.nome}` : ''}. Confirma? [S/N]`
+          .replace(/\s+/gu, ' ')
+          .trim(),
     };
   }
 }

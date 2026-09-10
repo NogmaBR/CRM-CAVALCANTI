@@ -92,7 +92,11 @@ async function transcreverComOpenAI(
 
   try {
     const form = new FormData();
-    form.append('file', new Blob([bytes as BlobPart], { type: mime }), `audio.${extensaoPara(mime)}`);
+    form.append(
+      'file',
+      new Blob([bytes as BlobPart], { type: mime }),
+      `audio.${extensaoPara(mime)}`,
+    );
     form.append('model', modelo);
     // Fixar o idioma melhora bastante a precisão em áudio de obra, que tem
     // ruído de fundo e vocabulário regional.
