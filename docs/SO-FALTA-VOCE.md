@@ -23,7 +23,8 @@ SÓ FALTA VOCÊ
   🔴 1. Telefones reais dos fornecedores      ← antes de qualquer automação
   🔴 2. Credenciais (UAZAPI, Anthropic, OpenAI) + redeploy
   🔴 3. Cadastrar a equipe em /config/autorizados
-  🟠 4. Mergear PR #11 (perf da indexação)    ← pode agora
+  🟠 4. Mergear PR #11 (perf) e #12 (saúde)   ← podem agora
+  🔵 4b. DECIDIR: Vercel Pro ou migrar p/ Cloudflare
   🟡 5. Indexar a base de conhecimento (textos já criados)
   🟡 6. Ligar as automações, com cuidado
   ⏳ 7. Depois de 16/09: PR #7 e a chave FILA_WHATSAPP
@@ -264,6 +265,34 @@ que existe, nem que restaura.
 
 > Backup não testado não é backup. É a única coisa nesta lista que não admite
 > "provavelmente funciona".
+
+---
+
+# 🔵 DECISÃO — Vercel Pro ou Cloudflare
+
+Você pediu "a VPS da Cloudflare". **A Cloudflare não vende VPS** — verifiquei na
+documentação oficial. Não há máquina virtual no catálogo dela.
+
+O que existe é Workers, Containers, Queues e Hyperdrive. Migrar é possível e escrevi o
+plano inteiro em **`docs/PLANO-CLOUDFLARE.md`** — inclusive os 8 pontos que quebrariam.
+
+Mas o problema real é **394 ms de latência**, e há dois caminhos para o mesmo resultado:
+
+| | Vercel Pro + região `gru1` | Migrar para Workers |
+|---|---|---|
+| Resolve a latência | ✅ é configuração | ✅ via Smart Placement |
+| Trabalho | **minutos** | 1–2 semanas |
+| Risco | nenhum | troca de plataforma inteira |
+| Custo/mês | ~US$ 20 | ~US$ 5 |
+
+**A economia é de ~US$ 15/mês.** Minha recomendação é Vercel Pro agora e Cloudflare
+depois, se depois existir um motivo melhor que preço. Mas a decisão é sua, e se for
+migrar eu executo — só não antes de 16/09.
+
+⚠️ **Uma armadilha, se migrar:** o Hyperdrive parece resolver a latência e é gratuito,
+mas exige conectar direto no Postgres em vez do `supabase-js`. A RLS deste projeto
+depende do `supabase-js` para funcionar. Adotá-lo significaria reescrever a autorização
+inteira — a mudança mais arriscada possível num sistema financeiro.
 
 ---
 
