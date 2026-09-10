@@ -24,7 +24,7 @@ SÓ FALTA VOCÊ
   🔴 2. Credenciais (UAZAPI, Anthropic, OpenAI) + redeploy
   🔴 3. Cadastrar a equipe em /config/autorizados
   🟠 4. Mergear PR #11 (perf) e #12 (saúde)   ← podem agora
-  🔵 4b. DECIDIR: Vercel Pro ou migrar p/ Cloudflare
+  🔵 4b. Vercel Pro → região gru1 → repo privado (DECIDIDO)
   🟡 5. Indexar a base de conhecimento (textos já criados)
   🟡 6. Ligar as automações, com cuidado
   ⏳ 7. Depois de 16/09: PR #7 e a chave FILA_WHATSAPP
@@ -268,46 +268,28 @@ que existe, nem que restaura.
 
 ---
 
-# 🔵 DECISÃO — Vercel Pro ou Cloudflare
+# 🔵 Vercel Pro, região e repositório privado — DECIDIDO
 
-Você pediu "a VPS da Cloudflare". **A Cloudflare não vende VPS** — verifiquei na
-documentação oficial. Não há máquina virtual no catálogo dela.
+Você decidiu: **Vercel Pro**, e depois repositório privado. A migração para
+Cloudflare fica arquivada em `docs/PLANO-CLOUDFLARE.md` — a Cloudflare não vende VPS, e
+o que ela oferece resolveria a mesma latência por 1–2 semanas de trabalho contra minutos.
 
-O que existe é Workers, Containers, Queues e Hyperdrive. Migrar é possível e escrevi o
-plano inteiro em **`docs/PLANO-CLOUDFLARE.md`** — inclusive os 8 pontos que quebrariam.
+**O passo a passo completo está em `docs/RUNBOOK-VERCEL-PRO.md`.** Resumo:
 
-Mas o problema real é **394 ms de latência**, e há dois caminhos para o mesmo resultado:
+1. **Upgrade para Pro** — o motivo real não é recurso, é que o plano Hobby não permite
+   uso comercial, e este CRM é entregue a cliente pagante
+2. **Região → `gru1`** e **redeploy** (sem redeploy não vale nada)
+3. **Repositório privado** — verificado: 0 forks, nada depende de URL pública
 
-| | Vercel Pro + região `gru1` | Migrar para Workers |
-|---|---|---|
-| Resolve a latência | ✅ é configuração | ✅ via Smart Placement |
-| Trabalho | **minutos** | 1–2 semanas |
-| Risco | nenhum | troca de plataforma inteira |
-| Custo/mês | ~US$ 20 | ~US$ 5 |
+### Como provar que a região funcionou
 
-**A economia é de ~US$ 15/mês.** Minha recomendação é Vercel Pro agora e Cloudflare
-depois, se depois existir um motivo melhor que preço. Mas a decisão é sua, e se for
-migrar eu executo — só não antes de 16/09.
+```bash
+node --env-file=.env.local scripts/medir-latencia.mjs
+```
 
-⚠️ **Uma armadilha, se migrar:** o Hyperdrive parece resolver a latência e é gratuito,
-mas exige conectar direto no Postgres em vez do `supabase-js`. A RLS deste projeto
-depende do `supabase-js` para funcionar. Adotá-lo significaria reescrever a autorização
-inteira — a mudança mais arriscada possível num sistema financeiro.
+Baseline medido hoje: **393 ms** de mediana. O script compara sozinho e diz se melhorou.
 
 ---
-
-# 🟢 8. Quando a Vercel virar plano pago
-
-Dois motivos, não um:
-
-1. **Tornar o repositório privado.** Ele é público hoje.
-2. **Mudar a região das funções para `gru1` (São Paulo).** Hoje elas rodam em `iad1`
-   (Virgínia) e o banco está em São Paulo — medi **394 ms de mediana para uma única
-   consulta**, porque cada uma atravessa ~7.600 km. Com o banco cheio, toda página paga
-   esse pedágio várias vezes.
-
-O DNS na Cloudflare **não** resolve isso: ela acelera estático e resolução de nome, não
-encurta a distância entre a função e o banco.
 
 ---
 
