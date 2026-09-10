@@ -19,17 +19,24 @@ export function buscarAutomacao(chave: string): Automacao | undefined {
   return AUTOMACOES.find((a) => a.chave === chave);
 }
 
-/** Usado pelo painel e pelo seed para listar o que existe. */
-export function listarAutomacoes(): Array<{
+export interface AutomacaoListada {
   chave: string;
   descricao: string;
   gatilhos: string[];
   agendada: boolean;
-}> {
+  /** A ação alcança alguém de fora (WhatsApp, e-mail). O painel avisa antes de ligar. */
+  efeitoExterno: boolean;
+  configPadrao: Record<string, unknown>;
+}
+
+/** Usado pelo painel e pelo seed para listar o que existe. */
+export function listarAutomacoes(): AutomacaoListada[] {
   return AUTOMACOES.map((a) => ({
     chave: a.chave,
     descricao: a.descricao,
     gatilhos: [...a.gatilhos],
     agendada: typeof (a as { varrer?: unknown }).varrer === 'function',
+    efeitoExterno: a.efeitoExterno === true,
+    configPadrao: a.configPadrao ?? {},
   }));
 }

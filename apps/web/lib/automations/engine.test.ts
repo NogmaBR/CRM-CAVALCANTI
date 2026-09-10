@@ -2,7 +2,7 @@ import type { Evento } from '@/lib/events/tipos';
 import { entidadeDoEvento } from '@/lib/events/tipos';
 import { describe, expect, it } from 'vitest';
 import { executarAutomacoes } from './engine';
-import { AUTOMACOES } from './registry';
+import { AUTOMACOES, listarAutomacoes } from './registry';
 import type { Automacao, Client } from './tipos';
 
 /**
@@ -343,6 +343,48 @@ describe('registry — invariantes', () => {
   it('chave é slug estável (sem espaço, minúscula)', () => {
     for (const a of AUTOMACOES) {
       expect(a.chave, `${a.chave} não é slug`).toMatch(/^[a-z0-9-]+$/u);
+    }
+  });
+
+  /**
+   * O painel decide pelo `efeitoExterno` se mostra o aviso de "envia mensagem
+   * para fora". Uma regra que manda WhatsApp sem essa marca seria ligada por
+   * alguém achando que só escreve log — o erro que o aviso existe para evitar.
+   */
+  it('toda regra que usa a ação de WhatsApp está marcada como efeitoExterno', () => {
+    for (const a of AUTOMACOES) {
+      const usaWhatsapp = a.acao.toString().includes('enviarWhatsapp');
+      if (usaWhatsapp) {
+        expect(a.efeitoExterno, `${a.chave} manda WhatsApp mas não está marcada`).toBe(true);
+      }
+    }
+  });
+
+  it('listarAutomacoes entrega ao painel tudo que ele precisa', () => {
+    const listadas = listarAutomacoes();
+    expect(listadas).toHaveLength(AUTOMACOES.length);
+
+    for (const l of listadas) {
+      expect(typeof l.efeitoExterno, `${l.chave}`).toBe('boolean');
+      expect(typeof l.configPadrao, `${l.chave}`).toBe('object');
+      expect(l.configPadrao).not.toBeNull();
+    }
+  });
+
+  /**
+   * Regra sem `configPadrao` nasceria no banco com `{}` e a definition teria
+   * que adivinhar todo parâmetro. O painel também mostraria um objeto vazio,
+   * sem dar pista do que dá para ajustar.
+   */
+  it('regra com parâmetro ajustável declara o padrão', () => {
+    for (const a of AUTOMACOES) {
+      const usaConfig = a.condicao.toString().includes('ctx.config');
+      if (usaConfig) {
+        expect(
+          Object.keys(a.configPadrao ?? {}).length,
+          `${a.chave} lê config mas não declara configPadrao`,
+        ).toBeGreaterThan(0);
+      }
     }
   });
 });
