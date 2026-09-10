@@ -140,7 +140,7 @@ aqui — não invente uma integração.
 | **Classificador IA** | ⚠️ **modo mock** | `IA_PROVIDER=mock`. Com `anthropic` + `ANTHROPIC_API_KEY` vira real (`claude-opus-5`) |
 | **Transcrição de áudio** | ❌ desligada | `IA_TRANSCRICAO_PROVIDER=none`. Com `openai` + `OPENAI_API_KEY` liga |
 | n8n | ❌ não provisionado | Opcional; o CRM faz tudo sozinho agora |
-| CI E2E (Playwright) | ❌ falha sempre | Faltam secrets de staging (Fase 15 nunca provisionada). **Ignore o check vermelho** |
+| CI E2E (Playwright) | ❌ falha sempre | Morre no setup: o workflow fixa Node 20 e o pnpm 11.7 exige ≥ 22.13. Atrás disso ainda faltam os secrets de staging (Fase 15). **Ignore o check vermelho** |
 
 **Nada disso quebra o build.** Todas as integrações ausentes degradam com log e default
 seguro. É proposital: `IA_AUTO_APROVAR=false`, `IA_PROVIDER=mock`, transcrição `none`.
@@ -252,7 +252,11 @@ passa a existir quando o PR entrar.
 3. **Credenciais UAZAPI** — sem elas o WhatsApp não fecha o ciclo.
 4. **`ANTHROPIC_API_KEY`** — para sair do classificador mock.
 5. **Cadastrar a equipe em `/config/autorizados`** — sem isso, toda mensagem é ignorada.
-6. **Fase 15 (staging Supabase)** — enquanto não existir, o CI E2E falha sempre.
+6. **CI E2E** — falha em dois níveis. O visível: `.github/workflows/*.yml` pede
+   `node-version: "20"` e o pnpm 11.7 recusa (`requires at least Node.js v22.13`),
+   então o job morre antes de rodar teste. Trocar para `"22"` é uma linha — e aí
+   aparece o segundo nível, que é a Fase 15 (staging Supabase) nunca provisionada.
+   Corrigir o Node sozinho não deixa o check verde.
 
 ---
 
