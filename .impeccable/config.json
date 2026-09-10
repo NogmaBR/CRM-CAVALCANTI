@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "apps/web/styles/nos-responsive.css"
+        ],
+        "createdAt": "2026-09-10T01:03:25.229Z",
+        "reason": "pre-existing design from commit f4e84b5 (2026-09-05), unrelated to this session's work — 3px top gradient fade-to-transparent accent on an empty-state placeholder card (.nos-coming::before), not a solid side-border wall; intentional decorative touch"
+      }
+    ]
+  }
+}
