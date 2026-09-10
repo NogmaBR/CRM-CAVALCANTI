@@ -191,31 +191,58 @@ O que isso implica, concretamente:
   obra e sete unidades vendáveis. A modelagem tem que aguentar isso desde o
   começo, e é a primeira coisa a desenhar na Fase 6.
 
-#### 2. Hospedagem → **Híbrida**
+#### 2. Hospedagem → **Só Vercel, DNS na Cloudflare** *(revisado em 2026-09-10)*
 
-Web na Vercel; workers e Redis numa VPS pequena. Migrar o front depois é fácil;
-voltar atrás de uma migração completa mal feita, não.
+> A primeira resposta foi "híbrida, com workers numa VPS". Ao detalhar, o cliente
+> preferiu **não ter VPS nenhuma**: web na Vercel, DNS na Cloudflare. Esta seção
+> registra a decisão final e o que ela custa.
 
-**Antes do Redis, o que já está instalado resolve parte.** Em 2026-09-10 foram
-instaladas `pg_cron` 1.6.4, `pg_net` 0.20.4 e `pgvector` 0.8.2 (migration
-`20260910180000_extensoes_fase0.sql`, verificada no catálogo). Para agendamento
-e disparo assíncrono simples, não é preciso infraestrutura nova. BullMQ passa a
-valer quando houver retry com backoff, prioridade e observabilidade de job — o
-caso do WhatsApp — mas não precisa ser o primeiro passo.
+Sem VPS não há processo vivo, e sem processo vivo **não há BullMQ** — ele precisa
+de um consumidor rodando para sempre. Mas isso não significa ficar sem fila.
 
-> ⚠️ **Pendência dentro desta decisão: onde fica a VPS.**
-> A Cloudflare **não vende VPS** — não há produto de máquina virtual no
-> catálogo dela. O que existe é Workers (serverless), Containers, Queues,
-> Durable Objects, além de DNS/CDN/Tunnel. Isso deixa dois caminhos reais, e
-> eles não são equivalentes:
+**A fila passa a morar no banco**, com três extensões já instaladas e verificadas:
+
+| Peça | Papel |
+|---|---|
+| `pgmq` 1.5.1 | Guarda a mensagem, entrega uma vez, esconde por N segundos (visibility timeout) e devolve à fila se ninguém confirmar |
+| `pg_cron` 1.6.4 | Acorda de minuto em minuto e pergunta se há o que fazer |
+| `pg_net` 0.20.4 | Chama uma rota da Vercel de forma assíncrona, sem segurar conexão |
+
+Testado neste banco antes de adotar: criar fila, enviar e ler com visibility
+timeout funcionam. `pgmq.send` tem variante com **delay**, o que cobre job
+adiado e backoff de retentativa.
+
+**O que se perde em relação a Redis + BullMQ:**
+
+- Painel de observação pronto (o do BullMQ vem de graça; aqui é uma tela nossa
+  sobre `pgmq.q_*` e `pgmq.a_*`, ou SQL)
+- Prioridade por job
+- Throughput de Redis — irrelevante nesta escala: são dezenas de mensagens por
+  dia, não milhares por segundo
+
+**O que se ganha:** zero servidor para administrar, atualizar, vigiar e pagar.
+Nada de SSL, uptime, backup ou worker que morre em silêncio às 3h da manhã.
+
+Para esta escala, a troca vale. Se um dia o volume justificar Redis, migrar de
+`pgmq` para BullMQ é trocar o adaptador de fila — não a arquitetura, porque o
+que enfileira e o que consome continuam sendo os mesmos serviços em `lib/`.
+
+> ⚠️ **Achado que esta decisão torna mais importante: as regiões não batem.**
 >
-> | Caminho | Como fica | Custo da escolha |
-> |---|---|---|
-> | **VPS de verdade, Cloudflare na frente** | Hetzner/DigitalOcean/Oracle roda Node + Redis + BullMQ; Cloudflare faz DNS, proxy e Tunnel | Mantém a decisão como está. BullMQ funciona como planejado |
-> | **Tudo na Cloudflare** | Workers + **Cloudflare Queues** no lugar de Redis+BullMQ; Containers se precisar de processo longo | Não é "a mesma coisa noutro lugar": troca a tecnologia de fila e o modelo de execução. Some a ops de VPS, some também o BullMQ |
+> As funções da Vercel rodam em **`iad1` (Virgínia)** e o Supabase está em
+> **`sa-east-1` (São Paulo)**. Toda consulta do servidor atravessa ~7.600 km.
 >
-> Não dá para decidir isso por dedução — depende de quanto se quer administrar.
-> **Só trava a Fase 3**, que é pós-entrega.
+> Medido em produção em 2026-09-10, no `/api/cron/automacoes` com as regras
+> desligadas — o que é essencialmente **uma** consulta: `154, 392, 394, 461,
+> 900 ms`, mediana **394 ms**.
+>
+> Com tudo na Vercel, isso deixa de ser detalhe: cada página server-rendered
+> paga esse pedágio, várias vezes. Mudar a região das funções para `gru1`
+> (São Paulo) é configuração, mas **exige plano pago** — e o repositório já
+> depende de ir para o plano pago para virar privado. São a mesma conversa.
+>
+> Não confundir com o DNS na Cloudflare: Cloudflare acelera o que é estático e
+> a resolução de nome. Ela não encurta a distância entre a função e o banco.
 
 #### 3. API → **Manter Next.js**
 
@@ -287,28 +314,34 @@ ficar registrada em `automation_executions`.
 
 ---
 
-### FASE 3 — Filas e workers (2 a 3 semanas)
+### FASE 3 — Filas, sem sair da Vercel (1 a 2 semanas) *(revisado)*
 
-O ponto em que o serverless deixa de servir. **Esta fase existe por uma razão concreta:**
-hoje o webhook do UAZAPI faz download de mídia, transcrição e chamada de IA dentro do
-request HTTP. Se qualquer um demorar, o provider dá timeout e reenvia — e a
-idempotência que construí segura a duplicata, mas o trabalho é refeito.
+**Esta fase existe por uma razão concreta:** hoje o webhook do UAZAPI faz download de
+mídia, transcrição e chamada de IA dentro do request HTTP. Se qualquer um demorar, o
+provider dá timeout e reenvia — e a idempotência que construí segura a duplicata, mas o
+trabalho é refeito.
+
+A versão anterior desta fase previa Redis + BullMQ numa VPS. **A decisão de hospedagem
+mudou** (ver FASE 0): sem VPS, a fila é `pgmq` no próprio Postgres.
 
 **Entregáveis:**
 
-- Extrair `lib/services/` para `packages/core/`, importável pelo app e pelos workers
-- Processo worker separado (Node puro, sem framework)
-- Redis + BullMQ numa VPS pequena
-- Filas: `whatsapp-inbound`, `whatsapp-outbound`, `ia-classificacao`, `midia`,
-  `automacoes`, `relatorios`
-- Retry com backoff, dead-letter queue e painel de observação
-- O webhook passa a só validar HMAC, enfileirar e responder 200 em milissegundos
+- Extrair `lib/services/` para `packages/core/`, importável pelo app e pelo consumidor
+- Filas `pgmq`: `whatsapp-inbound`, `whatsapp-outbound`, `ia-classificacao`, `midia`
+- Rota `/api/queue/consume`, protegida por segredo como os crons de hoje
+- `pg_cron` chamando essa rota via `pg_net`, de minuto em minuto
+- Retry com backoff usando `pgmq.send(..., delay)`; fila de arquivo (`pgmq.archive`)
+  no lugar da dead-letter
+- Tela de observação sobre `pgmq.q_*` — o que o painel do BullMQ daria pronto
+- O webhook passa a só validar HMAC, enfileirar e responder 200
 
-**Pronto quando:** o webhook responder em <100ms com a mídia sendo baixada em
-background, e um job que falha três vezes aparecer numa DLQ visível.
+**Pronto quando:** o webhook responder em <100ms com a mídia sendo baixada depois, e um
+job que falha três vezes aparecer arquivado e visível numa tela.
 
-**Risco:** médio. É a primeira infraestrutura fora da Vercel. Precisa de monitoramento
-desde o primeiro dia — worker que morre em silêncio é pior que erro visível.
+**Risco:** baixo, e menor que o da versão anterior — não há infraestrutura nova para
+administrar. O risco que sobra é de desenho: `pgmq` entrega *pelo menos uma vez*, então
+todo consumidor precisa ser idempotente. O motor de automações já é; os novos precisam
+nascer assim.
 
 ---
 

@@ -258,17 +258,25 @@ sozinho e o parâmetro sumiu: não há como errar porque não há o que passar.
 | Decisão | Resposta |
 |---|---|
 | Domínio | **Cenário A — Expansão.** Obras e vendas convivem; `obras`↔`empreendimentos` é a ponte. A Fase 6 passa a valer |
-| Hospedagem | **Híbrida.** Web na Vercel, workers e Redis numa VPS. *Onde fica a VPS segue em aberto* — a Cloudflare não vende VPS, então ou é VPS de verdade com Cloudflare na frente, ou é trocar BullMQ por Cloudflare Queues. Só trava a Fase 3 |
+| Hospedagem | **Só Vercel, DNS na Cloudflare.** Sem VPS. Sem processo vivo não há BullMQ, então a fila é `pgmq` no próprio Postgres + `pg_cron` + `pg_net` — testado neste banco. A Fase 3 foi reescrita para isso |
 | API | **Manter Next.js.** Sem NestJS enquanto o front for o único consumidor |
 
-`pg_cron` 1.6.4, `pg_net` 0.20.4 e `pgvector` 0.8.2 **instaladas** em
-2026-09-10 (`20260910180000_extensoes_fase0.sql`) e verificadas no catálogo.
+`pg_cron` 1.6.4, `pg_net` 0.20.4, `pgvector` 0.8.2 e `pgmq` 1.5.1
+**instaladas** em 2026-09-10 e verificadas no catálogo.
 A extensão `http` foi deixada de fora de propósito: ela é síncrona e segura a
 conexão do pool; o `pg_net` faz o mesmo de forma assíncrona.
 
 **Atenção ao schema:** a Supabase põe `pg_cron` em `pg_catalog` ignorando o
 `WITH SCHEMA` sem reclamar. As funções ficam em `cron.*`; as do `pg_net` em
-`net.*` (`net.http_post`), não em `extensions`.
+`net.*` (`net.http_post`), não em `extensions`. O `pgmq` fica em `pgmq.*`, e
+`pgmq.read` tem **4** argumentos (`queue_name, vt, qty, conditional`) — o 4º
+com default, então `to_regprocedure` com 3 args devolve `NULL` e parece que a
+função não existe.
+
+**As regiões não batem:** funções da Vercel em `iad1` (Virgínia), Supabase em
+`sa-east-1` (São Paulo). Medido em produção: **mediana de 394 ms** para uma
+única consulta. Mover as funções para `gru1` exige plano pago — a mesma
+conversa de tornar o repositório privado.
 
 ### Roteiro de go-live
 
