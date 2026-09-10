@@ -4,7 +4,7 @@
 > **Mantenha-o atualizado**: ao terminar um trabalho relevante, atualize a §7 (estado)
 > e acrescente em §8 (armadilhas) qualquer erro novo que você cometeu.
 >
-> Última atualização: **2026-09-10**, após o merge do PR #3 e a rotação dos secrets.
+> Última atualização: **2026-09-10**, após o motor de automações (Fase 2) ir para branch.
 
 ---
 
@@ -217,6 +217,15 @@ deliberada** e está comentada lá. Não reordene sem ler os comentários.
 
 **Tudo mergeado e no ar.** PR #3 (squash `b7086f8`) em produção desde 2026-09-10.
 
+**Em andamento, fora da `main`:** branch `feat/motor-automacoes` (Fase 2 do
+`docs/PLANO-ARQUITETURA-CODE-FIRST.md`) — o "n8n de código": `lib/events/`,
+`lib/automations/`, tabelas `automation_rules`/`automation_executions`,
+`/api/cron/automacoes`, duas regras reais com teste. Verificado local (tsc 0,
+174 testes, build ok). **Não mergeado e migration não aplicada em produção**,
+por causa do congelamento até 16/09 — é aditivo, mas espera a entrega.
+`emitir()` de propósito ainda não tem chamador: fiar nos services existentes
+mudaria caminho em produção, e isso é depois do dia 16.
+
 ✅ Fases 1–21, n8n documentado, 2 rodadas de auditoria (13 findings corrigidos)
 ✅ Bloco 1 — segurança: rate limit, guard SSRF, RLS de storage por ownership, vitest
 ✅ Bloco 2 — fluxo WhatsApp ponta a ponta + trava de autorizados + tela `/config/autorizados`
@@ -275,6 +284,10 @@ deliberada** e está comentada lá. Não reordene sem ler os comentários.
   serve para nada** — teste no domínio de produção, que não é protegido.
 - **Variável de ambiente só vale depois de um redeploy.** Editar e não redeployar é
   como se conclui erradamente que "a rotação não funcionou".
+- **`vercel.json` da RAIZ é ignorado.** O root directory do projeto é `apps/web`,
+  então o único arquivo que vale é `apps/web/vercel.json`. Criei um na raiz para
+  registrar um cron; ele não dá erro, não aparece em lugar nenhum, e o cron
+  simplesmente nunca roda. Vale para `crons`, `headers`, `rewrites` — tudo.
 - **Env vars do tipo `sensitive` nunca retornam valor pela API.** Não dá para comparar
   remotamente; trate como inconclusivo e verifique pelo comportamento.
 
