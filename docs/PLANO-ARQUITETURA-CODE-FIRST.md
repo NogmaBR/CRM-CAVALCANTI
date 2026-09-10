@@ -244,6 +244,16 @@ que enfileira e o que consome continuam sendo os mesmos serviços em `lib/`.
 > Não confundir com o DNS na Cloudflare: Cloudflare acelera o que é estático e
 > a resolução de nome. Ela não encurta a distância entre a função e o banco.
 
+> **Adendo de 2026-09-10:** o cliente pediu para "usar a VPS da Cloudflare".
+> **A Cloudflare não vende VPS** — verificado na documentação oficial. O que
+> existe é Workers, Containers, Queues e Hyperdrive. A análise completa, o que
+> quebraria numa migração e o plano estão em **`docs/PLANO-CLOUDFLARE.md`**.
+>
+> Resumo: migrar resolveria a latência, mas **Vercel Pro + região `gru1`
+> resolve a mesma coisa em minutos**, contra 1–2 semanas e o risco de trocar a
+> plataforma de um sistema recém-entregue. A economia é de ~US$ 15/mês.
+> Decisão pendente, e nada disso antes de 16/09.
+
 #### 3. API → **Manter Next.js**
 
 Sem NestJS. O App Router já é o backend: route handlers, server actions com
