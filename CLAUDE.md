@@ -253,6 +253,23 @@ policy de INSERT para sessão de usuário — toda emissão vinda de server acti
 perderia o log **em silêncio**. Agora `emitir` monta o cliente de serviço
 sozinho e o parâmetro sumiu: não há como errar porque não há o que passar.
 
+### FASE 0 do plano de arquitetura — decidida em 2026-09-10
+
+| Decisão | Resposta |
+|---|---|
+| Domínio | **Cenário A — Expansão.** Obras e vendas convivem; `obras`↔`empreendimentos` é a ponte. A Fase 6 passa a valer |
+| Hospedagem | **Híbrida.** Web na Vercel, workers e Redis numa VPS. *Onde fica a VPS segue em aberto* — a Cloudflare não vende VPS, então ou é VPS de verdade com Cloudflare na frente, ou é trocar BullMQ por Cloudflare Queues. Só trava a Fase 3 |
+| API | **Manter Next.js.** Sem NestJS enquanto o front for o único consumidor |
+
+`pg_cron` 1.6.4, `pg_net` 0.20.4 e `pgvector` 0.8.2 **instaladas** em
+2026-09-10 (`20260910180000_extensoes_fase0.sql`) e verificadas no catálogo.
+A extensão `http` foi deixada de fora de propósito: ela é síncrona e segura a
+conexão do pool; o `pg_net` faz o mesmo de forma assíncrona.
+
+**Atenção ao schema:** a Supabase põe `pg_cron` em `pg_catalog` ignorando o
+`WITH SCHEMA` sem reclamar. As funções ficam em `cron.*`; as do `pg_net` em
+`net.*` (`net.http_post`), não em `extensions`.
+
 ### Roteiro de go-live
 
 `docs/ROTEIRO-GO-LIVE.md` tem o passo a passo de popular o banco, ligar o
@@ -261,8 +278,17 @@ WhatsApp e ligar as automações, com como conferir cada passo. Os dados prontos
 `dados-iniciais/`, **fora do Git** — o repo é público e eles têm nome de
 cliente e contato.
 
-**Ainda não rodei a carga.** Escrever em massa no banco de produção é barrado
-pelo classificador; a Parte 1 do roteiro é ação humana.
+**A carga foi feita em 2026-09-10** (pelo usuário — escrever em massa no banco
+de produção é barrado pelo classificador). Conferida obra a obra e fornecedor a
+fornecedor contra o protótipo: 10 obras, 8 fornecedores, 80 pagamentos,
+R$ 453.500,00, zero nulos.
+
+Dois fatos que a carga revelou e que mudam o que se liga:
+- **Consumo de orçamento entre 4,4% e 9,3%.** A regra `orcamento-em-risco` a
+  80% não vai disparar em nenhuma obra. Não é defeito.
+- **Os 80 pagamentos estão sem documento** e todos com mais de 7 dias, ou seja
+  são 80 alvos da regra de cobrança — que mandaria 25 WhatsApp por dia para os
+  telefones placeholder do protótipo. Trocar os telefones vem antes de ligar.
 
 **Ainda não provado:** uma regra LIGADA rodando ponta a ponta em produção. Duas
 razões — o banco não tem nenhuma obra nem pagamento (dado do cliente é o item 1

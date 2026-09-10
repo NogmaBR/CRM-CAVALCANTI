@@ -63,10 +63,12 @@ não entrando.
 
 | Cenário | O que significa | Impacto no plano |
 |---|---|---|
-| **A. Expansão** | A Cavalcanti também vende o que constrói, e o CRM passa a cobrir os dois lados | As duas árvores convivem; `obras`↔`developments` viram a ponte. Fases 2-5 valem, mais uma fase de domínio |
+| **A. Expansão** ✅ **ESCOLHIDO** | A Cavalcanti também vende o que constrói, e o CRM passa a cobrir os dois lados | As duas árvores convivem; `obras`↔`developments` viram a ponte. Fases 2-5 valem, mais uma fase de domínio |
 | **B. Produto novo** | É outro CRM, para outro cliente/mercado | Repositório novo. O atual continua entregue e estável. Reaproveita padrões, não código |
 | **C. Pivô** | O CRM de obras vira CRM de vendas | O trabalho atual vira legado. Precisa combinar o que acontece com a entrega da Cavalcanti |
 | **D. Texto genérico** | A proposta veio de outro contexto e o domínio não é para valer | Descarta-se a lista de entidades; ficam só as fases de arquitetura |
+
+**Decidido em 2026-09-10: cenário A.** (O texto abaixo é de quando a decisão estava aberta.)
 
 **Não consigo escolher por você e não vou adivinhar.** As fases 2 a 5 abaixo valem em
 qualquer cenário, porque são infraestrutura, não domínio. A fase 6 depende da resposta.
@@ -165,15 +167,68 @@ usuário além do que está marcado.
 
 ---
 
-### FASE 0 — Decidir (bloqueante, ~1 hora de conversa)
+### FASE 0 — ✅ DECIDIDA em 2026-09-10
 
-**Não é código.** Três decisões que mudam tudo o que vem depois:
+As três respostas, como o cliente decidiu:
 
-1. **Domínio** — cenário A, B, C ou D da §1
-2. **Hospedagem** — híbrida ou VPS completa
-3. **API** — manter Next.js ou introduzir NestJS
+#### 1. Domínio → **Cenário A, Expansão**
 
-**Pronto quando:** as três respostas estiverem escritas neste documento.
+A Cavalcanti também vende o que constrói. As duas árvores convivem e
+`obras` ↔ `empreendimentos` é a ponte.
+
+O que isso implica, concretamente:
+
+- **Nada do que existe é jogado fora.** Obras, fornecedores, pagamentos e o
+  fluxo do WhatsApp continuam sendo o produto entregue em 16/09.
+- **A Fase 6 passa a existir de verdade** — é ela que traz `leads`,
+  `corretores`, `unidades`, `propostas`, `vendas`, `contratos`.
+- **O catálogo de eventos já previu isso.** `lib/events/tipos.ts` declara
+  `EventosVendas` desde o primeiro commit do motor, sem emissor, exatamente
+  para o desenho não precisar mudar quando a decisão chegasse. Chegou, e não
+  precisa.
+- **A ponte não é renomear.** Uma obra é o que se constrói; um empreendimento
+  é o que se vende. Podem ser 1:1, mas também 1:N — as "NSIY 7 Casas" são uma
+  obra e sete unidades vendáveis. A modelagem tem que aguentar isso desde o
+  começo, e é a primeira coisa a desenhar na Fase 6.
+
+#### 2. Hospedagem → **Híbrida**
+
+Web na Vercel; workers e Redis numa VPS pequena. Migrar o front depois é fácil;
+voltar atrás de uma migração completa mal feita, não.
+
+**Antes do Redis, o que já está instalado resolve parte.** Em 2026-09-10 foram
+instaladas `pg_cron` 1.6.4, `pg_net` 0.20.4 e `pgvector` 0.8.2 (migration
+`20260910180000_extensoes_fase0.sql`, verificada no catálogo). Para agendamento
+e disparo assíncrono simples, não é preciso infraestrutura nova. BullMQ passa a
+valer quando houver retry com backoff, prioridade e observabilidade de job — o
+caso do WhatsApp — mas não precisa ser o primeiro passo.
+
+> ⚠️ **Pendência dentro desta decisão: onde fica a VPS.**
+> A Cloudflare **não vende VPS** — não há produto de máquina virtual no
+> catálogo dela. O que existe é Workers (serverless), Containers, Queues,
+> Durable Objects, além de DNS/CDN/Tunnel. Isso deixa dois caminhos reais, e
+> eles não são equivalentes:
+>
+> | Caminho | Como fica | Custo da escolha |
+> |---|---|---|
+> | **VPS de verdade, Cloudflare na frente** | Hetzner/DigitalOcean/Oracle roda Node + Redis + BullMQ; Cloudflare faz DNS, proxy e Tunnel | Mantém a decisão como está. BullMQ funciona como planejado |
+> | **Tudo na Cloudflare** | Workers + **Cloudflare Queues** no lugar de Redis+BullMQ; Containers se precisar de processo longo | Não é "a mesma coisa noutro lugar": troca a tecnologia de fila e o modelo de execução. Some a ops de VPS, some também o BullMQ |
+>
+> Não dá para decidir isso por dedução — depende de quanto se quer administrar.
+> **Só trava a Fase 3**, que é pós-entrega.
+
+#### 3. API → **Manter Next.js**
+
+Sem NestJS. O App Router já é o backend: route handlers, server actions com
+Zod, RLS no banco e tipos compartilhados. NestJS se pagaria com múltiplos
+consumidores ou time grande precisando de fronteiras rígidas; com o front como
+único consumidor, adicionaria superfície sem adicionar capacidade.
+
+Consequência prática para a Fase 3: a lógica de `lib/services/` sai para um
+pacote compartilhado que **o app e os workers importam**. Worker com fila é um
+processo Node comum consumindo a fila — não exige NestJS.
+
+Reavaliar quando aparecer o segundo consumidor.
 
 ---
 
