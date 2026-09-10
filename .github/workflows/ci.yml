@@ -90,16 +90,23 @@ jobs:
             RANGE="${{ github.event.before }}...${{ github.sha }}"
           fi
           echo "range: $RANGE"
-          ARQUIVOS=$(git diff --name-only --diff-filter=ACMR "$RANGE" -- '*.ts' '*.tsx' '*.js' '*.mjs' '*.json' \
+          # Um caminho por linha, num arquivo — nunca numa string de shell.
+          # Caminhos do App Router têm parênteses (`app/(app)/...`), e um
+          # `biome check a/(b)/c.ts` sem aspas é erro de sintaxe do bash.
+          git diff --name-only --diff-filter=ACMR "$RANGE" -- '*.ts' '*.tsx' '*.js' '*.mjs' '*.json' \
             | grep -v -E '^(apps/web/e2e/|.*\.d\.ts$|packages/db/src/types\.ts$)' \
-            | tr '\n' ' ' || true)
-          echo "arquivos=$ARQUIVOS" >> "$GITHUB_OUTPUT"
-          if [ -z "$ARQUIVOS" ]; then
+            > arquivos-tocados.txt || true
+          QTD=$(grep -c . arquivos-tocados.txt || true)
+          echo "quantidade=$QTD" >> "$GITHUB_OUTPUT"
+          if [ "$QTD" = "0" ]; then
             echo "Nenhum arquivo lintável tocado."
           else
-            echo "Vai lintar: $ARQUIVOS"
+            echo "Vai lintar $QTD arquivo(s):"
+            cat arquivos-tocados.txt
           fi
 
       - name: Lint (Biome) do que mudou
-        if: steps.tocados.outputs.arquivos != ''
-        run: ./node_modules/.bin/biome check ${{ steps.tocados.outputs.arquivos }}
+        if: steps.tocados.outputs.quantidade != '0'
+        # xargs com -d '\n' entrega cada linha como UM argumento, com
+        # parênteses e tudo, sem passar pelo parser do shell.
+        run: xargs -d '\n' ./node_modules/.bin/biome check < arquivos-tocados.txt
