@@ -324,16 +324,24 @@ trabalho é refeito.
 A versão anterior desta fase previa Redis + BullMQ numa VPS. **A decisão de hospedagem
 mudou** (ver FASE 0): sem VPS, a fila é `pgmq` no próprio Postgres.
 
+> **Um entregável saiu da lista.** A versão anterior previa extrair
+> `lib/services/` para `packages/core/`, "importável pelo app e pelos workers".
+> Com a fila no Postgres e o consumidor sendo uma rota do próprio app, **o
+> worker é o app** — não há segundo processo com quem compartilhar código. A
+> extração viraria uma camada a manter sem ninguém do outro lado.
+
 **Entregáveis:**
 
-- Extrair `lib/services/` para `packages/core/`, importável pelo app e pelo consumidor
-- Filas `pgmq`: `whatsapp-inbound`, `whatsapp-outbound`, `ia-classificacao`, `midia`
-- Rota `/api/queue/consume`, protegida por segredo como os crons de hoje
-- `pg_cron` chamando essa rota via `pg_net`, de minuto em minuto
-- Retry com backoff usando `pgmq.send(..., delay)`; fila de arquivo (`pgmq.archive`)
-  no lugar da dead-letter
-- Tela de observação sobre `pgmq.q_*` — o que o painel do BullMQ daria pronto
-- O webhook passa a só validar HMAC, enfileirar e responder 200
+- [x] Filas `pgmq`: `whatsapp_inbound`, `whatsapp_outbound`, `ia_classificacao`, `midia`
+- [x] Wrappers `fila_*` em `public`, com whitelist — o PostgREST não expõe o schema
+      `pgmq`, e em vez de expor tudo, expõem-se cinco funções
+- [x] `lib/queue/` — catálogo tipado, acesso e consumidor com teto de tentativas
+- [x] Rota `/api/queue/consume`, protegida por `CRON_SECRET` como os crons de hoje
+- [x] Retry por omissão (visibility timeout) e arquivo (`pgmq.archive`) como dead-letter
+- [ ] Handlers de `midia` e `ia_classificacao`
+- [ ] O webhook passa a só validar HMAC, enfileirar e responder 200
+- [ ] `pg_cron` chamando a rota via `pg_net`, de minuto em minuto
+- [ ] Tela de observação sobre `fila_metricas()`
 
 **Pronto quando:** o webhook responder em <100ms com a mídia sendo baixada depois, e um
 job que falha três vezes aparecer arquivado e visível numa tela.

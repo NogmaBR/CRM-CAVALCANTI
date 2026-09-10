@@ -927,6 +927,37 @@ export type Database = {
         Args: { p_dias?: number }
         Returns: number
       }
+      fila_enfileirar: {
+        Args: { p_fila: string; p_payload: Json; p_delay?: number }
+        Returns: number
+      }
+      fila_ler: {
+        Args: { p_fila: string; p_vt?: number; p_qtd?: number }
+        Returns: {
+          msg_id: number
+          read_ct: number
+          enqueued_at: string
+          payload: Json
+        }[]
+      }
+      fila_concluir: {
+        Args: { p_fila: string; p_msg_id: number }
+        Returns: boolean
+      }
+      fila_arquivar: {
+        Args: { p_fila: string; p_msg_id: number }
+        Returns: boolean
+      }
+      fila_metricas: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          fila: string
+          na_fila: number
+          visiveis: number
+          mais_antiga_seg: number | null
+          total_ja_enfileirado: number
+        }[]
+      }
       registrar_acesso_compartilhamento: {
         Args: { p_token: string }
         Returns: undefined
