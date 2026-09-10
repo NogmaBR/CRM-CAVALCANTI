@@ -4,7 +4,7 @@
 > **Mantenha-o atualizado**: ao terminar um trabalho relevante, atualize a §7 (estado)
 > e acrescente em §8 (armadilhas) qualquer erro novo que você cometeu.
 >
-> Última atualização: **2026-09-10**, após o merge do PR #3 e a rotação dos secrets.
+> Última atualização: **2026-09-10**, após o motor de automações (Fase 2) ir para branch.
 
 ---
 
@@ -140,7 +140,7 @@ aqui — não invente uma integração.
 | **Classificador IA** | ⚠️ **modo mock** | `IA_PROVIDER=mock`. Com `anthropic` + `ANTHROPIC_API_KEY` vira real (`claude-opus-5`) |
 | **Transcrição de áudio** | ❌ desligada | `IA_TRANSCRICAO_PROVIDER=none`. Com `openai` + `OPENAI_API_KEY` liga |
 | n8n | ❌ não provisionado | Opcional; o CRM faz tudo sozinho agora |
-| CI E2E (Playwright) | ❌ falha sempre | Faltam secrets de staging (Fase 15 nunca provisionada). **Ignore o check vermelho** |
+| CI E2E (Playwright) | ❌ falha sempre | Morre no setup: o workflow fixa Node 20 e o pnpm 11.7 exige ≥ 22.13. Atrás disso ainda faltam os secrets de staging (Fase 15). **Ignore o check vermelho** |
 
 **Nada disso quebra o build.** Todas as integrações ausentes degradam com log e default
 seguro. É proposital: `IA_AUTO_APROVAR=false`, `IA_PROVIDER=mock`, transcrição `none`.
@@ -217,6 +217,23 @@ deliberada** e está comentada lá. Não reordene sem ler os comentários.
 
 **Tudo mergeado e no ar.** PR #3 (squash `b7086f8`) em produção desde 2026-09-10.
 
+**Em revisão:** PR #5, branch `feat/motor-automacoes` (Fase 2 do
+`docs/PLANO-ARQUITETURA-CODE-FIRST.md`) — o "n8n de código": `lib/events/`,
+`lib/automations/`, tabelas `automation_rules`/`automation_executions`,
+`/api/cron/automacoes`, duas regras reais com teste. Verificado local (tsc 0,
+174 testes, build ok).
+
+A **migration já está em produção** e verificada objeto a objeto: 2 tabelas com
+RLS, 4 índices, 3 policies, trigger, função de purga, e as 2 regras no seed com
+`ativo = false`. A trava de idempotência foi provada por escrita real (segunda
+execução no mesmo dia devolve 23505; `pulada` repete, como deve).
+
+**O merge não aconteceu**, por causa do congelamento até 16/09 — e `emitir()`
+de propósito ainda não tem chamador: fiar nos services existentes mudaria
+caminho em produção, e isso é depois do dia 16. Enquanto isso o motor está em
+prod inerte: as tabelas existem, as duas regras estão desligadas, e o cron só
+passa a existir quando o PR entrar.
+
 ✅ Fases 1–21, n8n documentado, 2 rodadas de auditoria (13 findings corrigidos)
 ✅ Bloco 1 — segurança: rate limit, guard SSRF, RLS de storage por ownership, vitest
 ✅ Bloco 2 — fluxo WhatsApp ponta a ponta + trava de autorizados + tela `/config/autorizados`
@@ -235,7 +252,11 @@ deliberada** e está comentada lá. Não reordene sem ler os comentários.
 3. **Credenciais UAZAPI** — sem elas o WhatsApp não fecha o ciclo.
 4. **`ANTHROPIC_API_KEY`** — para sair do classificador mock.
 5. **Cadastrar a equipe em `/config/autorizados`** — sem isso, toda mensagem é ignorada.
-6. **Fase 15 (staging Supabase)** — enquanto não existir, o CI E2E falha sempre.
+6. **CI E2E** — falha em dois níveis. O visível: `.github/workflows/*.yml` pede
+   `node-version: "20"` e o pnpm 11.7 recusa (`requires at least Node.js v22.13`),
+   então o job morre antes de rodar teste. Trocar para `"22"` é uma linha — e aí
+   aparece o segundo nível, que é a Fase 15 (staging Supabase) nunca provisionada.
+   Corrigir o Node sozinho não deixa o check verde.
 
 ---
 
@@ -275,6 +296,10 @@ deliberada** e está comentada lá. Não reordene sem ler os comentários.
   serve para nada** — teste no domínio de produção, que não é protegido.
 - **Variável de ambiente só vale depois de um redeploy.** Editar e não redeployar é
   como se conclui erradamente que "a rotação não funcionou".
+- **`vercel.json` da RAIZ é ignorado.** O root directory do projeto é `apps/web`,
+  então o único arquivo que vale é `apps/web/vercel.json`. Criei um na raiz para
+  registrar um cron; ele não dá erro, não aparece em lugar nenhum, e o cron
+  simplesmente nunca roda. Vale para `crons`, `headers`, `rewrites` — tudo.
 - **Env vars do tipo `sensitive` nunca retornam valor pela API.** Não dá para comparar
   remotamente; trate como inconclusivo e verifique pelo comportamento.
 
@@ -282,6 +307,15 @@ deliberada** e está comentada lá. Não reordene sem ler os comentários.
 
 - **Não confie no "✓ Aplicado" do script de migration.** Consulte `pg_tables`,
   `pg_proc`, `pg_policies`, `information_schema.columns` e confirme objeto a objeto.
+- **`created_at::date` num índice é recusado** (`42P17: functions in index expression
+  must be marked IMMUTABLE`). O cast de `timestamptz` para `date` depende do TimeZone
+  da sessão, logo é STABLE. Fixe a zona: `((created_at AT TIME ZONE 'UTC')::date)`.
+  E aí lembre do outro lado: se houver JS calculando a mesma janela, ele tem que usar
+  `setUTCHours`, não `setHours` — em produção o runtime é UTC, na sua máquina é BRT,
+  e as duas travas discordariam em três horas por dia sem ninguém notar.
+- **A Management API roda a migration inteira numa transação.** Quando uma statement
+  no meio falha, nada fica pela metade — confirmei consultando o catálogo depois de
+  um erro. Ainda assim, verifique: a garantia é da API, não do script.
 - **`ALTER TYPE ... ADD VALUE`** não pode ter o valor novo usado na mesma transação.
   As migrations daqui já são escritas para isso — mantenha o padrão.
 

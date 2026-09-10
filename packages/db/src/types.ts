@@ -77,6 +77,69 @@ export type Database = {
           },
         ]
       }
+      automation_rules: {
+        Row: {
+          ativo: boolean
+          chave: string
+          config: Json
+          created_at: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          chave: string
+          config?: Json
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          chave?: string
+          config?: Json
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      automation_executions: {
+        Row: {
+          created_at: string | null
+          duracao_ms: number | null
+          entidade_id: string | null
+          evento: string
+          id: string
+          motivo: string | null
+          payload: Json | null
+          regra_chave: string
+          status: string
+        }
+        Insert: {
+          created_at?: string | null
+          duracao_ms?: number | null
+          entidade_id?: string | null
+          evento: string
+          id?: string
+          motivo?: string | null
+          payload?: Json | null
+          regra_chave: string
+          status: string
+        }
+        Update: {
+          created_at?: string | null
+          duracao_ms?: number | null
+          entidade_id?: string | null
+          evento?: string
+          id?: string
+          motivo?: string | null
+          payload?: Json | null
+          regra_chave?: string
+          status?: string
+        }
+        Relationships: []
+      }
       autorizados: {
         Row: {
           ativo: boolean | null
@@ -858,6 +921,10 @@ export type Database = {
       }
       rate_limit_purge: {
         Args: { p_idade_horas?: number }
+        Returns: number
+      }
+      purgar_automation_executions: {
+        Args: { p_dias?: number }
         Returns: number
       }
       registrar_acesso_compartilhamento: {
