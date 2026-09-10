@@ -102,6 +102,15 @@ node --env-file=.env.local scripts/apply-migration.mjs 20260909150000_planilha_c
 
 Multi-statement funciona, mas **só o resultado da última statement volta**.
 
+### Next.js e middleware
+
+- **Rota nova em `/api/` precisa entrar na lista de rotas públicas do middleware**
+  (`apps/web/lib/supabase/middleware.ts`), senão ela é redirecionada para `/login` e
+  responde **200 com HTML**. Não há erro em log nenhum: quem chama vê "200" e conclui
+  que funcionou. Aconteceu com `/api/queue/consume`, e só apareceu porque o `pg_net`
+  guarda a resposta e eu fui ler o corpo. Compare sempre com uma rota que já funciona:
+  `/api/cron/automacoes` devolve JSON, a nova devolvia HTML.
+
 ### Vercel (API REST, token em `VERCEL_TOKEN`)
 
 ```
@@ -256,7 +265,9 @@ Verificado **em produção**, não por leitura de config:
 |---|---|---|
 | **#6** `feat/painel-automacoes` | Tela `/config/automacoes`: ligar/desligar, ajustar parâmetros, botão "Ensaiar sem agir" e histórico de cada avaliação. Sem ela, ligar regra exige SQL no console. | **Sim.** Aditivo, nenhum caminho existente muda |
 | **#7** `feat/emitir-eventos` | `emitir()` ganha chamadores em pagamento/documento/confirmação. Tira `lib/events/` de código morto. | **Não antes de 16/09.** Muda caminho em produção |
-| **#8** `feat/fila-pgmq` | Fila `pgmq`, consumidor com teto de tentativas, `/api/queue/consume`. Metade de infraestrutura da Fase 3. | **Sim.** Aditivo e inerte: webhook segue síncrono, nenhum cron agendado |
+| **#9** `feat/fila-corte-webhook` | Fecha a Fase 3: webhook enfileira atrás de `FILA_WHATSAPP`, agendador `pg_cron`+`pg_net` que só chama quando há job, tela `/config/filas`, correção do middleware. | **Sim.** A chave não existe em produção, então nada muda |
+
+O PR #8 (fila `pgmq`) foi mergeado em 2026-09-10.
 
 O PR #7 também corrigiu um erro de desenho que só apareceu ao fiar: `emitir`
 recebia o cliente Supabase do chamador, mas `automation_executions` não tem
