@@ -109,6 +109,23 @@ FROM pagamentos WHERE deleted_at IS NULL;
 
 **Esperado:** `pagamentos = 80`, `total = 453.500,00`.
 
+### Alternativa: `03-pagamentos.sql`
+
+Se preferir fazer como o passo 1.1 — colando no SQL Editor do Supabase — use
+`dados-iniciais/03-pagamentos.sql`. Ele produz **exatamente as mesmas linhas**
+que a tela produziria, resolvendo obra, fornecedor e categoria pelo mesmo
+critério de nome.
+
+Duas vantagens sobre o CSV:
+
+- **É idempotente.** Cada `INSERT` tem guarda pelo marcador `prototipo pay-NNN`
+  em `observacoes`. Rodar duas vezes não duplica.
+- **Falha inteiro em vez de gravar torto.** `obra_id` é `NOT NULL`, então se as
+  obras não existirem o bloco aborta — em vez de importar 80 pagamentos órfãos.
+
+Exige que o passo 1.1 já tenha rodado. O aviso abaixo sobre duplicação vale só
+para o caminho do CSV.
+
 > ### ⚠️ A importação NÃO é idempotente
 >
 > Diferente do SQL do passo 1.1, subir o mesmo CSV duas vezes **cria 160
