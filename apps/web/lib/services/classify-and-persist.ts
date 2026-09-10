@@ -1,7 +1,7 @@
 import 'server-only';
-import { createClient as createSbClient } from '@supabase/supabase-js';
+import { type ClassifierInput, getClassifier } from '@/lib/ia/classifier';
 import type { Database } from '@nogma/db';
-import { getClassifier, type ClassifierInput } from '@/lib/ia/classifier';
+import { createClient as createSbClient } from '@supabase/supabase-js';
 
 const CONFIANCA_AUTO_APROVAR = 0.85;
 
@@ -218,6 +218,17 @@ export async function classifyAndPersist(mensagemId: string): Promise<
     });
   } catch {
     // Silencioso — webhook é secundário ao fluxo principal
+  }
+
+  // Evento de domínio. Fica FORA do try do webhook de propósito: se o dispatch
+  // externo falhar, as automações internas ainda devem reagir — são caminhos
+  // independentes, e aninhar um no outro faria a falha de um calar o outro.
+  if (confirmacaoCriada?.id) {
+    const { emitir } = await import('@/lib/events/bus');
+    await emitir('confirmacao.aberta', {
+      confirmacaoId: confirmacaoCriada.id,
+      mensagemId,
+    });
   }
 
   return {
