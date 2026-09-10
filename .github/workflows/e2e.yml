@@ -53,12 +53,17 @@ jobs:
           version: "11"
 
       # ----------------------------------------------------------
-      # 3. Node 20 + cache pnpm integrado via setup-node
+      # 3. Node 22 + cache pnpm integrado via setup-node
+      #
+      # Tem que ser >= 22.13: o pnpm 11.7 (fixado em packageManager) recusa
+      # Node 20 com "requires at least Node.js v22.13" e o job morre aqui,
+      # antes de instalar qualquer coisa. Era essa a causa do check vermelho
+      # permanente — nao os secrets de staging.
       # ----------------------------------------------------------
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: pnpm
 
       # ----------------------------------------------------------
