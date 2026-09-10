@@ -1116,6 +1116,14 @@ export type Database = {
         Args: { p_fila: string; p_msg_id: number }
         Returns: boolean
       }
+      saude_sistema: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      alertar_se_doente: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       buscar_conhecimento: {
         Args: {
           p_embedding: string

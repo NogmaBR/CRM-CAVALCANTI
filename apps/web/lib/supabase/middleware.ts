@@ -47,6 +47,7 @@ export async function updateSession(request: NextRequest) {
     url.pathname.startsWith('/api/webhooks/') ||
     url.pathname.startsWith('/api/cron/') ||
     url.pathname.startsWith('/api/queue/') ||
+    url.pathname.startsWith('/api/health') ||
     url.pathname.startsWith('/api/exports/');
   // Planilha compartilhada: o dono da obra abre por link, sem conta no CRM.
   // A autorização é o token na própria URL, validado em `getPlanilhaPorToken`
