@@ -94,8 +94,13 @@
   --accent-text:      var(--white);   /* text on client-blue accent (dark bg) */
   --shadow-accent:    0 8px 24px rgba(40, 48, 120, 0.35);   /* client-blue glow on CTAs */
 
-  --brand:            var(--petroleum-800);
-  --brand-hover:      var(--petroleum-700);
+  /* --brand segue --accent no tema claro (client blue) — mesma convenção
+     dos temas black/dark, onde --brand e --accent já são o mesmo lime.
+     Antes disso, --brand ficava no petróleo próprio da Nogma e vazava
+     verde/petróleo em estados "selecionado" (categorias, perfil, chips
+     de apelido, duplicatas de fornecedor) mesmo com --accent já azul. */
+  --brand:            var(--cavalcanti-blue-500);
+  --brand-hover:      var(--cavalcanti-blue-600);
   --brand-text:       var(--white);
 
   --ring:             color-mix(in srgb, var(--cavalcanti-blue-500) 45%, transparent);
