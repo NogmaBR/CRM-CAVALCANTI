@@ -12,6 +12,10 @@ import { formatBRL } from '@/lib/schemas/pagamento';
 import { archivePagamento, restorePagamento } from '../actions';
 import '../../_shared/detail-layout.css';
 import { Section, Row } from '../../_shared/detail-primitives';
+import {
+  PAGAMENTO_STATUS_LABEL as STATUS_LABEL,
+  PAGAMENTO_STATUS_VARIANT as STATUS_VARIANT,
+} from '@/lib/status-labels';
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return '—';
@@ -32,18 +36,6 @@ function formatDateTime(iso: string | null | undefined): string {
     minute: '2-digit',
   });
 }
-
-const STATUS_VARIANT: Record<'confirmado' | 'aguardando' | 'erro', BadgeVariant> = {
-  confirmado: 'success',
-  aguardando: 'warning',
-  erro: 'danger',
-};
-
-const STATUS_LABEL: Record<'confirmado' | 'aguardando' | 'erro', string> = {
-  confirmado: 'Confirmado',
-  aguardando: 'Aguardando',
-  erro: 'Erro',
-};
 
 const ORIGEM_LABEL: Record<'manual' | 'whatsapp' | 'importado', string> = {
   manual: 'Manual',

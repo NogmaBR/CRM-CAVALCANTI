@@ -1,7 +1,8 @@
-import { Inbox, Check, X, Paperclip } from 'lucide-react';
+import { Inbox, Check, X, Paperclip, FileWarning, Clock } from 'lucide-react';
+import Link from 'next/link';
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
-import { listPendentes } from '@/lib/data/pendentes';
+import { listPendentes, listPagamentosSemDocumento } from '@/lib/data/pendentes';
 import { confirmarPendencia, rejeitarPendencia } from './actions';
 import './pendentes.css';
 
@@ -48,13 +49,16 @@ export default async function PendentesPage({
   const errorMsg = params.error ?? null;
   const successMsg = params.success ?? null;
 
-  const pendentes = await listPendentes();
+  const [pendentes, semDocumento] = await Promise.all([
+    listPendentes(),
+    listPagamentosSemDocumento(),
+  ]);
 
   return (
     <>
       <TopBar
         title="Pendentes"
-        subtitle="Mensagens de WhatsApp aguardando sua confirmacao"
+        subtitle="Confirmações do WhatsApp e pagamentos sem documento"
       />
 
       <div className="nos-page-body">
@@ -206,6 +210,46 @@ export default async function PendentesPage({
             })}
           </div>
         )}
+
+        {/*
+          Segundo bloco: o briefing (§3) pede que item sem NF/comprovante vire
+          pendência "com contagem de dias". Isso só existia como cobrança
+          automática por WhatsApp (WF5 do n8n) — o gestor não tinha onde ver.
+        */}
+        {semDocumento.length > 0 ? (
+          <section className="pendentes-sem-doc" aria-labelledby="sem-doc-titulo">
+            <h2 id="sem-doc-titulo" className="pendentes-sem-doc__titulo">
+              <FileWarning size={16} aria-hidden="true" />
+              Pagamentos sem nota fiscal ou comprovante
+              <span className="pendentes-sem-doc__contagem">{semDocumento.length}</span>
+            </h2>
+
+            <div className="pendentes-sem-doc__lista">
+              {semDocumento.map((p) => (
+                <Link key={p.id} href={`/pagamentos/${p.id}`} className="pendentes-sem-doc__item">
+                  <span className="pendentes-sem-doc__valor">{formatBRL(p.valor)}</span>
+
+                  <span className="pendentes-sem-doc__meta">
+                    {[p.fornecedor_nome, p.obra_nome].filter(Boolean).join(' · ') ||
+                      p.descricao ||
+                      'Sem descrição'}
+                  </span>
+
+                  <span
+                    className={
+                      p.dias >= 15
+                        ? 'pendentes-sem-doc__dias pendentes-sem-doc__dias--critico'
+                        : 'pendentes-sem-doc__dias'
+                    }
+                  >
+                    <Clock size={12} aria-hidden="true" />
+                    {p.dias === 1 ? 'há 1 dia' : `há ${p.dias} dias`}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        ) : null}
       </div>
     </>
   );

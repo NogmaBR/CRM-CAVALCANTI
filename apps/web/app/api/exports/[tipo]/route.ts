@@ -4,6 +4,7 @@ import type { ReactElement } from 'react';
 import { z } from 'zod';
 import { renderToBuffer, type DocumentProps } from '@react-pdf/renderer';
 import { createClient } from '@/lib/supabase/server';
+import { LIMITES, verificarLimite, resposta429 } from '@/lib/security/rate-limit';
 import {
   getObraCompletaData,
   getMesData,
@@ -125,6 +126,14 @@ export async function GET(
 
   if (!user) {
     return NextResponse.json({ error: 'não autenticado' }, { status: 401 });
+  }
+
+  // -- Rate limit (finding M-3) ---------------------------------------------
+  // Cada export renderiza PDF ou varre o banco inteiro. Sem teto, uma sessão
+  // autenticada consegue esgotar a CPU da function num loop de download.
+  const limite = await verificarLimite(LIMITES.exports, user.id);
+  if (!limite.permitido) {
+    return resposta429(limite.retryApos);
   }
 
   // -- Validate tipo ---------------------------------------------------------

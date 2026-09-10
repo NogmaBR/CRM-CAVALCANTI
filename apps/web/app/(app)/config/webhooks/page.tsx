@@ -1,10 +1,12 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { Webhook, PlusCircle, Send, Pencil, Archive, Copy } from 'lucide-react';
+import { Webhook, PlusCircle, Send, Pencil, Archive } from 'lucide-react';
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
 import { createClient } from '@/lib/supabase/server';
+import { lerSecretFlash } from '@/lib/security/flash-secret';
 import { arquivarWebhook, testarWebhook } from './actions';
+import { SecretBanner } from './secret-banner';
 import './webhooks.css';
 
 type WebhookRow = {
@@ -115,7 +117,7 @@ export default async function WebhooksPage({
     success?: string;
     error?: string;
     created?: string;
-    secret?: string;
+    regenerated?: string;
     tested?: string;
     status?: string;
     latency?: string;
@@ -138,7 +140,8 @@ export default async function WebhooksPage({
   const successMsg = params.success ?? null;
   const errorMsg = params.error ?? null;
   const createdId = params.created ?? null;
-  const secretValue = params.secret ? decodeURIComponent(params.secret) : null;
+  // Finding A-3: o secret chega por cookie httpOnly de 60s, não pela URL.
+  const secretValue = createdId || params.regenerated ? await lerSecretFlash() : null;
   const testedId = params.tested ?? null;
   const testStatus = params.status ?? null;
   const testLatency = params.latency ?? null;
@@ -169,28 +172,10 @@ export default async function WebhooksPage({
 
       <div className="nos-page-body">
         {secretValue && (
-          <div className="wh-secret-banner" role="alert">
-            <p className="wh-secret-banner__title">
-              {createdId ? 'Webhook criado — guarde este secret' : 'Secret regenerado — guarde agora'}
-            </p>
-            <p className="wh-secret-banner__body">
-              Este secret nao sera exibido novamente. Use-o para validar a assinatura
-              <code style={{ fontFamily: 'inherit' }}> X-Nogma-Signature</code> nas requisicoes recebidas.
-            </p>
-            <div className="wh-secret-banner__row">
-              <span className="wh-secret-value">{secretValue}</span>
-              <button
-                type="button"
-                className="wh-secret-copy-btn"
-                onClick={undefined}
-                data-copy={secretValue}
-                aria-label="Copiar secret"
-              >
-                <Copy size={13} aria-hidden="true" />
-                Copiar
-              </button>
-            </div>
-          </div>
+          <SecretBanner
+            secret={secretValue}
+            titulo={createdId ? 'Webhook criado — guarde este secret' : 'Secret regenerado — guarde agora'}
+          />
         )}
 
         {testedId && testStatus && (

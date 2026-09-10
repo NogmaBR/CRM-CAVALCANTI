@@ -23,7 +23,12 @@ function csvCell(v: unknown): string {
   // like descricao/observacoes can come from free-text WhatsApp messages or
   // imported CSVs — neutralize by prefixing with an apostrophe, same fix as
   // OWASP recommends for CSV injection.
-  if (/^[=+\-@\t\r]/u.test(s)) s = `'${s}`;
+  // Exceção pra número puro: `fmtNumberBR(-3)` produz "-3,00", que dispara o
+  // guard e chega no Excel como texto — o cliente perde a soma da coluna num
+  // valor negativo legítimo. Uma string inteiramente numérica não tem como ser
+  // fórmula, enquanto "-1+1" continua barrado por não casar aqui.
+  const numeroPuro = /^-?\d+(?:[.,]\d+)*$/u.test(s);
+  if (!numeroPuro && /^[=+\-@\t\r]/u.test(s)) s = `'${s}`;
   const needsWrap = /[",\r\n]/u.test(s);
   const escaped = s.replace(/"/gu, '""');
   return needsWrap ? `"${escaped}"` : escaped;
@@ -202,6 +207,19 @@ export function fornecedorToCsv(data: FornecedorData): string {
   rows.push(['## Por obra']);
   rows.push(['Obra', 'Nº pagamentos', 'Total (R$)']);
   for (const o of data.totais.porObra) rows.push([o.obra_nome, String(o.count), fmtNumberBR(o.total)]);
+  rows.push([]);
+
+  rows.push(['## Documentos recebidos']);
+  rows.push(['Data', 'Tipo', 'Nome do arquivo', 'Obra', 'Nº NF']);
+  for (const d of data.documentos) {
+    rows.push([
+      fmtDate(d.created_at),
+      d.tipo,
+      d.nome_arquivo,
+      d.obra_nome ?? '',
+      d.numero_nf ?? '',
+    ]);
+  }
 
   return toCsv(rows);
 }

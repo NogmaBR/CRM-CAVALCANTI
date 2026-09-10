@@ -39,6 +39,16 @@ const EVENTOS = [
     label: 'obra_archived',
     desc: 'Obra arquivada/encerrada',
   },
+  {
+    value: 'confirmacao_resolvida',
+    label: 'confirmacao_resolvida',
+    desc: 'Pendencia confirmada (pelo painel ou pelo "SIM" no WhatsApp)',
+  },
+  {
+    value: 'confirmacao_recusada',
+    label: 'confirmacao_recusada',
+    desc: 'Pendencia recusada (pelo painel ou pelo "NAO" no WhatsApp)',
+  },
 ] as const;
 
 export default async function EditarWebhookPage({

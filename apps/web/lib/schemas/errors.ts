@@ -46,3 +46,32 @@ export function mapDbErrorWithContext(
   if (code && CODE_MESSAGES[code]) return CODE_MESSAGES[code]!;
   return fallback;
 }
+
+/**
+ * Sanitiza erro vindo da Admin API do Supabase (auditoria 2026-09-09,
+ * finding M-4).
+ *
+ * As actions de `/config/usuarios` interpolavam `result.error` direto no
+ * `?error=` — mensagem crua da GoTrue/Postgres na URL, visível pro usuário e
+ * gravada no histórico. Está atrás de `assertAdmin()`, então o impacto é
+ * baixo, mas é a mesma classe de bug já corrigida em `apelido-actions.ts` e
+ * não havia motivo pra manter a exceção.
+ *
+ * O detalhe real vai pro log do servidor, onde a operação é debugável; o
+ * usuário recebe o que consegue acionar.
+ */
+export function sanitizarErroAdmin(operacao: string, erroBruto: string): string {
+  console.error(`[admin-api] ${operacao} falhou:`, erroBruto);
+
+  const normalizado = erroBruto.toLowerCase();
+  if (normalizado.includes('already') || normalizado.includes('422')) {
+    return 'Este e-mail já foi convidado ou já é usuário.';
+  }
+  if (normalizado.includes('rate') || normalizado.includes('429')) {
+    return 'Muitas tentativas seguidas. Aguarde um minuto e tente de novo.';
+  }
+  if (normalizado.includes('not found') || normalizado.includes('404')) {
+    return 'Usuário não encontrado.';
+  }
+  return `Não foi possível ${operacao}. Tente novamente — se persistir, verifique os logs.`;
+}

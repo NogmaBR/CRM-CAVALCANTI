@@ -45,8 +45,26 @@ export async function GET(request: NextRequest) {
     .select('id');
 
   if (error) {
-    return NextResponse.json({ error: error.message, code: error.code }, { status: 500 });
+    // Finding M-5: detalhe do Postgres fica no log do servidor, não na
+    // resposta HTTP — code/message de constraint são recon gratuito.
+    console.error('[cron/sweep-pending-documentos] delete falhou:', error);
+    return NextResponse.json({ error: 'internal error' }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, deleted: data?.length ?? 0, cutoff });
+  // Housekeeping do rate limiting: sem isso a tabela `rate_limits` só cresce.
+  // Best-effort — falhar aqui não invalida a limpeza de documentos órfãos.
+  let rateLimitsPurgados = 0;
+  const purge = await supabase.rpc('rate_limit_purge', { p_idade_horas: 24 });
+  if (purge.error) {
+    console.error('[cron/sweep-pending-documentos] rate_limit_purge falhou:', purge.error);
+  } else {
+    rateLimitsPurgados = purge.data ?? 0;
+  }
+
+  return NextResponse.json({
+    ok: true,
+    deleted: data?.length ?? 0,
+    rate_limits_purgados: rateLimitsPurgados,
+    cutoff,
+  });
 }

@@ -127,3 +127,89 @@ export async function listPendentes(): Promise<PendenteItem[]> {
     })
     .filter((item): item is PendenteItem => item !== null);
 }
+
+/**
+ * Pagamento lançado que continua sem nota fiscal nem comprovante anexado.
+ *
+ * O briefing (§3) pede "itens sem NF/comprovante viram pendência, com
+ * contagem de dias". Isso existia só como o workflow WF5 do n8n, que **cobra
+ * o fornecedor por WhatsApp** — nunca como uma visão na tela. Quem precisa
+ * decidir o que cobrar é o gestor, e ele não tinha onde olhar.
+ */
+export interface PagamentoSemDocumento {
+  id: string;
+  valor: number;
+  data_pagamento: string;
+  descricao: string | null;
+  obra_nome: string | null;
+  fornecedor_nome: string | null;
+  /** Dias corridos desde a data do pagamento. */
+  dias: number;
+}
+
+/**
+ * Lista pagamentos sem documento, do mais antigo para o mais recente.
+ *
+ * `diasMinimos` existe pra não poluir a tela com o pagamento lançado hoje de
+ * manhã: só é pendência de verdade depois de um tempo razoável sem o papel
+ * chegar. O padrão de 3 dias é conservador e ajustável pela chamada.
+ */
+export async function listPagamentosSemDocumento(
+  diasMinimos = 3,
+  limite = 50,
+): Promise<PagamentoSemDocumento[]> {
+  const supabase = await createClient();
+
+  const corte = new Date(Date.now() - diasMinimos * 86_400_000).toISOString().slice(0, 10);
+
+  const { data, error } = await supabase
+    .from('pagamentos')
+    .select(
+      `id,
+       valor,
+       data_pagamento,
+       descricao,
+       obras ( nome ),
+       fornecedores ( nome ),
+       documentos ( id, deleted_at )`,
+    )
+    .is('deleted_at', null)
+    .neq('status_pagto', 'recusado')
+    .neq('status_pagto', 'erro')
+    .lte('data_pagamento', corte)
+    .order('data_pagamento', { ascending: true })
+    .limit(limite * 4); // margem: o filtro "sem documento" é aplicado abaixo
+
+  if (error) throw new Error(`Falha ao listar pagamentos sem documento: ${error.message}`);
+
+  const hoje = Date.now();
+
+  // O filtro roda aqui e não no SQL porque PostgREST não expressa
+  // "sem linhas na tabela relacionada" — o embed devolve array vazio, que só
+  // dá pra testar depois de receber. Por isso o `limit` acima pede folga.
+  return (data ?? [])
+    .filter((p) => {
+      // `deleted_at` importa: documento arquivado não conta como entregue,
+      // senão apagar o anexo errado faria o pagamento sumir desta lista.
+      const docs = (p.documentos ?? []) as Array<{ id: string; deleted_at: string | null }>;
+      return docs.every((d) => d.deleted_at !== null);
+    })
+    .slice(0, limite)
+    .map((p) => {
+      const obra = p.obras as { nome: string } | null;
+      const fornecedor = p.fornecedores as { nome: string } | null;
+      const dias = Math.max(
+        0,
+        Math.floor((hoje - new Date(`${p.data_pagamento}T00:00:00`).getTime()) / 86_400_000),
+      );
+      return {
+        id: p.id,
+        valor: Number(p.valor),
+        data_pagamento: p.data_pagamento,
+        descricao: p.descricao,
+        obra_nome: obra?.nome ?? null,
+        fornecedor_nome: fornecedor?.nome ?? null,
+        dias,
+      };
+    });
+}

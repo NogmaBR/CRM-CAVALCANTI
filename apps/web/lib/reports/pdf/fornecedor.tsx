@@ -43,7 +43,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 // Public export
 // ---------------------------------------------------------------------------
 export function renderFornecedorPdf(data: FornecedorData): ReactElement {
-  const { fornecedor, pagamentos, totais, filtros } = data;
+  const { fornecedor, pagamentos, documentos, totais, filtros } = data;
 
   const subtitle = periodoSubtitle(filtros.from, filtros.to);
 
@@ -79,6 +79,7 @@ export function renderFornecedorPdf(data: FornecedorData): ReactElement {
         <KpiCard label="Ticket médio" value={formatBRL(totais.ticketMedio)} />
         <KpiCard label="Pagamentos" value={String(totais.quantidade)} />
         <KpiCard label="Obras atendidas" value={String(totais.porObra.length)} />
+        <KpiCard label="Documentos" value={String(documentos.length)} />
       </KpiGrid>
 
       {/* Dados do fornecedor */}
@@ -164,6 +165,32 @@ export function renderFornecedorPdf(data: FornecedorData): ReactElement {
                 <Text style={[styles.tableCell, { flex: 5 }]}>{row.obra_nome}</Text>
                 <Text style={[styles.tableCell, { flex: 2 }, styles.cellRight]}>{String(row.count)}</Text>
                 <Text style={[styles.tableCell, { flex: 2 }, styles.cellRight]}>{formatBRL(row.total)}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </Section>
+
+      {/* Documentos recebidos */}
+      <Section title="Documentos recebidos">
+        {documentos.length === 0 ? (
+          <Text style={styles.emptyState}>Nenhum documento recebido deste fornecedor.</Text>
+        ) : (
+          <View style={styles.table}>
+            <View style={styles.tableHeader}>
+              <Text style={[styles.tableHeaderCell, { flex: 2 }]}>Data</Text>
+              <Text style={[styles.tableHeaderCell, { flex: 2 }]}>Tipo</Text>
+              <Text style={[styles.tableHeaderCell, { flex: 4 }]}>Nome arquivo</Text>
+              <Text style={[styles.tableHeaderCell, { flex: 3 }]}>Obra</Text>
+              <Text style={[styles.tableHeaderCell, { flex: 2 }]}>Nº NF</Text>
+            </View>
+            {documentos.map((d, i) => (
+              <View key={d.id} style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}>
+                <Text style={[styles.tableCell, { flex: 2 }]}>{formatDate(d.created_at)}</Text>
+                <Text style={[styles.tableCell, { flex: 2 }, styles.cellMuted]}>{d.tipo}</Text>
+                <Text style={[styles.tableCell, { flex: 4 }]}>{d.nome_arquivo}</Text>
+                <Text style={[styles.tableCell, { flex: 3 }]}>{d.obra_nome ?? '—'}</Text>
+                <Text style={[styles.tableCell, { flex: 2 }]}>{d.numero_nf ?? '—'}</Text>
               </View>
             ))}
           </View>
