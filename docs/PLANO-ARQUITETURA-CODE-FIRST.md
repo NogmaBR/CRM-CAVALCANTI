@@ -568,6 +568,13 @@ e existir um restore de backup feito e conferido.
 
 ### FASE 6 — Domínio (depende da FASE 0)
 
+> **Reescrita em 2026-09-11 em `docs/PLANO-FASE-6.md`.** O texto abaixo é o
+> original, de antes de se saber que a Cavalcanti já tem um CRM de vendas (o
+> ERP/CRM005, com 34 vendedores e 2.955 clientes — ver
+> `ALINHAMENTO-CAVALCANTI-16-09.md`, Bloco A). O plano novo recomenda **espelhar
+> o ERP pelo WhatsApp** (4–6 semanas) em vez de construir um funil paralelo
+> (8–12), e deixa o funil próprio só para leads que o ERP não captura.
+
 Só faz sentido depois da decisão da §1. Se for expansão (cenário A):
 
 - `developments` / `buildings` / `units` — o estoque à venda

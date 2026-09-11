@@ -26,7 +26,7 @@ SÓ FALTA VOCÊ
   🔴 1. Telefones reais dos fornecedores        ← antes de qualquer automação
   🔴 2. Credenciais (UAZAPI, Anthropic, OpenAI) + redeploy
   🔴 3. Webhook da UAZAPI + cadastrar a equipe em /config/autorizados
-  🟠 4. Mergear o PR #17 + 5 limpezas que só você faz
+  🟠 4. Mergear o PR #18 + 5 limpezas que só você faz
   🟠 5. Vercel Pro → um comando faz o resto (região + repo privado)
   🟠 6. Backup: restore de teste + guardar a frase + PITR
   🟡 7. Domínio próprio + Cloudflare
@@ -34,6 +34,9 @@ SÓ FALTA VOCÊ
   🟡 9. Ligar as automações, com cuidado
   ⏳ 10. Depois de 16/09: PR #7 e a chave FILA_WHATSAPP
   🔵 11. Decisão: Fase 6 (vendas) — o que preciso de você para começar
+
+PARA O DIA 16
+  📋 docs/ROTEIRO-DEMO-16-09.md — o que mostrar, em que ordem, e a versão B sem WhatsApp
 ```
 
 ---
@@ -154,27 +157,23 @@ aparece do webhook até a resposta com o mesmo `correlacao`.
 
 ---
 
-# 🟠 4. Mergear o PR #17 + 5 limpezas que só você faz
+# 🟠 4. Mergear o PR #18 + 5 limpezas que só você faz
 
-Os PRs #13 a #16 estão mergeados e **auditados**: deploy READY, CI verde na `main`,
+Os PRs #13 a #17 estão mergeados e **auditados**: deploy READY, CI verde na `main`,
 `/api/health` com `problemas: []`, rotas, crons, filas, RLS, advisors do Supabase de 11
-para 5 (os 5 restantes são intencionais ou exigem plano Pro).
+para 5 (os 5 restantes são intencionais ou exigem plano Pro). Com o #17, o assistente
+funciona **sem** os embeddings do item 8: basta a `ANTHROPIC_API_KEY` do item 2.
 
-### 4.1 — PR #17: a Fase 4 fecha (ferramentas do assistente)
+### 4.1 — PR #18: a saúde parou de dar alarme falso (já está em produção)
 
-<https://github.com/NogmaBR/CRM-CAVALCANTI/pull/17> — o assistente ganha **cinco
-ferramentas de leitura** com allowlist: total por obra, gastos por período, maiores
-fornecedores, pagamentos sem documento, pendências abertas. "Quanto gastei em setembro"
-passa a ser somado no banco em vez de "veja no painel". Cada chamada fica em
-`ai_tool_calls`.
+<https://github.com/NogmaBR/CRM-CAVALCANTI/pull/18> — em 2026-09-11 à noite o
+`/api/health` devolveu **503** dizendo que o cron diário `saude-alerta` "não roda há
+11h". Ele tinha rodado ao meio-dia, como devia: a régua era de 3 horas para qualquer
+cron, e um diário passa 21 horas por dia "doente" por ela. No dia seguinte isso viraria
+um **WhatsApp de alarme falso** para o gestor.
 
-**Pode mergear agora.** Só leitura, nada em produção muda até existir
-`ANTHROPIC_API_KEY`. 265 testes, typecheck, lint e build limpos. O que **não** foi
-provado é a conversa com o modelo real, porque não há chave em nenhum ambiente —
-o laço foi testado com um cliente falso.
-
-Depois do merge, com a chave do item 2, o assistente funciona **sem** os embeddings
-do item 8: as ferramentas respondem agregados sozinhas.
+A tolerância agora vem da agenda de cada cron (5 min, 3 h, 26 h, 8 dias). **Já apliquei
+e conferi**: `/api/health` voltou a 200. O PR só versiona o arquivo. Pode mergear.
 
 ### 4.1b — Apagar as 3 mensagens de teste de 07/09
 
@@ -410,23 +409,31 @@ Nada aqui antes da entrega.
 
 # 🔵 11. Decisão: Fase 6 (vendas) — o que preciso de você
 
-A FASE 0 escolheu o cenário de **expansão**: obras e vendas no mesmo sistema. A Fase 6
-é um produto novo (empreendimentos, unidades, leads, corretores, funil, propostas,
-contratos) — **8 a 12 semanas**, maior que tudo que veio antes somado.
+**O plano está escrito: `docs/PLANO-FASE-6.md`.** E ele mudou, por um fato que estava
+no alinhamento de 16/09 e ninguém tinha ligado à Fase 6: **a Cavalcanti já tem um CRM de
+vendas** — o ERP/CRM005, com 34 vendedores, 2.955 clientes, agenda, ocorrências e
+inadimplência. Construir leads/propostas/contratos aqui criaria um segundo sistema de
+verdade para vendedores que já trabalham no primeiro.
 
-**Não comecei de propósito.** Não há o que codar sem saber o que a Cavalcanti vende.
-Para começar, preciso de você (ou do Fernando) em três perguntas:
+O plano novo recomenda **espelhar o ERP pelo WhatsApp** (agenda do dia no celular do
+vendedor, inadimplência da carteira, escrita com confirmação SIM) em 4–6 semanas, e
+deixar o funil próprio só para leads que o ERP não captura. Cada marco termina no
+WhatsApp de alguém, não numa tabela.
 
-1. **O que é vendido?** Apartamentos de empreendimento próprio? Lotes? Casas
-   avulsas? Serviço de construção sob contrato? A resposta define se `unidades`
-   existe ou não.
-2. **Quem vende?** Corretores externos com comissão, equipe própria, ou o próprio
-   Fernando? Define `brokers`/comissões.
-3. **Qual é o funil hoje?** Lead → visita → proposta → contrato? Ou é mais simples?
-   Traga um exemplo real de venda do começo ao fim.
+**Nada disso entra em código antes de 16/09.** Para o dia 17 começar, preciso de você:
 
-Com isso eu escrevo o plano da Fase 6 com tabelas, telas e ordem de entrega. Sem isso,
-qualquer modelo que eu invente vai ser refeito.
+1. **O caminho:** A (funil próprio), B (espelho do ERP) ou C (B primeiro, funil
+   depois). Minha recomendação é C.
+2. **As respostas do parceiro do ERP** que estão abertas desde 09/09 (Bloco A.2 do
+   alinhamento): os 9 funcionários sem login, a legenda de `Funcao`, e — o bloqueador
+   de verdade — **HTTPS ou liberação de IP** para produção.
+3. **A credencial e a URL de produção do ERP** no `.env.local`.
+4. **Quem recebe o quê no WhatsApp:** agenda para o vendedor, inadimplência para o
+   gestor, ou tudo para o Fernando?
+5. **O que se vende** (unidades, lotes, casas, contrato) — pode esperar até o marco 3.
+
+Sem o item 2 não há marco 1. Com ele, o marco 1 começa no dia 17 e o vendedor recebe a
+agenda no WhatsApp na terceira semana.
 
 ---
 

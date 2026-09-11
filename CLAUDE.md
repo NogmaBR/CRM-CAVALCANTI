@@ -77,6 +77,9 @@ em relação ao seu treino. Os docs vêm no pacote: `apps/web/node_modules/next/
 | `docs/RUNBOOK-BACKUP.md` | Backup semanal: baixar, decifrar, restaurar, registrar o teste |
 | `docs/RUNBOOK-VERCEL-PRO.md` | Pro → região `gru1` → repo privado (e o script que faz os dois últimos) |
 | `docs/PLANO-CLOUDFLARE.md` | Por que a Cloudflare ficou só como DNS (ela não vende VPS) |
+| `docs/PLANO-FASE-6.md` | Vendas: espelhar o ERP/CRM005 pelo WhatsApp, marcos M0–M5, o que falta decidir |
+| `docs/ROTEIRO-DEMO-16-09.md` | A demonstração da entrega: ordem, falas, versão B sem WhatsApp |
+| `docs/ALINHAMENTO-CAVALCANTI-16-09.md` | O que o cliente pediu e o que o ERP dele tem (Bloco A) |
 | `docs/N8N-COMPLETO.md` | 7 workflows n8n (documentação executável, não está rodando) |
 
 ---
@@ -415,9 +418,16 @@ estável (vai para `ai_tool_calls`), e entra na lista `FERRAMENTAS_DE_OBRA`. O l
 assim que se testa sem rede. **Nunca rodou contra o modelo real**: não há
 `ANTHROPIC_API_KEY` em ambiente nenhum.
 
-**Fase 6 (domínio de vendas) não foi iniciada de propósito.** É um produto novo
-(8–12 semanas) e depende de definição do cliente sobre o que ele vende; não há o
-que codar sem isso. Está como decisão em `docs/SO-FALTA-VOCE.md`.
+**Fase 6 (vendas): plano reescrito em `docs/PLANO-FASE-6.md` (2026-09-11), sem
+código.** O fato que muda tudo: a Cavalcanti **já tem** um CRM de vendas, o ERP/CRM005
+(34 vendedores, 2.955 clientes, agenda, ocorrências, inadimplência — ver
+`ALINHAMENTO-CAVALCANTI-16-09.md`, Bloco A). O plano recomenda espelhar o ERP pelo
+WhatsApp (marcos M1–M4, 4–6 semanas) e só depois leads próprios (M5). **Nada disso
+antes de 16/09** (congelamento da Fase 1). Bloqueador real do M0: HTTPS/IP do ERP e as
+respostas do parceiro. A demo de 16/09 tem roteiro em `docs/ROTEIRO-DEMO-16-09.md`.
+
+**Saúde: tolerância por agenda (PR #18, aplicada).** `cron_tolerancia(schedule)` — um
+cron diário não pode ser cobrado com régua de 3 horas; foi o 503 falso de 2026-09-11.
 
 ### O que falta — e é ação humana, não código
 
