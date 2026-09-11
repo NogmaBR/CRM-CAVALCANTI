@@ -407,6 +407,14 @@ o `pagamentos` de verdade. Não a use, não a indexe, não a conte.
 O classificador barrou apagar branches remotas e remover env vars na Vercel — as
 duas coisas estão como ação humana em `SO-FALTA-VOCE.md` §4.
 
+**Fase 4 fechada em 2026-09-11 (PR #17):** o assistente tem ferramentas com allowlist
+(`lib/ia/ferramentas/`) — cinco consultas de leitura que respondem agregados. Regras
+para quem for acrescentar uma: só leitura, schema Zod com limites, nome snake_case
+estável (vai para `ai_tool_calls`), e entra na lista `FERRAMENTAS_DE_OBRA`. O laço em
+`assistente.ts` tem teto de 4 rodadas e cliente injetável (`deps.criarCliente`) — é
+assim que se testa sem rede. **Nunca rodou contra o modelo real**: não há
+`ANTHROPIC_API_KEY` em ambiente nenhum.
+
 **Fase 6 (domínio de vendas) não foi iniciada de propósito.** É um produto novo
 (8–12 semanas) e depende de definição do cliente sobre o que ele vende; não há o
 que codar sem isso. Está como decisão em `docs/SO-FALTA-VOCE.md`.

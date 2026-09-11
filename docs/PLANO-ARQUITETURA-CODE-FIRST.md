@@ -395,8 +395,11 @@ nascer assim.
 - [x] Pergunta livre no WhatsApp → resposta com fonte citada
 - [x] `/api/cron/indexar` agendado por `pg_cron` (não pela Vercel: o plano Hobby
       só permite dois crons, e os dois já estão usados)
-- [ ] Tools com allowlist explícita — `ai_tool_calls` existe e está vazia; nenhuma
-      ferramenta foi implementada ainda
+- [x] Tools com allowlist explícita — **feito em 2026-09-11 (PR #17)**:
+      `lib/ia/ferramentas/` com cinco consultas de leitura (total por obra, período,
+      ranking de fornecedores, sem documento, pendências), schema Zod com limites,
+      laço com teto de 4 rodadas, cada chamada em `ai_tool_calls`. Funciona sem
+      embeddings. Testado com cliente falso; nunca contra o modelo real (sem chave)
 
 **Decisão dentro da fase:** TypeScript ou Python. Minha recomendação é começar em TS
 (a chamada de embeddings e a busca vetorial são triviais nas duas linguagens) e só
@@ -406,9 +409,10 @@ Python desde já, o serviço nasce isolado atrás de HTTP e a fase não muda de 
 **Pronto quando:** o gestor perguntar algo sobre um documento da obra no WhatsApp e
 receber resposta fundamentada, com a fonte citada.
 
-**Falta para isso valer:** `IA_EMBEDDINGS_PROVIDER=openai` + `OPENAI_API_KEY` (para a
-busca) e `IA_PROVIDER=anthropic` + `ANTHROPIC_API_KEY` (para a redação). Sem as duas
-duplas, o bloco de pergunta livre é invisível e o WhatsApp segue como sempre.
+**Falta para isso valer:** `IA_PROVIDER=anthropic` + `ANTHROPIC_API_KEY` (obrigatório —
+sem isso o bloco de pergunta livre é invisível e o WhatsApp segue como sempre) e, para a
+busca por semelhança, `IA_EMBEDDINGS_PROVIDER=openai` + `OPENAI_API_KEY` (opcional desde
+o PR #17: sem embeddings, os agregados saem das ferramentas mesmo assim).
 
 ---
 

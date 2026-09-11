@@ -26,7 +26,7 @@ SÓ FALTA VOCÊ
   🔴 1. Telefones reais dos fornecedores        ← antes de qualquer automação
   🔴 2. Credenciais (UAZAPI, Anthropic, OpenAI) + redeploy
   🔴 3. Webhook da UAZAPI + cadastrar a equipe em /config/autorizados
-  🟠 4. Mergear o PR #16 + 4 limpezas que o classificador me barrou
+  🟠 4. Mergear o PR #17 + 5 limpezas que só você faz
   🟠 5. Vercel Pro → um comando faz o resto (região + repo privado)
   🟠 6. Backup: restore de teste + guardar a frase + PITR
   🟡 7. Domínio próprio + Cloudflare
@@ -154,20 +154,39 @@ aparece do webhook até a resposta com o mesmo `correlacao`.
 
 ---
 
-# 🟠 4. Mergear o PR #16 + 4 limpezas que o classificador me barrou
+# 🟠 4. Mergear o PR #17 + 5 limpezas que só você faz
 
-Os PRs #13, #14 e #15 foram mergeados em 2026-09-10 e **auditados depois**: deploy
-`6afdd09` READY, CI verde na `main`, `/api/health` com `problemas: []`, todas as rotas
-respondendo como esperado, 3 crons ativos sem falha, filas vazias, dead-letter zero,
-RLS em todas as tabelas, typecheck e 240 testes passando na `main` mergeada.
+Os PRs #13 a #16 estão mergeados e **auditados**: deploy READY, CI verde na `main`,
+`/api/health` com `problemas: []`, rotas, crons, filas, RLS, advisors do Supabase de 11
+para 5 (os 5 restantes são intencionais ou exigem plano Pro).
 
-### 4.1 — PR #16 (a migration já está em produção)
+### 4.1 — PR #17: a Fase 4 fecha (ferramentas do assistente)
 
-<https://github.com/NogmaBR/CRM-CAVALCANTI/pull/16> — higiene apontada pelos advisors
-do Supabase: `search_path` fixo em 2 funções, EXECUTE revogado em 2 funções de trigger,
-índice em 9 chaves estrangeiras. **Já apliquei e conferi em produção**; o PR só versiona
-o arquivo. Os advisors de segurança caíram de 11 para 5, e os 5 que sobraram são
-intencionais (`has_role` é usada pela RLS) ou exigem plano Pro (item 4.5).
+<https://github.com/NogmaBR/CRM-CAVALCANTI/pull/17> — o assistente ganha **cinco
+ferramentas de leitura** com allowlist: total por obra, gastos por período, maiores
+fornecedores, pagamentos sem documento, pendências abertas. "Quanto gastei em setembro"
+passa a ser somado no banco em vez de "veja no painel". Cada chamada fica em
+`ai_tool_calls`.
+
+**Pode mergear agora.** Só leitura, nada em produção muda até existir
+`ANTHROPIC_API_KEY`. 265 testes, typecheck, lint e build limpos. O que **não** foi
+provado é a conversa com o modelo real, porque não há chave em nenhum ambiente —
+o laço foi testado com um cliente falso.
+
+Depois do merge, com a chave do item 2, o assistente funciona **sem** os embeddings
+do item 8: as ferramentas respondem agregados sozinhas.
+
+### 4.1b — Apagar as 3 mensagens de teste de 07/09
+
+Sobrou da Fase 1: três mensagens de teste em `/pendentes` (`Paguei R$ 1.250,00 na
+Casa das Tintas…`, `NF do cimento — obra Beta`, e uma vazia), com 3 confirmações
+abertas. Vão aparecer na demo. Recuse as três na tela
+<https://crm-cavalcanti.vercel.app/pendentes> (botão **Rejeitar**), ou no SQL Editor:
+
+```sql
+DELETE FROM confirmacoes_pendentes WHERE mensagem_id IN (SELECT id FROM mensagens_whats WHERE created_at < '2026-09-08');
+DELETE FROM mensagens_whats WHERE created_at < '2026-09-08';
+```
 
 ### 4.2 — Apagar a tabela `pagamentos.csv`
 
@@ -420,7 +439,7 @@ Marque só o que você **conferiu**, não o que fez.
 - [ ] `test-webhook-uazapi.mjs` devolvendo 200
 - [ ] Equipe em `/config/autorizados`, com os números certos
 - [ ] **Foto de nota → bot pergunta → "SIM" → lançamento no painel**
-- [ ] PR #16 mergeado; `pagamentos.csv` apagada; 2 variáveis removidas da Vercel; branches limpas
+- [ ] PR #17 mergeado; 3 mensagens de teste apagadas; `pagamentos.csv` apagada; 2 variáveis removidas da Vercel; branches limpas
 - [ ] Vercel Pro; `pos-vercel-pro.mjs` mostrando `gru1` e latência menor
 - [ ] Repositório PRIVATE e um deploy novo saiu depois disso
 - [ ] `BACKUP_PASSPHRASE` no gerenciador de senhas
