@@ -1,11 +1,12 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { emitir } from '@/lib/events/bus';
 import { mapDbError, mapDbErrorWithContext } from '@/lib/schemas/errors';
 import { PagamentoCreateSchema, PagamentoUpdateSchema } from '@/lib/schemas/pagamento';
 import { dispatchEvento } from '@/lib/services/dispatch-webhook';
+import { createClient } from '@/lib/supabase/server';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 
 function formToRecord(fd: FormData): Record<string, unknown> {
   const rec: Record<string, unknown> = {};
@@ -72,6 +73,24 @@ export async function createPagamento(formData: FormData) {
   } catch {
     // Silencioso — webhook falhou mas pagamento tá OK
   }
+
+  // Evento de domínio: o webhook acima avisa sistemas de fora; este avisa as
+  // automações de dentro. São saídas diferentes do mesmo fato, e por isso
+  // convivem — `dispatchEvento` deixou de ser o único caminho.
+  //
+  // `emitir` nunca lança e nunca bloqueia o resultado: se nenhuma regra estiver
+  // ligada, custa uma consulta e volta.
+  await emitir(
+    'pagamento.criado',
+    {
+      pagamentoId: data.id,
+      obraId: parsed.data.obra_id,
+      fornecedorId: parsed.data.fornecedor_id ?? null,
+      valor: parsed.data.valor,
+      origem: parsed.data.origem,
+    },
+    { userId: criadoPor },
+  );
 
   revalidatePath('/pagamentos');
   revalidatePath('/painel');
@@ -144,10 +163,7 @@ export async function restorePagamento(formData: FormData) {
   if (!id) redirect('/pagamentos?error=ID%20inv%C3%A1lido');
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from('pagamentos')
-    .update({ deleted_at: null })
-    .eq('id', id);
+  const { error } = await supabase.from('pagamentos').update({ deleted_at: null }).eq('id', id);
 
   if (error) redirect(`/pagamentos/${id}?error=${encodeURIComponent(mapDbError(error))}`);
   revalidatePath('/pagamentos');

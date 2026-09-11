@@ -1,16 +1,13 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
-import { mapDbError, mapDbErrorWithContext } from '@/lib/schemas/errors';
+import { getDocumento } from '@/lib/data/documentos';
 import {
   DocumentoMetaCreateSchema,
   DocumentoUpdateSchema,
   validateFileMagicBytes,
   validateUploadedFile,
 } from '@/lib/schemas/documento';
-import { getDocumento } from '@/lib/data/documentos';
+import { mapDbError, mapDbErrorWithContext } from '@/lib/schemas/errors';
 import {
   deleteDocumentFile,
   getSignedUrl,
@@ -18,6 +15,9 @@ import {
   sha256Hex,
   uploadDocumentBuffer,
 } from '@/lib/storage/documents';
+import { createClient } from '@/lib/supabase/server';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 
 function formToRecord(fd: FormData): Record<string, unknown> {
   const rec: Record<string, unknown> = {};
@@ -83,13 +83,14 @@ export async function createDocumento(formData: FormData) {
 
   if (insertRes.error) {
     // Detecta qual constraint disparou 23505 pra dar mensagem targeted
-    const dupMsg = insertRes.error.code === '23505'
-      ? insertRes.error.message?.includes('idx_documentos_hash')
-        ? 'Arquivo idêntico já existe (mesmo conteúdo). Verifique documentos anteriores.'
-        : insertRes.error.message?.includes('idx_documentos_chave_nf')
-          ? 'Já existe documento com esta chave de acesso de NF.'
-          : 'Já existe documento com esta chave de NF ou hash.'
-      : undefined;
+    const dupMsg =
+      insertRes.error.code === '23505'
+        ? insertRes.error.message?.includes('idx_documentos_hash')
+          ? 'Arquivo idêntico já existe (mesmo conteúdo). Verifique documentos anteriores.'
+          : insertRes.error.message?.includes('idx_documentos_chave_nf')
+            ? 'Já existe documento com esta chave de acesso de NF.'
+            : 'Já existe documento com esta chave de NF ou hash.'
+        : undefined;
     redirect(
       `/documentos/novo?error=${encodeURIComponent(
         mapDbErrorWithContext(insertRes.error, {
@@ -107,7 +108,11 @@ export async function createDocumento(formData: FormData) {
   try {
     await uploadDocumentBuffer(path, buffer, file.type);
   } catch (uploadErr) {
-    try { await supabase.from('documentos').delete().eq('id', documentoId); } catch { /* best effort */ }
+    try {
+      await supabase.from('documentos').delete().eq('id', documentoId);
+    } catch {
+      /* best effort */
+    }
     const msg = uploadErr instanceof Error ? uploadErr.message : 'Falha no upload';
     redirect(`/documentos/novo?error=${encodeURIComponent(msg)}`);
   }
@@ -119,8 +124,16 @@ export async function createDocumento(formData: FormData) {
     .eq('id', documentoId);
   if (upd.error) {
     // path inconsistente — tenta cleanup e falha
-    try { await deleteDocumentFile(path); } catch { /* best effort */ }
-    try { await supabase.from('documentos').delete().eq('id', documentoId); } catch { /* best effort */ }
+    try {
+      await deleteDocumentFile(path);
+    } catch {
+      /* best effort */
+    }
+    try {
+      await supabase.from('documentos').delete().eq('id', documentoId);
+    } catch {
+      /* best effort */
+    }
     redirect(`/documentos/novo?error=${encodeURIComponent(mapDbError(upd.error))}`);
   }
 
@@ -141,6 +154,17 @@ export async function createDocumento(formData: FormData) {
   } catch {
     // Silencioso
   }
+
+  // Evento de domínio para as automações. Importa aqui, e não no topo, pelo
+  // mesmo motivo do dispatch acima: manter fora do caminho quente de quem só
+  // renderiza esta rota.
+  const { emitir } = await import('@/lib/events/bus');
+  await emitir('documento.anexado', {
+    documentoId,
+    pagamentoId: meta.data.pagamento_id ?? null,
+    obraId: meta.data.obra_id,
+    tipo: meta.data.tipo,
+  });
 
   revalidatePath('/documentos');
   revalidatePath('/painel');
@@ -168,7 +192,9 @@ export async function updateDocumento(formData: FormData) {
       ...(rest.fornecedor_id !== undefined ? { fornecedor_id: rest.fornecedor_id ?? null } : {}),
       ...(rest.tipo !== undefined ? { tipo: rest.tipo } : {}),
       ...(rest.numero_nf !== undefined ? { numero_nf: rest.numero_nf ?? null } : {}),
-      ...(rest.chave_acesso_nf !== undefined ? { chave_acesso_nf: rest.chave_acesso_nf ?? null } : {}),
+      ...(rest.chave_acesso_nf !== undefined
+        ? { chave_acesso_nf: rest.chave_acesso_nf ?? null }
+        : {}),
     })
     .eq('id', id);
 
@@ -209,10 +235,7 @@ export async function restoreDocumento(formData: FormData) {
   if (!id) redirect('/documentos?error=ID%20inv%C3%A1lido');
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from('documentos')
-    .update({ deleted_at: null })
-    .eq('id', id);
+  const { error } = await supabase.from('documentos').update({ deleted_at: null }).eq('id', id);
 
   if (error) redirect(`/documentos/${id}?error=${encodeURIComponent(mapDbError(error))}`);
   revalidatePath('/documentos');
@@ -231,7 +254,9 @@ export async function downloadDocumento(formData: FormData) {
   const doc = await getDocumento(id);
   if (!doc) redirect('/documentos?error=Documento%20n%C3%A3o%20encontrado');
   if (doc.deleted_at != null) {
-    redirect(`/documentos/${id}?error=${encodeURIComponent('Documento arquivado. Restaure antes de baixar.')}`);
+    redirect(
+      `/documentos/${id}?error=${encodeURIComponent('Documento arquivado. Restaure antes de baixar.')}`,
+    );
   }
   if (!doc.storage_path || doc.storage_path === 'pending') {
     redirect(`/documentos/${id}?error=Arquivo%20n%C3%A3o%20dispon%C3%ADvel`);

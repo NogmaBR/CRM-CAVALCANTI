@@ -2,7 +2,7 @@ import 'server-only';
 import { executarAutomacoes } from '@/lib/automations/engine';
 import { logger } from '@/lib/log';
 import type { Database } from '@nogma/db';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { createClient as createSbClient } from '@supabase/supabase-js';
 import type { Evento, NomeEvento, PayloadDe } from './tipos';
 
 const log = logger('eventos');
@@ -38,8 +38,6 @@ const log = logger('eventos');
  * best-effort e a falha vai para o log, não para cima.
  */
 
-type Client = SupabaseClient<Database>;
-
 interface OpcoesEmissao {
   /** Quem causou. `null` em cron e webhook. */
   userId?: string | null;
@@ -52,8 +50,29 @@ interface OpcoesEmissao {
   simular?: boolean;
 }
 
+/**
+ * Cliente de serviço, montado aqui dentro de propósito.
+ *
+ * O motor escreve em `automation_executions`, e essa tabela **não tem policy
+ * de INSERT para sessão de usuário** — quem escreve o log é o motor, nunca o
+ * browser. Se `emitir` aceitasse o cliente do chamador, toda emissão vinda de
+ * uma server action avaliaria as regras e perderia o registro em silêncio,
+ * violando o invariante de que toda avaliação vira log. E "em silêncio" é o
+ * detalhe que condena: ninguém descobriria até precisar do histórico.
+ *
+ * Deixar isso a cargo de quem chama seria um erro esperando para acontecer,
+ * então não há o que errar: o barramento resolve sozinho.
+ */
+function clienteDeServico() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return createSbClient<Database>(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
 export async function emitir<E extends NomeEvento>(
-  supabase: Client,
   nome: E,
   payload: PayloadDe<E>,
   opcoes: OpcoesEmissao = {},
@@ -65,7 +84,19 @@ export async function emitir<E extends NomeEvento>(
     userId: opcoes.userId ?? null,
   };
 
+  // O try cobre a montagem do cliente também, e não só o despacho: a garantia
+  // que os chamadores dependem é "emitir nunca lança". Se ela valesse só da
+  // metade da função para baixo, uma URL malformada no ambiente derrubaria a
+  // criação do pagamento — exatamente o que este desenho existe para impedir.
   try {
+    const supabase = clienteDeServico();
+    if (!supabase) {
+      // Ambiente sem credencial de serviço (build, preview mal configurado).
+      // Degrada com log: melhor não reagir do que reagir sem poder registrar.
+      console.error(`[eventos] "${nome}" não despachado: ambiente sem credencial de serviço.`);
+      return;
+    }
+
     await executarAutomacoes(supabase, evento as Evento, { simular: opcoes.simular ?? false });
   } catch (err) {
     // Chegou aqui significa que o próprio engine quebrou, não uma regra — as
