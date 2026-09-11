@@ -178,15 +178,15 @@ export async function processarInbound(
   // estreito de propósito — `ehPerguntaAoAssistente` recusa qualquer coisa que
   // cheire a lançamento, porque o erro contrário perde um pagamento.
   //
-  // Só age com as duas peças configuradas. Sem chave da Anthropic ou sem
-  // embeddings, a mensagem segue o caminho de sempre — este bloco é invisível.
+  // Só age com o modelo configurado. Embeddings são opcionais desde a versão
+  // com ferramentas: sem eles a busca devolve zero trechos e os agregados
+  // (totais, períodos, pendências) saem das ferramentas mesmo assim. Sem
+  // chave da Anthropic, a mensagem segue o caminho de sempre — este bloco é
+  // invisível.
   if (ehPerguntaAoAssistente(textoEfetivo)) {
-    const [{ assistenteDisponivel, perguntar }, { embeddingsAtivo }] = await Promise.all([
-      import('@/lib/ia/assistente'),
-      import('@/lib/ia/embeddings'),
-    ]);
+    const { assistenteDisponivel, perguntar } = await import('@/lib/ia/assistente');
 
-    if (assistenteDisponivel() && embeddingsAtivo()) {
+    if (assistenteDisponivel()) {
       const resposta = await perguntar(supabase, {
         pergunta: textoEfetivo ?? '',
         canal: 'whatsapp',
@@ -201,7 +201,10 @@ export async function processarInbound(
       // a pessoa receber silêncio.
       if (resposta) {
         await enviarTexto(telefone, resposta.texto);
-        return { acao: 'pergunta', detalhe: `${resposta.fontes.length} fonte(s)` };
+        return {
+          acao: 'pergunta',
+          detalhe: `${resposta.fontes.length} fonte(s), ${resposta.ferramentas.length} ferramenta(s)`,
+        };
       }
     }
   }
