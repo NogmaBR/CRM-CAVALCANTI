@@ -39,7 +39,7 @@ export function PagamentosFilters({
       style={{
         marginTop: 16,
         display: 'grid',
-        gridTemplateColumns: 'repeat(3, minmax(180px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',
         gap: 12,
       }}
     >

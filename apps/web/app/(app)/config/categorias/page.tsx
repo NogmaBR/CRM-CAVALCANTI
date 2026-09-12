@@ -1,10 +1,10 @@
-import { notFound } from 'next/navigation';
-import Link from 'next/link';
-import { Tag, Plus, Pencil, Archive, RotateCcw } from 'lucide-react';
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
+import { type CategoriaComContagem, listCategoriasComContagem } from '@/lib/data/categorias';
 import { createClient } from '@/lib/supabase/server';
-import { listCategoriasComContagem, type CategoriaComContagem } from '@/lib/data/categorias';
+import { Archive, Pencil, Plus, RotateCcw, Tag } from 'lucide-react';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { arquivarCategoria, restaurarCategoria } from './actions';
 import './categorias.css';
 
@@ -39,9 +39,7 @@ function CategoriaRow({ cat, isArchived }: { cat: CategoriaComContagem; isArchiv
             />
           )}
           <span className="categorias-nome">{cat.nome}</span>
-          {isArchived && (
-            <span className="categorias-archived-badge">Arquivada</span>
-          )}
+          {isArchived && <span className="categorias-archived-badge">Arquivada</span>}
         </div>
       </td>
 
@@ -54,7 +52,11 @@ function CategoriaRow({ cat, isArchived }: { cat: CategoriaComContagem; isArchiv
       </td>
 
       <td>
-        <span className={hasPayments ? 'categorias-contagem categorias-contagem--active' : 'categorias-contagem'}>
+        <span
+          className={
+            hasPayments ? 'categorias-contagem categorias-contagem--active' : 'categorias-contagem'
+          }
+        >
           {cat.qtd_pagamentos === 0
             ? 'Sem pagamentos'
             : `${cat.qtd_pagamentos} pagamento${cat.qtd_pagamentos !== 1 ? 's' : ''} · ${formatBRL(cat.total_valor)}`}
@@ -64,10 +66,7 @@ function CategoriaRow({ cat, isArchived }: { cat: CategoriaComContagem; isArchiv
       <td>
         <div className="categorias-actions">
           {!isArchived && (
-            <Link
-              href={`/config/categorias/${cat.id}/editar`}
-              className="categorias-action-btn"
-            >
+            <Link href={`/config/categorias/${cat.id}/editar`} className="categorias-action-btn">
               <Pencil size={12} aria-hidden="true" />
               Editar
             </Link>
@@ -79,7 +78,11 @@ function CategoriaRow({ cat, isArchived }: { cat: CategoriaComContagem; isArchiv
               <button
                 type="submit"
                 className="categorias-action-btn categorias-action-btn--danger"
-                title={hasPayments ? `Esta categoria tem ${cat.qtd_pagamentos} pagamento(s) vinculado(s)` : undefined}
+                title={
+                  hasPayments
+                    ? `Esta categoria tem ${cat.qtd_pagamentos} pagamento(s) vinculado(s)`
+                    : undefined
+                }
               >
                 <Archive size={12} aria-hidden="true" />
                 Arquivar
@@ -148,6 +151,7 @@ export default async function CategoriasPage({
 
       <div className="nos-page-body">
         {successMsg ? (
+          // biome-ignore lint/a11y/useSemanticElements: banner de status (padrão do projeto)
           <div className="categorias-banner categorias-banner--success" role="status">
             {successMsg}
           </div>
@@ -191,18 +195,14 @@ export default async function CategoriasPage({
               <thead>
                 <tr>
                   <th>Nome</th>
-                  <th>Icone</th>
+                  <th>Ícone</th>
                   <th>Uso em pagamentos</th>
                   <th>Acoes</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((cat) => (
-                  <CategoriaRow
-                    key={cat.id}
-                    cat={cat}
-                    isArchived={cat.deleted_at != null}
-                  />
+                  <CategoriaRow key={cat.id} cat={cat} isArchived={cat.deleted_at != null} />
                 ))}
               </tbody>
             </table>

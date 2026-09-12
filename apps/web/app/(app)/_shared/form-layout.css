@@ -1,13 +1,22 @@
+/* ---------------------------------------------------------------------------
+   Formulários — layout compartilhado por obra, pagamento, fornecedor, etc.
+
+   Revisão 2026-09-12: `select` e `textarea` tinham 34px de altura e borda
+   diferente do `Input` (44px), e o rótulo era uppercase de 12px enquanto o
+   do `Input` é sentence-case de 14px. Agora os três controles têm a mesma
+   métrica e o mesmo rótulo — um formulário, uma cara.
+   --------------------------------------------------------------------------- */
+
 .form-layout {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
   max-width: 960px;
 }
 
 .form-layout__error {
   padding: 12px 14px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--danger, #ef4444) 12%, transparent);
   color: var(--danger, #ef4444);
   font-size: 13px;
@@ -17,32 +26,41 @@
 .form-layout__section {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg, 12px);
-  padding: 20px 22px 22px;
-  background: var(--surface-1);
+  padding: 8px 22px 22px;
+  margin: 0;
+  background: var(--surface-card);
+  box-shadow: var(--shadow-xs);
 }
 
 .form-layout__legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-display);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 0 6px;
-  margin-left: -6px;
+  letter-spacing: 0.12em;
+  padding: 0 8px;
+  margin-left: -8px;
+}
+.form-layout__legend svg {
+  color: var(--accent);
 }
 
 .form-layout__grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
-  margin-top: 12px;
+  margin-top: 14px;
 }
 
 .form-layout__field {
   grid-column: span 2;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -54,36 +72,70 @@
   grid-column: 1 / -1;
 }
 
+/* Mesmo rótulo do `Input` (ng-field__label). */
 .form-layout__label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+.form-layout__label--required::after,
+.form-layout__label[data-required="true"]::after {
+  content: " *";
+  color: var(--danger);
+}
+
+.form-layout__hint {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* Mesma métrica do `.ng-input`. */
+.form-layout__select,
+.form-layout__textarea,
+.perfil-select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+  border: var(--border-thin) solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-size: var(--text-base);
+  font-family: inherit;
+  transition: border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base)
+    var(--ease-out);
 }
 
 .form-layout__select,
-.form-layout__textarea {
-  padding: 10px 12px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  background: var(--surface-2, transparent);
-  color: var(--text-primary);
-  font-size: 14px;
-  font-family: inherit;
-  transition: border-color 120ms ease, box-shadow 120ms ease;
+.perfil-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 40px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23767B7B' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  cursor: pointer;
+}
+[data-theme="black"] .form-layout__select,
+[data-theme="dark"] .form-layout__select,
+[data-theme="black"] .perfil-select,
+[data-theme="dark"] .perfil-select {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23A1A1A1' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>");
 }
 
 .form-layout__select:focus,
-.form-layout__textarea:focus {
+.form-layout__textarea:focus,
+.perfil-select:focus {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--ring);
 }
 
 .form-layout__textarea {
+  padding: 11px 14px;
   resize: vertical;
-  min-height: 96px;
+  min-height: 104px;
+  line-height: 1.5;
 }
 
 .form-layout__actions {
@@ -91,30 +143,48 @@
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
-  padding-top: 8px;
+  padding-top: 4px;
 }
 
 .form-layout__cancel {
-  padding: 10px 16px;
+  display: inline-flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 16px;
   color: var(--text-secondary);
   text-decoration: none;
   font-size: 14px;
-  font-weight: 500;
-  border-radius: 8px;
+  font-weight: 600;
+  border-radius: var(--radius-md);
   transition: all 120ms ease;
 }
 
 .form-layout__cancel:hover {
   color: var(--text-primary);
-  background: var(--surface-2);
+  background: var(--bg-subtle);
 }
 
 @media (max-width: 720px) {
+  .form-layout__section {
+    padding: 6px 16px 18px;
+  }
   .form-layout__grid {
     grid-template-columns: 1fr;
+    gap: 14px;
   }
   .form-layout__field,
   .form-layout__field--wide {
     grid-column: 1 / -1;
+  }
+  /* No celular a ação principal fica em cima e ocupa a largura toda. */
+  .form-layout__actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  .form-layout__actions .ng-btn {
+    width: 100%;
+  }
+  .form-layout__cancel {
+    justify-content: center;
   }
 }

@@ -1,14 +1,14 @@
 'use client';
 
 import {
-  ResponsiveContainer,
-  BarChart,
   Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
+  BarChart,
   CartesianGrid,
   Cell,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
 
 interface BarSerieMensalProps {
@@ -60,7 +60,7 @@ export function BarSerieMensal({ data }: BarSerieMensalProps) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 8 }}>
-        <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" />
+        <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
         <XAxis
           dataKey="label"
           tick={{ fill: 'var(--text-secondary)', fontSize: 11 }}
@@ -74,10 +74,10 @@ export function BarSerieMensal({ data }: BarSerieMensalProps) {
           tickLine={false}
           width={80}
         />
-        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(204,255,0,0.06)' }} />
+        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--chart-1-soft)' }} />
         <Bar dataKey="total" radius={[4, 4, 0, 0]} maxBarSize={40}>
-          {data.map((_, i) => (
-            <Cell key={i} fill="#CCFF00" />
+          {data.map((p) => (
+            <Cell key={p.label} fill="var(--chart-1)" />
           ))}
         </Bar>
       </BarChart>

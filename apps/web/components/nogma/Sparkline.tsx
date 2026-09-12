@@ -17,8 +17,8 @@ export function Sparkline({
   data,
   width = 120,
   height = 32,
-  stroke = 'var(--lime-500)',
-  fill = 'color-mix(in srgb, var(--lime-500) 18%, transparent)',
+  stroke = 'var(--chart-1)',
+  fill = 'var(--chart-1-soft)',
   ariaLabel,
 }: SparklineProps) {
   if (data.length < 2) return null;

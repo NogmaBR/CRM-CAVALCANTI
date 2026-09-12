@@ -1,15 +1,15 @@
 'use client';
 
-import Link from 'next/link';
-import { useMemo } from 'react';
-import type { ColumnDef } from '@tanstack/react-table';
-import { Pencil, FileText, Image as ImageIcon } from 'lucide-react';
-import { Badge, type BadgeVariant } from '@/components/nogma/Badge';
 import { DataTable } from '@/components/data-table';
+import { Badge, type BadgeVariant } from '@/components/nogma/Badge';
+import type { Documento } from '@/lib/data/documentos';
 import type { Fornecedor } from '@/lib/data/fornecedores';
 import type { Obra } from '@/lib/data/obras';
-import type { Documento } from '@/lib/data/documentos';
-import { ANEXO_TIPO_LABELS, formatBytes, type AnexoTipo } from '@/lib/schemas/documento';
+import { ANEXO_TIPO_LABELS, type AnexoTipo, formatBytes } from '@/lib/schemas/documento';
+import type { ColumnDef } from '@tanstack/react-table';
+import { FileText, Image as ImageIcon, Pencil } from 'lucide-react';
+import Link from 'next/link';
+import { useMemo } from 'react';
 
 const TIPO_VARIANT: Record<AnexoTipo, BadgeVariant> = {
   nota_fiscal: 'success',
@@ -99,11 +99,9 @@ export function DocumentosTable({
       {
         accessorKey: 'tamanho_bytes',
         header: () => <span style={{ textAlign: 'right', display: 'block' }}>Tamanho</span>,
+        meta: { label: 'Tamanho' },
         cell: ({ row }) => (
-          <span
-            className="obras-orcamento"
-            style={{ display: 'block', textAlign: 'right' }}
-          >
+          <span className="obras-orcamento" style={{ display: 'block', textAlign: 'right' }}>
             {formatBytes(row.original.tamanho_bytes)}
           </span>
         ),

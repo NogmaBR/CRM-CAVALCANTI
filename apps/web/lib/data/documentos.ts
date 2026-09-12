@@ -1,7 +1,8 @@
 import 'server-only';
-import type { Database } from '@nogma/db';
 import { createClient } from '@/lib/supabase/server';
 import { sanitizeSearchQuery } from '@/lib/util/search';
+import { pareceUuid } from '@/lib/util/uuid';
+import type { Database } from '@nogma/db';
 
 export type Documento = Database['public']['Tables']['documentos']['Row'];
 
@@ -43,6 +44,8 @@ export async function listDocumentos(filters: ListDocumentosFilters = {}): Promi
 }
 
 export async function getDocumento(id: string): Promise<Documento | null> {
+  // Id que não é uuid vira 404, não erro 500 (o Postgres recusaria o cast).
+  if (!pareceUuid(id)) return null;
   const supabase = await createClient();
   const { data, error } = await supabase.from('documentos').select('*').eq('id', id).maybeSingle();
   if (error) throw new Error(`Falha ao carregar documento: ${error.message}`);

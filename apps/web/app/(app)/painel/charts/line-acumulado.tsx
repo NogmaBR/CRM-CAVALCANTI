@@ -1,13 +1,13 @@
 'use client';
 
 import {
-  AreaChart,
   Area,
-  XAxis,
-  YAxis,
-  Tooltip,
+  AreaChart,
   CartesianGrid,
   ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
 
 interface LineAcumuladoProps {
@@ -59,11 +59,11 @@ export function LineAcumulado({ data }: LineAcumuladoProps) {
       <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 8 }}>
         <defs>
           <linearGradient id="petroleum-gradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#0C4651" stopOpacity={0.35} />
-            <stop offset="95%" stopColor="#0C4651" stopOpacity={0.02} />
+            <stop offset="5%" stopColor="var(--chart-1)" stopOpacity={0.35} />
+            <stop offset="95%" stopColor="var(--chart-1)" stopOpacity={0.02} />
           </linearGradient>
         </defs>
-        <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" />
+        <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
         <XAxis
           dataKey="label"
           tick={{ fill: 'var(--text-secondary)', fontSize: 11 }}
@@ -81,11 +81,11 @@ export function LineAcumulado({ data }: LineAcumuladoProps) {
         <Area
           type="monotone"
           dataKey="total"
-          stroke="#0C4651"
+          stroke="var(--chart-1)"
           strokeWidth={2}
           fill="url(#petroleum-gradient)"
           dot={false}
-          activeDot={{ r: 4, fill: '#0C4651', strokeWidth: 0 }}
+          activeDot={{ r: 4, fill: 'var(--chart-1)', strokeWidth: 0 }}
         />
       </AreaChart>
     </ResponsiveContainer>

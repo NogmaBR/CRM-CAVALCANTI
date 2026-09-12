@@ -86,3 +86,139 @@
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+/* ---------------------------------------------------------------------------
+   KPIs — cartões (revisão 2026-09-12)
+   --------------------------------------------------------------------------- */
+
+.kpi {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 18px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+  transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out);
+}
+.kpi:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border-subtle));
+}
+.kpi__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.kpi__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.kpi__icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+}
+[data-theme="black"] .kpi__icon,
+[data-theme="dark"] .kpi__icon {
+  color: var(--lime-500);
+}
+.kpi--warning .kpi__icon {
+  background: color-mix(in srgb, var(--warning) 16%, transparent);
+  color: var(--warning);
+}
+.kpi__value {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2rem, 1.6rem + 1.4vw, 2.6rem);
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kpi__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-height: 20px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.kpi__delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.kpi__delta--up {
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+}
+.kpi__delta--down {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+.kpi__delta--flat {
+  color: var(--text-secondary);
+  background: var(--bg-muted);
+}
+.kpi__spark {
+  height: 30px;
+  margin-top: 2px;
+}
+.kpi__spark svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.kpi__spark svg path[fill="none"] {
+  filter: drop-shadow(0 0 6px var(--chart-1-soft));
+}
+
+/* Cartões de gráfico */
+.painel-chart-card {
+  box-shadow: var(--shadow-xs);
+}
+.painel-chart-card__title {
+  font-family: var(--font-display);
+  letter-spacing: 0.12em;
+  font-size: 12px;
+}
+
+/* Saudação: tamanho por largura, sem quebrar o nome. */
+.nos-greeting {
+  overflow-wrap: anywhere;
+}
+
+/* Saudação centralizada no topo da página (pedido de 2026-09-12). */
+.painel-saudacao {
+  text-align: center;
+  padding: 6px 0 4px;
+}
+.painel-saudacao .nos-eyebrow-date {
+  margin-bottom: 6px;
+}
+.painel-saudacao .nos-greeting {
+  margin: 0 auto;
+  max-width: 24ch;
+}

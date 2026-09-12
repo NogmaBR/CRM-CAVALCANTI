@@ -2,6 +2,7 @@ import 'server-only';
 import { type PagamentoStatus, STATUS_QUE_CONTAM } from '@/lib/status-labels';
 import { createClient } from '@/lib/supabase/server';
 import { sanitizeSearchQuery } from '@/lib/util/search';
+import { pareceUuid } from '@/lib/util/uuid';
 import type { Database } from '@nogma/db';
 
 export type Pagamento = Database['public']['Tables']['pagamentos']['Row'];
@@ -54,6 +55,8 @@ export async function listPagamentos(filters: ListPagamentosFilters = {}): Promi
 }
 
 export async function getPagamento(id: string): Promise<Pagamento | null> {
+  // Id que não é uuid vira 404, não erro 500 (o Postgres recusaria o cast).
+  if (!pareceUuid(id)) return null;
   const supabase = await createClient();
   const { data, error } = await supabase.from('pagamentos').select('*').eq('id', id).maybeSingle();
   if (error) throw new Error(`Falha ao carregar pagamento: ${error.message}`);

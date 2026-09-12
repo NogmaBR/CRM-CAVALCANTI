@@ -1,6 +1,6 @@
 'use client';
 
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface DonutCategoriaProps {
   data: Array<{ nome: string; cor: string | null; total: number; count: number }>;
@@ -39,7 +39,7 @@ function CustomTooltip({
       <div style={{ fontWeight: 700 }}>{item.nome}</div>
       <div>{formatBRL(item.total)}</div>
       <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>
-        {item.count} pagto{item.count === 1 ? '' : 's'}
+        {item.count} pagamento{item.count === 1 ? '' : 's'}
       </div>
     </div>
   );
@@ -63,8 +63,8 @@ export function DonutCategoria({ data }: DonutCategoriaProps) {
           cx="50%"
           cy="50%"
         >
-          {data.map((entry, i) => (
-            <Cell key={i} fill={entry.cor ?? '#565B5B'} />
+          {data.map((entry) => (
+            <Cell key={entry.nome} fill={entry.cor ?? '#565B5B'} />
           ))}
         </Pie>
         <Tooltip content={<CustomTooltip />} />

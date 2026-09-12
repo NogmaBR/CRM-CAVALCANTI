@@ -1,7 +1,11 @@
 'use client';
 
-import Link from 'next/link';
-import { useMemo, useState, useRef, useEffect } from 'react';
+import { rotuloDaColuna } from '@/components/data-table';
+import { Badge, type BadgeVariant } from '@/components/nogma/Badge';
+import { Button } from '@/components/nogma/Button';
+import { Checkbox } from '@/components/nogma/Checkbox';
+import { Input } from '@/components/nogma/Input';
+import type { Obra } from '@/lib/data/obras';
 import type { ColumnDef, RowSelectionState, SortingState } from '@tanstack/react-table';
 import {
   flexRender,
@@ -12,11 +16,8 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { Archive, ChevronDown, ChevronUp, Pencil, Search, X } from 'lucide-react';
-import { Badge, type BadgeVariant } from '@/components/nogma/Badge';
-import { Button } from '@/components/nogma/Button';
-import { Checkbox } from '@/components/nogma/Checkbox';
-import { Input } from '@/components/nogma/Input';
-import type { Obra } from '@/lib/data/obras';
+import Link from 'next/link';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { bulkArchiveObras } from './actions';
 import '@/components/data-table.css';
 
@@ -72,6 +73,7 @@ function IndeterminateCheckbox({
       <input ref={ref} type="checkbox" {...rest} />
       <span className="ng-check__box">
         <svg
+          aria-hidden="true"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -198,7 +200,7 @@ export function ObrasTable({
   function handleBulkArchive() {
     const n = selectedIds.length;
     const confirmed = window.confirm(
-      `Arquivar ${n} obra(s)? A acao e reversivel — filtre por "Arquivadas" para restaurar.`,
+      `Arquivar ${n} obra(s)? A ação é reversível — filtre por "Arquivadas" para restaurar.`,
     );
     if (confirmed) {
       formRef.current?.requestSubmit();
@@ -209,6 +211,7 @@ export function ObrasTable({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Banners */}
       {successMessage ? (
+        // biome-ignore lint/a11y/useSemanticElements: banner de status (padrão do projeto)
         <div
           role="status"
           aria-live="polite"
@@ -283,7 +286,7 @@ export function ObrasTable({
             leadingIcon={<X size={14} />}
             onClick={() => setRowSelection({})}
           >
-            Cancelar selecao
+            Cancelar seleção
           </Button>
         </div>
       ) : null}
@@ -319,7 +322,14 @@ export function ObrasTable({
                           ? 'nos-dt__th nos-dt__th--sortable'
                           : 'nos-dt__th'
                       }
+                      tabIndex={header.column.getCanSort() ? 0 : undefined}
                       onClick={header.column.getToggleSortingHandler()}
+                      onKeyDown={(e) => {
+                        if (header.column.getCanSort() && (e.key === 'Enter' || e.key === ' ')) {
+                          e.preventDefault();
+                          header.column.toggleSorting();
+                        }
+                      }}
                       aria-sort={
                         header.column.getIsSorted() === 'asc'
                           ? 'ascending'
@@ -346,8 +356,10 @@ export function ObrasTable({
             <tbody>
               {table.getRowModel().rows.length === 0 ? (
                 <tr>
-                  <td colSpan={columns.length} className="nos-dt__empty">
-                    Nenhuma obra encontrada. Clique em &lsquo;Nova Obra&rsquo; para comecar.
+                  <td colSpan={columns.length} className="nos-dt__empty" data-label="">
+                    {globalFilter.trim()
+                      ? 'Nada encontrado com esse termo.'
+                      : 'Nenhuma obra ainda. Clique em “Nova Obra” para começar.'}
                   </td>
                 </tr>
               ) : (
@@ -363,7 +375,12 @@ export function ObrasTable({
                     }
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="nos-dt__td">
+                      <td
+                        key={cell.id}
+                        className="nos-dt__td"
+                        data-col={cell.column.id}
+                        data-label={rotuloDaColuna(cell.column)}
+                      >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
                     ))}
@@ -385,7 +402,7 @@ export function ObrasTable({
               Anterior
             </button>
             <span className="nos-dt__page-info">
-              Pagina {table.getState().pagination.pageIndex + 1} de {table.getPageCount()}
+              Página {table.getState().pagination.pageIndex + 1} de {table.getPageCount()}
             </span>
             <button
               type="button"
@@ -393,7 +410,7 @@ export function ObrasTable({
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
             >
-              Proxima
+              Próxima
             </button>
           </div>
         ) : null}

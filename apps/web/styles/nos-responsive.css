@@ -14,40 +14,10 @@
   }
 }
 
-/* --- Sidebar auto-hide (tablet+): revela no hover/foco da borda esquerda -
-   Pedido do briefing: sidebar clicável, some quando o mouse sai. Abaixo de
-   768px o wrapper vira `display:contents` (não interfere no drawer mobile,
-   que continua sendo o `MobileNav`/Radix Dialog independente disto). */
+/* --- Sidebar (tablet+): trilho de ícones sempre visível, que expande no
+   hover/foco e recolhe ao tirar o mouse. Regras em `nos-shell.css`. --- */
 .nos-sidebar-zone {
   display: contents;
-}
-@media (min-width: 768px) {
-  .nos-sidebar-zone {
-    display: block;
-    position: fixed;
-    inset: 0 auto 0 0;
-    width: 14px; /* faixa de hover — só a borda precisa reagir */
-    z-index: 30;
-  }
-  .nos-sidebar-zone .nos-sidebar {
-    position: absolute;
-    inset: 0 auto 0 0;
-    transform: translateX(-100%);
-    transition: transform var(--dur-base) var(--ease-out);
-    box-shadow: var(--shadow-xl);
-  }
-  /* :focus-within cobre navegação por teclado — Tab entra num link da
-     sidebar mesmo com ela fora da tela (translateX não remove do fluxo
-     de foco), então ela aparece visualmente assim que o foco chega lá. */
-  .nos-sidebar-zone:hover .nos-sidebar,
-  .nos-sidebar-zone:focus-within .nos-sidebar {
-    transform: translateX(0);
-  }
-}
-@media (min-width: 768px) and (prefers-reduced-motion: reduce) {
-  .nos-sidebar-zone .nos-sidebar {
-    transition: none;
-  }
 }
 
 /* --- Mobile drawer trigger: shown only on mobile ------------------------- */
@@ -135,12 +105,20 @@
 }
 
 @keyframes nos-fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 @keyframes nos-drawer-in {
-  from { transform: translateX(-100%); }
-  to   { transform: translateX(0); }
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -193,35 +171,7 @@
   }
 }
 
-.nos-topbar__actions {
-  display: none;
-}
-@media (min-width: 900px) {
-  .nos-topbar__actions {
-    display: inline-flex;
-  }
-}
-
-/* --- Search: swap between full input (desktop) and icon (mobile) -------- */
-.nos-search.nos-search--desktop {
-  display: none;
-  height: 36px;
-  width: clamp(180px, 32vw, 320px);
-}
-.ng-iconbtn.nos-search-trigger {
-  display: inline-flex;
-}
-@media (min-width: 900px) {
-  .nos-search.nos-search--desktop {
-    display: flex;
-  }
-  .ng-iconbtn.nos-search-trigger {
-    display: none;
-  }
-}
-.nos-search input {
-  min-width: 0;
-}
+/* --- Ações do topo e busca: ver `nos-shell.css` ------------------------ */
 
 /* --- Sidebar/desktop: reserve space via layout only, not media query ---- */
 /* Ensures main content scrolls independently on any viewport */
@@ -330,7 +280,7 @@
   }
 }
 .nos-coming::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -422,9 +372,7 @@
 /* --- Nav item: refined hover microinteraction ----------------------- */
 .nos-navitem {
   position: relative;
-  transition:
-    background var(--dur-base) var(--ease-out),
-    color var(--dur-base) var(--ease-out),
+  transition: background var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out),
     transform var(--dur-fast) var(--ease-out);
 }
 .nos-navitem:active {
@@ -441,8 +389,14 @@ body {
 
 /* --- Staggered fade-up entrance (used on Painel stats) ------------- */
 @keyframes nos-fade-up {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 .nos-fade-up {
   opacity: 0;
@@ -493,7 +447,8 @@ body {
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  transition: border-color var(--dur-base) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  transition: border-color var(--dur-base) var(--ease-out), transform var(--dur-fast)
+    var(--ease-out);
 }
 .nos-activity__item:hover {
   border-color: color-mix(in srgb, var(--lime-500) 40%, var(--border-subtle));
@@ -541,9 +496,9 @@ body {
 
 /* --- Custom easings (Emil: built-in easings are too weak) --- */
 :root {
-  --ease-out-strong:   cubic-bezier(0.23, 1, 0.32, 1);
-  --ease-in-out-strong:cubic-bezier(0.77, 0, 0.175, 1);
-  --ease-drawer:       cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 /* --- Pressed state on ANY interactive element with .ng-btn / .ng-iconbtn --- */
@@ -551,14 +506,12 @@ body {
 .ng-btn,
 .ng-iconbtn {
   will-change: transform;
-  transition:
-    background var(--dur-base) var(--ease-out-strong),
-    color var(--dur-base) var(--ease-out-strong),
-    box-shadow var(--dur-base) var(--ease-out-strong),
-    transform 120ms var(--ease-out-strong);
+  transition: background var(--dur-base) var(--ease-out-strong), color var(--dur-base)
+    var(--ease-out-strong), box-shadow var(--dur-base) var(--ease-out-strong), transform 120ms
+    var(--ease-out-strong);
 }
-.ng-btn:active:not(:disabled):not([aria-disabled='true']),
-.ng-iconbtn:active:not(:disabled):not([aria-disabled='true']) {
+.ng-btn:active:not(:disabled):not([aria-disabled="true"]),
+.ng-iconbtn:active:not(:disabled):not([aria-disabled="true"]) {
   transform: scale(0.97);
 }
 .nos-navitem:active {
@@ -566,7 +519,7 @@ body {
 }
 
 /* --- Focus-visible from palette (Emil/Impeccable: theme browser surfaces) --- */
-:where(button, [role='button'], a, input, textarea, select, [tabindex]):focus-visible {
+:where(button, [role="button"], a, input, textarea, select, [tabindex]):focus-visible {
   outline: 2px solid var(--lime-500);
   outline-offset: 2px;
   border-radius: var(--radius-md);
@@ -577,8 +530,8 @@ body {
   background: color-mix(in srgb, var(--lime-500) 40%, transparent);
   color: var(--text-primary);
 }
-:root[data-theme='black'] ::selection,
-:root[data-theme='dark'] ::selection {
+:root[data-theme="black"] ::selection,
+:root[data-theme="dark"] ::selection {
   background: color-mix(in srgb, var(--lime-500) 55%, transparent);
   color: #000;
 }
@@ -617,19 +570,19 @@ body {
 .ng-stat__value,
 .ng-stat__delta {
   font-variant-numeric: tabular-nums;
-  font-feature-settings: 'tnum' 1, 'cv11' 1;
+  font-feature-settings: "tnum" 1, "cv11" 1;
 }
 
 /* --- Sparkline: subtle glow adds depth without shadow costume --- */
-.nos-stat-spark svg path[fill='none'] {
+.nos-stat-spark svg path[fill="none"] {
   filter: drop-shadow(0 0 6px color-mix(in srgb, var(--lime-500) 45%, transparent));
 }
-:root[data-theme='black'] .nos-stat-spark svg path[fill='none'],
-:root[data-theme='dark'] .nos-stat-spark svg path[fill='none'] {
+:root[data-theme="black"] .nos-stat-spark svg path[fill="none"],
+:root[data-theme="dark"] .nos-stat-spark svg path[fill="none"] {
   filter: drop-shadow(0 0 8px color-mix(in srgb, var(--lime-500) 55%, transparent));
 }
 /* Warning-tone sparklines (down-trending): keep the amber glow instead of lime */
-.nos-stat-spark svg path[stroke*='warning'] {
+.nos-stat-spark svg path[stroke*="warning"] {
   filter: drop-shadow(0 0 6px color-mix(in srgb, var(--warning, #eab308) 45%, transparent));
 }
 
@@ -646,15 +599,19 @@ body {
 .nos-topbar__title {
   color: var(--text-primary);
 }
-:root[data-theme='black'] .nos-topbar__title,
-:root[data-theme='dark'] .nos-topbar__title {
+:root[data-theme="black"] .nos-topbar__title,
+:root[data-theme="dark"] .nos-topbar__title {
   color: var(--lime-500);
 }
 
 /* --- Improve drawer entrance easing to Emil's drawer curve --- */
 @keyframes nos-drawer-in {
-  from { transform: translateX(-100%); }
-  to   { transform: translateX(0); }
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
 .nos-drawer {
   animation: nos-drawer-in 320ms var(--ease-drawer);
@@ -670,10 +627,8 @@ body {
 
 /* --- Activity card: refined hover (no border-color flash) --- */
 .nos-activity__item {
-  transition:
-    border-color var(--dur-base) var(--ease-out-strong),
-    transform 180ms var(--ease-out-strong),
-    box-shadow var(--dur-base) var(--ease-out-strong);
+  transition: border-color var(--dur-base) var(--ease-out-strong), transform 180ms
+    var(--ease-out-strong), box-shadow var(--dur-base) var(--ease-out-strong);
 }
 .nos-activity__item:hover {
   box-shadow: 0 4px 12px -6px color-mix(in srgb, var(--lime-500) 20%, transparent);
@@ -728,10 +683,8 @@ body {
   background: transparent;
   color: var(--petroleum-300);
   cursor: pointer;
-  transition:
-    background var(--dur-base) var(--ease-out-strong),
-    color var(--dur-base) var(--ease-out-strong),
-    transform 120ms var(--ease-out-strong);
+  transition: background var(--dur-base) var(--ease-out-strong), color var(--dur-base)
+    var(--ease-out-strong), transform 120ms var(--ease-out-strong);
 }
 .nos-userpill__logout:hover {
   background: color-mix(in srgb, #fff 8%, transparent);

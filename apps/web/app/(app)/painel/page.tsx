@@ -1,8 +1,9 @@
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
+import { EmptyState } from '@/components/nogma/EmptyState';
 import { Sparkline } from '@/components/nogma/Sparkline';
-import { Stat } from '@/components/nogma/Stat';
 import {
+  type AtividadeItem,
   type KpiCard,
   getAtividadeRecente,
   getGastoPorCategoria,
@@ -12,22 +13,79 @@ import {
 } from '@/lib/data/painel';
 import { listPagamentosSemDocumento } from '@/lib/data/pendentes';
 import { createClient } from '@/lib/supabase/server';
-import { ArrowRight, Building2, FileText, MessageSquare, Plus, TriangleAlert } from 'lucide-react';
+import {
+  ArrowRight,
+  Building2,
+  FileText,
+  MessageSquare,
+  Minus,
+  Plus,
+  TrendingDown,
+  TrendingUp,
+  TriangleAlert,
+  Wallet,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { BarSerieMensal } from './charts/bar-serie-mensal';
 import { DonutCategoria } from './charts/donut-categoria';
 import { LineAcumulado } from './charts/line-acumulado';
 import './painel.css';
 
-function statDir(dir: 'up' | 'down' | 'flat'): 'up' | 'down' {
-  return dir === 'down' ? 'down' : 'up';
-}
-
-function statDelta(kpi: KpiCard): string {
-  if (kpi.delta_pct !== null) {
-    return `${kpi.delta_pct > 0 ? '+' : ''}${kpi.delta_pct.toFixed(1)}%`;
-  }
-  return kpi.caption;
+/**
+ * Cartão de KPI.
+ *
+ * Antes o mesmo texto aparecia duas vezes (como "delta" e como legenda) e a
+ * sparkline era absoluta por cima do número. Agora: delta só quando existe
+ * variação real contra o mês anterior; a legenda fica embaixo; a sparkline
+ * tem a própria linha.
+ */
+function Kpi({
+  kpi,
+  icon: Icon,
+  i,
+  tone = 'default',
+}: {
+  kpi: KpiCard;
+  icon: LucideIcon;
+  i: number;
+  tone?: 'default' | 'warning';
+}) {
+  const dir = kpi.direction;
+  const DeltaIcon = dir === 'up' ? TrendingUp : dir === 'down' ? TrendingDown : Minus;
+  const pct = kpi.delta_pct;
+  const delta = pct === null ? null : `${pct > 0 ? '+' : ''}${pct.toFixed(1)}%`;
+  const stroke = tone === 'warning' ? 'var(--warning)' : undefined;
+  const fill =
+    tone === 'warning' ? 'color-mix(in srgb, var(--warning) 18%, transparent)' : undefined;
+  return (
+    <article className={`kpi kpi--${tone} nos-fade-up`} style={{ ['--i' as string]: i }}>
+      <div className="kpi__top">
+        <span className="kpi__label">{kpi.label}</span>
+        <span className="kpi__icon" aria-hidden="true">
+          <Icon size={16} />
+        </span>
+      </div>
+      <div className="kpi__value">{kpi.value}</div>
+      <div className="kpi__meta">
+        {delta ? (
+          <span className={`kpi__delta kpi__delta--${dir}`}>
+            <DeltaIcon size={13} aria-hidden="true" />
+            {delta}
+          </span>
+        ) : null}
+        <span className="kpi__caption">{kpi.caption}</span>
+      </div>
+      <div className="kpi__spark">
+        <Sparkline
+          data={kpi.trend8m}
+          stroke={stroke}
+          fill={fill}
+          ariaLabel={`${kpi.label}: tendência dos últimos 8 meses`}
+        />
+      </div>
+    </article>
+  );
 }
 
 const TIPO_ICON = {
@@ -35,6 +93,36 @@ const TIPO_ICON = {
   documento: FileText,
   mensagem: MessageSquare,
 } as const;
+
+function AtividadeLinha({ item }: { item: AtividadeItem }) {
+  const Icon = TIPO_ICON[item.tipo];
+  const conteudo = (
+    <div className="nos-activity__item">
+      <div className="nos-activity__icon">
+        <Icon size={18} aria-hidden="true" />
+      </div>
+      <div className="nos-activity__body">
+        <div className="nos-activity__title">{item.titulo}</div>
+        <div className="nos-activity__meta">{item.meta}</div>
+      </div>
+      <div className="nos-activity__time">
+        {relativeTime(item.timestamp)}{' '}
+        <ArrowRight
+          size={13}
+          aria-hidden="true"
+          style={{ verticalAlign: 'middle', marginLeft: 4, opacity: 0.5 }}
+        />
+      </div>
+    </div>
+  );
+  return item.href ? (
+    <Link href={item.href} style={{ textDecoration: 'none', display: 'block' }}>
+      {conteudo}
+    </Link>
+  ) : (
+    conteudo
+  );
+}
 
 export default async function PainelPage() {
   const supabase = await createClient();
@@ -83,9 +171,25 @@ export default async function PainelPage() {
   const primeiroNomeRaw = email.split('@')[0]?.split('.')[0] ?? 'voce';
   const primeiroNome = primeiroNomeRaw[0]!.toUpperCase() + primeiroNomeRaw.slice(1);
 
-  const hoje = new Date()
-    .toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
+  // Data e saudação em hora de Brasília: o runtime da Vercel é UTC, e às
+  // 22h o painel dizia "Bom dia" com a data de amanhã.
+  const agora = new Date();
+  const hoje = agora
+    .toLocaleDateString('pt-BR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      timeZone: 'America/Sao_Paulo',
+    })
     .toUpperCase();
+  const hora = Number(
+    new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      hour12: false,
+      timeZone: 'America/Sao_Paulo',
+    }).format(agora),
+  );
+  const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
 
   // Running sum for area chart — computed server-side
   let acc = 0;
@@ -98,7 +202,7 @@ export default async function PainelPage() {
     <>
       <TopBar
         title="Painel"
-        subtitle="Visao geral da operacao"
+        subtitle="Visão geral da operação"
         actions={
           <Link href="/obras/novo" style={{ textDecoration: 'none' }}>
             <Button variant="primary" leadingIcon={<Plus size={16} />}>
@@ -109,12 +213,15 @@ export default async function PainelPage() {
       />
 
       <div className="nos-page-body">
-        <p className="eyebrow nos-eyebrow-date">{hoje}</p>
-        <h2 className="nos-greeting">
-          Bom dia, <span className="mark-lime">{primeiroNome}</span>
-        </h2>
+        <div className="painel-saudacao">
+          <p className="eyebrow nos-eyebrow-date">{hoje}</p>
+          <h2 className="nos-greeting">
+            {saudacao}, {primeiroNome}
+          </h2>
+        </div>
 
         {alertas.length > 0 ? (
+          // biome-ignore lint/a11y/useSemanticElements: banner de alerta (padrão do projeto)
           <div className="painel-alertas" role="status">
             <TriangleAlert size={16} aria-hidden="true" className="painel-alertas__icone" />
             <ul className="painel-alertas__lista">
@@ -129,83 +236,28 @@ export default async function PainelPage() {
           </div>
         ) : null}
 
-        {/* KPI Grid */}
+        {/* KPIs */}
         <div className="nos-kpi-grid" style={{ marginTop: 28 }}>
-          <div className="nos-stat-wrap nos-fade-up" style={{ ['--i' as string]: 0 }}>
-            <Stat
-              label={kpis.obras_ativas.label}
-              value={kpis.obras_ativas.value}
-              delta={statDelta(kpis.obras_ativas)}
-              direction={statDir(kpis.obras_ativas.direction)}
-              caption={kpis.obras_ativas.caption}
-            />
-            <div className="nos-stat-spark">
-              <Sparkline
-                data={kpis.obras_ativas.trend8m}
-                ariaLabel="Tendencia obras ultimos 8 meses"
-              />
-            </div>
-          </div>
-
-          <div className="nos-stat-wrap nos-fade-up" style={{ ['--i' as string]: 1 }}>
-            <Stat
-              label={kpis.gasto_mes.label}
-              value={kpis.gasto_mes.value}
-              delta={statDelta(kpis.gasto_mes)}
-              direction={statDir(kpis.gasto_mes.direction)}
-              caption={kpis.gasto_mes.caption}
-            />
-            <div className="nos-stat-spark">
-              <Sparkline data={kpis.gasto_mes.trend8m} ariaLabel="Tendencia gasto mensal" />
-            </div>
-          </div>
-
-          <div className="nos-stat-wrap nos-fade-up" style={{ ['--i' as string]: 2 }}>
-            <Stat
-              label={kpis.gasto_total.label}
-              value={kpis.gasto_total.value}
-              delta={statDelta(kpis.gasto_total)}
-              direction={statDir(kpis.gasto_total.direction)}
-              caption={kpis.gasto_total.caption}
-            />
-            <div className="nos-stat-spark">
-              <Sparkline data={kpis.gasto_total.trend8m} ariaLabel="Total acumulado" />
-            </div>
-          </div>
-
-          <div className="nos-stat-wrap nos-fade-up" style={{ ['--i' as string]: 3 }}>
-            <Stat
-              label={kpis.pendencias.label}
-              value={kpis.pendencias.value}
-              delta={statDelta(kpis.pendencias)}
-              direction={statDir(kpis.pendencias.direction)}
-              caption={kpis.pendencias.caption}
-            />
-            <div className="nos-stat-spark">
-              <Sparkline
-                data={kpis.pendencias.trend8m}
-                stroke="var(--warning, #eab308)"
-                fill="color-mix(in srgb, var(--warning, #eab308) 18%, transparent)"
-                ariaLabel="Pendencias ao longo do tempo"
-              />
-            </div>
-          </div>
+          <Kpi kpi={kpis.obras_ativas} icon={Building2} i={0} />
+          <Kpi kpi={kpis.gasto_mes} icon={Wallet} i={1} />
+          <Kpi kpi={kpis.gasto_total} icon={TrendingUp} i={2} />
+          <Kpi kpi={kpis.pendencias} icon={MessageSquare} i={3} tone="warning" />
         </div>
 
         {/* Analises Section */}
         <section className="nos-section nos-fade-up" style={{ ['--i' as string]: 4 }}>
-          <h3 className="nos-section__title">Analises</h3>
+          <h3 className="nos-section__title">Análises</h3>
 
           {/* Bar chart: full width */}
           <div className="painel-chart-card" style={{ marginBottom: 16 }}>
-            <h3 className="painel-chart-card__title">Gastos mensais — ultimos 12 meses</h3>
+            <h3 className="painel-chart-card__title">Gastos mensais — últimos 12 meses</h3>
             <BarSerieMensal data={serieMensal} />
           </div>
 
           {/* Donut + Line side by side */}
           <div className="painel-charts-grid">
             <div className="painel-chart-card">
-              <h3 className="painel-chart-card__title">Gasto por categoria — ultimos 3 meses</h3>
+              <h3 className="painel-chart-card__title">Gasto por categoria — últimos 3 meses</h3>
               <DonutCategoria data={categorias} />
             </div>
             <div className="painel-chart-card">
@@ -217,57 +269,26 @@ export default async function PainelPage() {
 
         {/* Activity Section */}
         <section className="nos-section nos-fade-up" style={{ ['--i' as string]: 5 }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'baseline',
-              justifyContent: 'space-between',
-              marginBottom: 14,
-            }}
-          >
-            <h3 className="nos-section__title">Atividade recente</h3>
-            <span className="nos-section__hint">Ultimas 48h</span>
+          <div className="nos-page-head">
+            <h3 className="nos-section__title" style={{ margin: 0 }}>
+              Atividade recente
+            </h3>
+            <span className="nos-section__hint">Últimas 48h</span>
           </div>
 
           {atividade.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
-              Nenhuma atividade nas ultimas 48h.
-            </p>
+            <EmptyState
+              icon={<MessageSquare size={24} aria-hidden="true" />}
+              title="Nenhuma atividade nas últimas 48h"
+              compact
+            >
+              Pagamentos, documentos e mensagens novas aparecem aqui.
+            </EmptyState>
           ) : (
             <div className="nos-activity">
-              {atividade.map((item) => {
-                const Icon = TIPO_ICON[item.tipo];
-                const content = (
-                  <div className="nos-activity__item">
-                    <div className="nos-activity__icon">
-                      <Icon size={18} />
-                    </div>
-                    <div className="nos-activity__body">
-                      <div className="nos-activity__title">{item.titulo}</div>
-                      <div className="nos-activity__meta">{item.meta}</div>
-                    </div>
-                    <div className="nos-activity__time">
-                      {relativeTime(item.timestamp)}{' '}
-                      <ArrowRight
-                        size={13}
-                        style={{ verticalAlign: 'middle', marginLeft: 4, opacity: 0.5 }}
-                      />
-                    </div>
-                  </div>
-                );
-
-                return item.href ? (
-                  <Link
-                    key={item.id}
-                    href={item.href}
-                    style={{ textDecoration: 'none', display: 'block' }}
-                  >
-                    {content}
-                  </Link>
-                ) : (
-                  <div key={item.id}>{content}</div>
-                );
-              })}
+              {atividade.map((item) => (
+                <AtividadeLinha key={item.id} item={item} />
+              ))}
             </div>
           )}
         </section>

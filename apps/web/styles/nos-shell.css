@@ -1,0 +1,854 @@
+/* =============================================================================
+   Nogma CRM — Casca do app (revisão de front-end, 2026-09-12)
+
+   Carregado DEPOIS de nos-chrome.css e nos-responsive.css: tudo aqui vence o
+   que veio antes. Cobre:
+     1. Sidebar como trilho de ícones (desktop) que expande no hover/foco
+     2. Topbar translúcida, fixa, com a linha de ações no celular
+     3. Barra de navegação inferior (celular) com safe-area
+     4. Busca (⌘K) e sino de pendências
+     5. Estados vazios, telas de erro e utilitários compartilhados
+   ========================================================================== */
+
+:root {
+  --rail-w: 72px;
+  --sidebar-w: 252px;
+  --topbar-h: 64px;
+  --tabbar-h: 64px;
+}
+
+/* ---------------------------------------------------------------------------
+   1. Sidebar
+   --------------------------------------------------------------------------- */
+
+.nos-sidebar {
+  background: linear-gradient(180deg, var(--sidebar-bg) 0%, var(--sidebar-bg-2) 100%);
+  color: var(--sidebar-fg);
+  padding: 14px 12px;
+  gap: 6px;
+}
+
+.nos-brand {
+  padding: 8px 10px 18px;
+  gap: 12px;
+}
+.nos-brand__mark {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+}
+.nos-brand__wordtext {
+  color: var(--sidebar-fg);
+}
+
+.nos-navitem {
+  color: var(--sidebar-muted);
+  padding: 11px 14px;
+  gap: 14px;
+  font-size: 14.5px;
+}
+.nos-navitem svg {
+  flex: none;
+}
+.nos-navitem:hover {
+  background: color-mix(in srgb, var(--sidebar-fg) 9%, transparent);
+  color: var(--sidebar-fg);
+}
+.nos-navitem.is-active {
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-active-fg);
+  box-shadow: 0 6px 18px -8px color-mix(in srgb, var(--sidebar-active-bg) 70%, transparent);
+}
+.nos-nav__sep {
+  height: 1px;
+  margin: 8px 10px;
+  background: color-mix(in srgb, var(--sidebar-fg) 12%, transparent);
+}
+
+.nos-userpill {
+  background: color-mix(in srgb, var(--sidebar-fg) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sidebar-fg) 8%, transparent);
+}
+.nos-userpill__name {
+  color: var(--sidebar-fg);
+}
+.nos-userpill__org {
+  color: var(--sidebar-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nos-userpill__logout {
+  color: var(--sidebar-muted);
+}
+
+@media (min-width: 768px) {
+  .nos-sidebar-zone {
+    display: block;
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: var(--rail-w);
+    z-index: 40;
+  }
+  .nos-sidebar-zone .nos-sidebar {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: var(--rail-w);
+    overflow: hidden;
+    transition: width var(--dur-base) var(--ease-out-strong, var(--ease-out)), box-shadow
+      var(--dur-base) var(--ease-out);
+    will-change: width;
+  }
+  /* Expande no hover e no foco de teclado (Tab entra num link → abre). */
+  .nos-sidebar-zone:hover .nos-sidebar,
+  .nos-sidebar-zone:focus-within .nos-sidebar {
+    width: var(--sidebar-w);
+    box-shadow: var(--shadow-xl);
+  }
+
+  /* No trilho, só o ícone: rótulos e textos somem sem quebrar linha. */
+  .nos-navitem__label,
+  .nos-brand__wordtext,
+  .nos-userpill__meta,
+  .nos-userpill__logout {
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-base) var(--ease-out);
+    white-space: nowrap;
+  }
+  .nos-sidebar-zone:hover .nos-navitem__label,
+  .nos-sidebar-zone:focus-within .nos-navitem__label,
+  .nos-sidebar-zone:hover .nos-brand__wordtext,
+  .nos-sidebar-zone:focus-within .nos-brand__wordtext,
+  .nos-sidebar-zone:hover .nos-userpill__meta,
+  .nos-sidebar-zone:focus-within .nos-userpill__meta,
+  .nos-sidebar-zone:hover .nos-userpill__logout,
+  .nos-sidebar-zone:focus-within .nos-userpill__logout {
+    opacity: 1;
+    transform: none;
+    transition-delay: 60ms;
+  }
+
+  .nos-navitem {
+    width: calc(var(--rail-w) - 24px);
+  }
+  .nos-sidebar-zone:hover .nos-navitem,
+  .nos-sidebar-zone:focus-within .nos-navitem {
+    width: 100%;
+  }
+  .nos-navitem svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .nos-userpill {
+    padding: 6px;
+  }
+
+  /* O conteúdo reserva a largura do trilho — a expansão flutua por cima. */
+  .nos-app-shell > main {
+    margin-left: var(--rail-w);
+  }
+}
+@media (min-width: 768px) and (prefers-reduced-motion: reduce) {
+  .nos-sidebar-zone .nos-sidebar,
+  .nos-navitem__label,
+  .nos-brand__wordtext,
+  .nos-userpill__meta,
+  .nos-userpill__logout {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   2. Topbar — título centralizado no topo, controles nas laterais
+   Grade `1fr auto 1fr`: as duas colunas laterais têm sempre a mesma largura
+   (a maior das duas), então o título fica no centro exato da barra.
+   --------------------------------------------------------------------------- */
+
+.nos-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  grid-template-areas: "left heading right";
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 10px;
+  min-height: var(--topbar-h);
+  padding: 10px 12px;
+  background: var(--topbar-bg);
+  -webkit-backdrop-filter: saturate(160%) blur(14px);
+  backdrop-filter: saturate(160%) blur(14px);
+  border-bottom: 1px solid var(--border-subtle);
+}
+@media (min-width: 768px) {
+  .nos-topbar {
+    padding: 12px 24px;
+    min-height: 72px;
+  }
+}
+
+.nos-topbar__left {
+  grid-area: left;
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.nos-topbar__heading {
+  grid-area: heading;
+  justify-self: center;
+  min-width: 0;
+  max-width: 100%;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.nos-topbar__title {
+  max-width: 100%;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (min-width: 768px) {
+  .nos-topbar__title {
+    font-size: 22px;
+  }
+}
+/* Subtítulo como "eyebrow" da marca: Agency, caixa alta, tracking largo. */
+.nos-topbar__sub {
+  display: none;
+  max-width: 100%;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (min-width: 768px) {
+  .nos-topbar__sub {
+    display: block;
+  }
+}
+:root[data-theme="black"] .nos-topbar__title,
+:root[data-theme="dark"] .nos-topbar__title {
+  color: var(--lime-500);
+}
+
+/* Direita: ícones (busca, sino, tema) e, no desktop, as ações da página. */
+.nos-topbar__right {
+  grid-area: right;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.nos-topbar__tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+/* Tema no topo só no desktop; no celular ele mora no rodapé do menu. */
+.nos-topbar__theme {
+  display: none;
+}
+@media (min-width: 768px) {
+  .nos-topbar__theme {
+    display: inline-flex;
+  }
+}
+
+/* Ações da página. No desktop ficam à direita, ao lado dos ícones. Abaixo de
+   900px descem para uma linha própria, centralizada, com rolagem lateral se
+   não couberem — antes elas simplesmente sumiam no celular. */
+.nos-topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.nos-topbar__actions > * {
+  flex: none;
+}
+.nos-topbar__actions form {
+  display: contents;
+}
+@media (max-width: 899.98px) {
+  .nos-topbar {
+    grid-template-areas:
+      "left heading right"
+      "actions actions actions";
+  }
+  .nos-topbar__right {
+    display: contents;
+  }
+  .nos-topbar__tools {
+    grid-area: right;
+    justify-self: end;
+  }
+  .nos-topbar__actions {
+    grid-area: actions;
+    justify-content: safe center;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .nos-topbar__actions::-webkit-scrollbar {
+    display: none;
+  }
+  .nos-topbar__actions .ng-btn--md {
+    height: 40px;
+    padding: 0 14px;
+    font-size: var(--text-sm);
+  }
+}
+
+/* Busca: ícone em todos os tamanhos (⌘K no desktop). */
+.ng-iconbtn.nos-search-trigger {
+  display: inline-flex;
+}
+
+/* Sino com contagem. */
+.nos-bell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: background var(--dur-base) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+.nos-bell:hover {
+  background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+}
+.nos-bell:active {
+  transform: scale(0.94);
+}
+.nos-bell__count {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 2px var(--surface-card);
+}
+
+/* ---------------------------------------------------------------------------
+   3. Barra inferior (celular)
+   --------------------------------------------------------------------------- */
+
+.nos-tabbar {
+  display: none;
+}
+@media (max-width: 767.98px) {
+  .nos-tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 35;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    height: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--topbar-bg);
+    -webkit-backdrop-filter: saturate(160%) blur(14px);
+    backdrop-filter: saturate(160%) blur(14px);
+    border-top: 1px solid var(--border-subtle);
+  }
+  .nos-tabbar__item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 44px;
+    padding: 6px 4px;
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    text-decoration: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: color var(--dur-base) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  }
+  .nos-tabbar__item:active {
+    transform: scale(0.94);
+  }
+  .nos-tabbar__icon {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 28px;
+    border-radius: 999px;
+    transition: background var(--dur-base) var(--ease-out);
+  }
+  .nos-tabbar__item.is-active {
+    color: var(--accent);
+  }
+  .nos-tabbar__item.is-active .nos-tabbar__icon {
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+  }
+  .nos-tabbar__badge {
+    position: absolute;
+    top: -3px;
+    right: 4px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: var(--danger);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+  }
+  /* O conteúdo não fica escondido atrás da barra. */
+  .nos-app-shell > main {
+    padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
+  }
+  /* Toasts sobem para não colidir com a barra. */
+  [data-sonner-toaster][data-y-position="bottom"] {
+    bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 12px);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   4. Paleta de busca (⌘K)
+   --------------------------------------------------------------------------- */
+
+.nos-cmdk-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: var(--overlay);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  animation: nos-fade-in var(--dur-fast) var(--ease-out);
+}
+.nos-cmdk {
+  position: fixed;
+  z-index: 61;
+  left: 50%;
+  top: min(12vh, 96px);
+  width: min(640px, calc(100vw - 24px));
+  max-height: min(70vh, 560px);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+  animation: nos-cmdk-in 180ms var(--ease-out-strong, var(--ease-out));
+}
+@keyframes nos-cmdk-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nos-cmdk,
+  .nos-cmdk-overlay {
+    animation: none;
+  }
+}
+.nos-cmdk__input {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 18px;
+  height: 58px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+}
+.nos-cmdk__input input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 16px; /* ≥16px evita o zoom automático do iOS */
+  color: var(--text-primary);
+}
+.nos-cmdk__input input::placeholder {
+  color: var(--text-muted);
+}
+.nos-cmdk__input kbd {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+  border-radius: 5px;
+  padding: 2px 6px;
+}
+.nos-cmdk__list {
+  overflow-y: auto;
+  padding: 8px;
+  overscroll-behavior: contain;
+}
+.nos-cmdk__group {
+  padding: 10px 10px 4px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.nos-cmdk__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.nos-cmdk__item[aria-selected="true"],
+.nos-cmdk__item:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.nos-cmdk__item svg {
+  flex: none;
+  color: var(--text-secondary);
+}
+.nos-cmdk__item[aria-selected="true"] svg {
+  color: var(--accent);
+}
+[data-theme="black"] .nos-cmdk__item[aria-selected="true"] svg,
+[data-theme="dark"] .nos-cmdk__item[aria-selected="true"] svg {
+  color: var(--lime-500);
+}
+.nos-cmdk__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.nos-cmdk__meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.nos-cmdk__empty {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.nos-cmdk__foot {
+  display: none;
+  gap: 16px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.nos-cmdk__foot kbd {
+  font-family: var(--font-mono);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-right: 4px;
+}
+@media (min-width: 768px) {
+  .nos-cmdk__foot {
+    display: flex;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   5. Utilitários compartilhados
+   --------------------------------------------------------------------------- */
+
+/* Estado vazio: ícone, frase e ação. */
+.nos-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 48px 24px;
+  text-align: center;
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--bg-subtle);
+}
+.nos-empty__icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.nos-empty__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+.nos-empty__text {
+  font-size: 14px;
+  color: var(--text-secondary);
+  max-width: 44ch;
+  margin: 0;
+}
+.nos-empty__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Tela de estado (erro, 404, conta arquivada). */
+.nos-estado {
+  min-height: 70dvh;
+  display: grid;
+  place-items: center;
+  padding: 32px 20px;
+}
+.nos-estado__card {
+  width: min(520px, 100%);
+  text-align: center;
+  padding: 40px 28px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-md);
+}
+.nos-estado__icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 18px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+}
+.nos-estado__icon--danger {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+}
+.nos-estado__code {
+  font-family: var(--font-display);
+  font-size: var(--text-5xl);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+.nos-estado__title {
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  margin: 0 0 8px;
+}
+.nos-estado__text {
+  color: var(--text-secondary);
+  font-size: 15px;
+  line-height: 1.55;
+  margin: 0 auto 22px;
+  max-width: 40ch;
+}
+.nos-estado__text code {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--bg-muted);
+  color: var(--text-primary);
+}
+.nos-estado__actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Botão-link: <a> com a cara de .ng-btn sem sublinhado. */
+a.ng-btn {
+  text-decoration: none;
+}
+
+/* Cabeçalho de seção reutilizável nas páginas. */
+.nos-page-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 12px;
+}
+
+/* ---------------------------------------------------------------------------
+   6. Login e definir senha — responsivo
+   --------------------------------------------------------------------------- */
+
+.nos-login {
+  min-height: 100dvh;
+  height: auto;
+}
+.nos-login__aside {
+  position: relative;
+  overflow: hidden;
+}
+/* Textura discreta: um brilho de lime no canto, sem competir com o texto. */
+.nos-login__aside::before {
+  content: "";
+  position: absolute;
+  inset: auto -20% -30% auto;
+  width: 60%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--lime-500) 22%, transparent),
+    transparent
+  );
+  pointer-events: none;
+}
+.nos-login__aside > * {
+  position: relative;
+}
+.nos-login__panel {
+  padding: 40px 24px;
+}
+.nos-login__card h1 {
+  margin-bottom: 0;
+}
+
+@media (max-width: 899.98px) {
+  .nos-login {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  .nos-login__aside {
+    padding: 28px 24px 26px;
+    gap: 18px;
+  }
+  .nos-login__logo {
+    width: 112px;
+  }
+  .nos-login__pitch {
+    margin-top: 0;
+    gap: 8px;
+  }
+  .nos-login__pitch h2 {
+    font-size: clamp(1.5rem, 1.1rem + 2.4vw, 2rem);
+    max-width: none;
+  }
+  .nos-login__pitch p {
+    font-size: 14px;
+  }
+  .nos-login__stats {
+    display: none;
+  }
+  .nos-login__panel {
+    align-items: flex-start;
+    padding: 28px 20px calc(28px + env(safe-area-inset-bottom, 0px));
+  }
+  .nos-login__card h1 {
+    font-size: 26px;
+  }
+}
+
+/* Drawer do celular acompanha a sidebar (mesmos tokens por tema). */
+.nos-drawer {
+  background: linear-gradient(180deg, var(--sidebar-bg) 0%, var(--sidebar-bg-2) 100%);
+  color: var(--sidebar-fg);
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+}
+.nos-drawer .nos-navitem {
+  color: var(--sidebar-muted);
+}
+.nos-drawer .nos-navitem:hover {
+  color: var(--sidebar-fg);
+}
+.nos-drawer .nos-navitem.is-active {
+  color: var(--sidebar-active-fg);
+}
+.nos-drawer__brand .nos-brand__wordtext {
+  color: var(--sidebar-fg);
+}
+.nos-drawer__close {
+  color: var(--sidebar-muted);
+}
+.nos-drawer__close:hover {
+  color: var(--sidebar-fg);
+}
+.nos-drawer__tema {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 4px 8px 4px 14px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--sidebar-fg) 6%, transparent);
+  color: var(--sidebar-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+.nos-drawer__tema .ng-iconbtn {
+  color: var(--sidebar-fg);
+}

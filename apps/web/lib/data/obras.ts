@@ -1,7 +1,8 @@
 import 'server-only';
-import type { Database } from '@nogma/db';
 import { createClient } from '@/lib/supabase/server';
 import { sanitizeSearchQuery } from '@/lib/util/search';
+import { pareceUuid } from '@/lib/util/uuid';
+import type { Database } from '@nogma/db';
 
 export type Obra = Database['public']['Tables']['obras']['Row'];
 
@@ -36,6 +37,8 @@ export async function listObras(filters: ListObrasFilters = {}): Promise<Obra[]>
 }
 
 export async function getObra(id: string): Promise<Obra | null> {
+  // Id que não é uuid vira 404, não erro 500 (o Postgres recusaria o cast).
+  if (!pareceUuid(id)) return null;
   const supabase = await createClient();
   const { data, error } = await supabase.from('obras').select('*').eq('id', id).maybeSingle();
   if (error) throw new Error(`Falha ao carregar obra: ${error.message}`);

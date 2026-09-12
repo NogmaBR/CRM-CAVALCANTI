@@ -4,8 +4,7 @@
 > **Mantenha-o atualizado**: ao terminar um trabalho relevante, atualize a §7 (estado)
 > e acrescente em §8 (armadilhas) qualquer erro novo que você cometeu.
 >
-> Última atualização: **2026-09-10 (noite)**, após a Fase 5 inteira ir para PR
-> (#13 logs, #14 CI + backup, #15 scripts de operação).
+> Última atualização: **2026-09-12**, após a revisão de front-end (PR #20).
 
 ---
 
@@ -449,6 +448,36 @@ mudou de regra e vale saber antes de mexer:
 - `bearerConfere()` em `lib/security/bearer.ts` para todo `CRON_SECRET`.
 - Mock classifier: `(\d{1,3}(?:\.\d{3})+…)` — o `*` lia "1200" como 120.
 - `interpretarResposta`: pergunta (`?` no fim) e emoji contraditório = `outro`.
+
+**Revisão de front-end de 2026-09-12 (PR #20, sem migration).** Auditoria com
+screenshot real de cada tela (1440px e 390px, três temas), plano em
+`docs/PLANO-FRONTEND-PREMIUM.md`. O que mudou de regra para quem for mexer em UI:
+- **Casca do app está em `styles/nos-shell.css`**, carregado por último e vencendo
+  `nos-chrome.css`/`nos-responsive.css`. Sidebar = trilho de 72px que expande no hover
+  (`--rail-w`, `--sidebar-w`); `main` tem `margin-left` igual ao trilho. Abaixo de
+  768px: drawer + barra inferior (`MobileTabBar`, 5 itens, safe-area).
+- **Ações do `TopBar` nunca somem**: abaixo de 900px descem para uma linha própria
+  (`.nos-topbar__actions`). O `TopBar` é async (conta pendências para o sino e lê o
+  tema para o toggle).
+- **Tokens novos por tema** em `tokens/colors.css`: `--surface-1/2`, `--border`,
+  `--text-strong` (antes usados e nunca definidos), `--sidebar-*`, `--mark-*`,
+  `--chart-1`, `--chart-grid`, `--topbar-bg`. Gráficos usam `var(--chart-1)`, nunca
+  `#CCFF00` fixo — no tema claro a cor é o azul do cliente.
+- **Tabelas**: `DataTable` e `ObrasTable` põem `data-col`/`data-label` em cada `td`;
+  abaixo de 768px o CSS em `data-table.css` vira cartão. Coluna com header em JSX
+  precisa de `meta: { label }`.
+- **Busca ⌘K**: `components/layout/command-palette.tsx` + `/api/busca` (sessão do
+  usuário, RLS). Atalhos fixos ficam na constante `ATALHOS`.
+- **Telas de estado** (`TelaDeEstado`) e **estado vazio** (`EmptyState`) são os
+  componentes para erro/404/lista vazia — não escreva texto solto. `app/not-found.tsx`
+  é o 404 global (o do grupo só vale para `notFound()`).
+- **Ids de rota passam por `pareceUuid()`** nos getters (`getObra` etc.): id inválido
+  vira 404, não erro 500.
+- **Sem `on-black` na sidebar/drawer**: a cor vem de `--sidebar-bg` por tema.
+- Rótulo de formulário é sentence-case 14px (`.form-layout__label` = `.ng-field__label`);
+  `select`/`textarea` têm 44px como o `Input`.
+- Headless Chromium às vezes não aplica `:hover` na primeira movimentação do mouse
+  depois do `goto` — mova o mouse para longe e volte antes de fotografar a sidebar.
 
 ### O que falta — e é ação humana, não código
 

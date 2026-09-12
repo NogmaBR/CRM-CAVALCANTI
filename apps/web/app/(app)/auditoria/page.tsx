@@ -1,18 +1,18 @@
-import Link from 'next/link';
-import { ShieldCheck, ArrowRight } from 'lucide-react';
 import { TopBar } from '@/components/layout/topbar';
 import { Badge, type BadgeVariant } from '@/components/nogma/Badge';
 import {
-  listAuditLog,
-  getEntidadeUrl,
-  extractChangedKeys,
+  AUDIT_ACAO_LABELS,
   AUDIT_ENTIDADES,
   AUDIT_ENTIDADE_LABELS,
-  AUDIT_ACAO_LABELS,
-  type AuditListItem,
-  type AuditEntidade,
   type AuditAcao,
+  type AuditEntidade,
+  type AuditListItem,
+  extractChangedKeys,
+  getEntidadeUrl,
+  listAuditLog,
 } from '@/lib/data/auditoria';
+import { ArrowRight, ShieldCheck } from 'lucide-react';
+import Link from 'next/link';
 import './auditoria.css';
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -74,7 +74,7 @@ function AuditFilters({
       {/* Acao */}
       <div className="audit-filters__group">
         <label className="audit-filters__label" htmlFor="af-acao">
-          Acao
+          Ação
         </label>
         <select
           id="af-acao"
@@ -107,7 +107,7 @@ function AuditFilters({
 
       <div className="audit-filters__group">
         <label className="audit-filters__label" htmlFor="af-to">
-          Ate
+          Até
         </label>
         <input
           id="af-to"
@@ -138,13 +138,10 @@ function AuditRow({ item }: { item: AuditListItem }) {
   const acaoLabel = AUDIT_ACAO_LABELS[acao] ?? item.acao;
   const acaoVariant = ACAO_VARIANT[acao] ?? 'neutral';
 
-  const entidadeLabel =
-    AUDIT_ENTIDADE_LABELS[item.entidade as AuditEntidade] ?? item.entidade;
+  const entidadeLabel = AUDIT_ENTIDADE_LABELS[item.entidade as AuditEntidade] ?? item.entidade;
 
   const entidadeUrl =
-    item.entidade_id != null
-      ? getEntidadeUrl(item.entidade, String(item.entidade_id))
-      : null;
+    item.entidade_id != null ? getEntidadeUrl(item.entidade, String(item.entidade_id)) : null;
 
   const changedKeys = extractChangedKeys(item.diff);
   const userName = item.user_nome ?? 'Sistema';
@@ -164,7 +161,11 @@ function AuditRow({ item }: { item: AuditListItem }) {
               <span>·</span>
               <Link href={entidadeUrl} className="audit-row__link">
                 Ver registro
-                <ArrowRight size={11} aria-hidden="true" style={{ verticalAlign: 'middle', marginLeft: 2 }} />
+                <ArrowRight
+                  size={11}
+                  aria-hidden="true"
+                  style={{ verticalAlign: 'middle', marginLeft: 2 }}
+                />
               </Link>
             </>
           ) : null}
@@ -172,15 +173,11 @@ function AuditRow({ item }: { item: AuditListItem }) {
 
         <div className="audit-row__user">
           {userName}
-          {userPapel ? (
-            <span className="audit-row__user-papel">{userPapel}</span>
-          ) : null}
+          {userPapel ? <span className="audit-row__user-papel">{userPapel}</span> : null}
         </div>
 
         {changedKeys.length > 0 ? (
-          <div className="audit-row__fields">
-            campos: {changedKeys.join(', ')}
-          </div>
+          <div className="audit-row__fields">campos: {changedKeys.join(', ')}</div>
         ) : null}
       </div>
 
@@ -233,10 +230,7 @@ export default async function AuditoriaPage({
 
   return (
     <>
-      <TopBar
-        title="Auditoria"
-        subtitle="Historico de alteracoes no sistema"
-      />
+      <TopBar title="Auditoria" subtitle="Histórico de alterações no sistema" />
       <div className="nos-page-body">
         <AuditFilters
           entidade={params.entidade}

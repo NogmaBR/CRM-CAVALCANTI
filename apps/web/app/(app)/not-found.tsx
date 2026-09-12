@@ -1,13 +1,23 @@
+import { TelaDeEstado } from '@/components/layout/tela-de-estado';
+import { ArrowLeft, SearchX } from 'lucide-react';
 import Link from 'next/link';
 
 export default function NaoEncontrado() {
   return (
-    <main id="main-content" style={{ maxWidth: 560, margin: '10vh auto', padding: 24 }}>
-      <h1 style={{ fontSize: '1.25rem' }}>Página não encontrada</h1>
-      <p>O que você procurava não existe ou foi arquivado.</p>
-      <Link href="/painel" className="nos-btn">
-        Voltar ao painel
-      </Link>
-    </main>
+    <TelaDeEstado
+      icon={<SearchX size={28} aria-hidden="true" />}
+      code="404"
+      title="Página não encontrada"
+      actions={
+        <Link href="/painel" className="ng-btn ng-btn--primary ng-btn--md">
+          <span className="ng-btn__icon" aria-hidden="true">
+            <ArrowLeft size={16} />
+          </span>
+          Voltar ao painel
+        </Link>
+      }
+    >
+      O que você procurava não existe, foi arquivado ou o endereço está errado.
+    </TelaDeEstado>
   );
 }

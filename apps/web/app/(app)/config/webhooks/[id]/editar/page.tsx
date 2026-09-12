@@ -1,9 +1,9 @@
-import { notFound } from 'next/navigation';
-import Link from 'next/link';
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
 import { Input } from '@/components/nogma/Input';
 import { createClient } from '@/lib/supabase/server';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { atualizarWebhook, regenerarSecret } from '../../actions';
 import '../../webhooks.css';
 import '@/app/(app)/_shared/form-layout.css';
@@ -88,10 +88,7 @@ export default async function EditarWebhookPage({
 
   return (
     <>
-      <TopBar
-        title="Editar webhook"
-        subtitle={wh.nome}
-      />
+      <TopBar title="Editar webhook" subtitle={wh.nome} />
 
       <div className="nos-page-body">
         <form action={atualizarWebhook} className="form-layout">
@@ -133,9 +130,17 @@ export default async function EditarWebhookPage({
 
           <fieldset className="form-layout__section">
             <legend className="form-layout__legend">Eventos</legend>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '8px 0 0 0', lineHeight: 1.5 }}>
-              Selecione quais eventos devem disparar este webhook. Ao menos um obrigatorio.
+            <p
+              style={{
+                fontSize: 12,
+                color: 'var(--text-secondary)',
+                margin: '8px 0 0 0',
+                lineHeight: 1.5,
+              }}
+            >
+              Selecione quais eventos devem disparar este webhook. Ao menos um obrigatório.
             </p>
+            {/* biome-ignore lint/a11y/useSemanticElements: fieldset quebraria o layout em grade deste grupo */}
             <div className="wh-eventos-group" role="group" aria-label="Eventos do webhook">
               {EVENTOS.map((ev) => (
                 <label key={ev.value} className="wh-evento-label">
@@ -157,12 +162,7 @@ export default async function EditarWebhookPage({
           <fieldset className="form-layout__section">
             <legend className="form-layout__legend">Disponibilidade</legend>
             <label className="wh-ativo-row">
-              <input
-                type="checkbox"
-                name="ativo"
-                value="on"
-                defaultChecked={wh.ativo}
-              />
+              <input type="checkbox" name="ativo" value="on" defaultChecked={wh.ativo} />
               <div>
                 <div className="wh-ativo-row__label">Webhook ativo</div>
                 <div className="wh-ativo-row__desc">
@@ -177,7 +177,7 @@ export default async function EditarWebhookPage({
               Cancelar
             </Link>
             <Button type="submit" variant="primary">
-              Salvar alteracoes
+              Salvar alterações
             </Button>
           </div>
         </form>
@@ -213,8 +213,8 @@ export default async function EditarWebhookPage({
                 lineHeight: 1.5,
               }}
             >
-              O secret atual nao e exibido por seguranca. Se suspeitar de comprometimento,
-              gere um novo — todos os envios posteriores usarao o novo secret.
+              O secret atual nao e exibido por seguranca. Se suspeitar de comprometimento, gere um
+              novo — todos os envios posteriores usarao o novo secret.
             </p>
             <form action={regenerarSecret}>
               <input type="hidden" name="id" value={wh.id} />

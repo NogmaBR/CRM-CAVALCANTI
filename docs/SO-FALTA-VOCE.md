@@ -26,7 +26,7 @@ SÓ FALTA VOCÊ
   🔴 1. Telefones reais dos fornecedores        ← antes de qualquer automação
   🔴 2. Credenciais (UAZAPI, Anthropic, OpenAI) + redeploy
   🔴 3. Webhook da UAZAPI + cadastrar a equipe em /config/autorizados
-  🟠 4. Mergear o PR #19 (revisão geral) + 5 limpezas que só você faz
+  🟠 4. Mergear o PR #20 (front-end premium) + 5 limpezas que só você faz
   🟠 5. Vercel Pro → um comando faz o resto (região + repo privado)
   🟠 6. Backup: restore de teste + guardar a frase + PITR
   🟡 7. Domínio próprio + Cloudflare
@@ -157,14 +157,38 @@ aparece do webhook até a resposta com o mesmo `correlacao`.
 
 ---
 
-# 🟠 4. Mergear o PR #18 + 5 limpezas que só você faz
+# 🟠 4. Mergear o PR #20 + 5 limpezas que só você faz
 
 Os PRs #13 a #17 estão mergeados e **auditados**: deploy READY, CI verde na `main`,
 `/api/health` com `problemas: []`, rotas, crons, filas, RLS, advisors do Supabase de 11
 para 5 (os 5 restantes são intencionais ou exigem plano Pro). Com o #17, o assistente
 funciona **sem** os embeddings do item 8: basta a `ANTHROPIC_API_KEY` do item 2.
 
-### 4.1 — PR #19: a revisão geral (migration já em produção)
+### 4.0 — PR #20: revisão de front-end (o que o cliente vê no dia 16)
+
+<https://github.com/NogmaBR/CRM-CAVALCANTI/pull/20> — auditoria visual com screenshot
+de cada tela em 1440px e 390px, nos três temas, e correção de tudo o que apareceu. O
+plano completo, item a item, está em `docs/PLANO-FRONTEND-PREMIUM.md`. O que muda para
+quem usa:
+
+- **Celular funciona de verdade**: o botão "Nova Obra"/"Editar"/"Arquivar" sumia abaixo
+  de 900px; agora fica numa linha abaixo do título. Tabelas viram cartões. Barra
+  inferior com Painel, Obras, Pagamentos, Pendentes e Menu.
+- **Desktop tem menu visível**: trilho de ícones que expande quando o mouse passa e
+  recolhe quando sai (o pedido do briefing continua valendo).
+- **Busca e sino funcionam**: `⌘K`/`Ctrl K` abre a busca (obras, fornecedores,
+  pagamentos, atalhos); o sino mostra quantas confirmações esperam.
+- **Painel**: cartões de KPI sem texto duplicado, gráficos na cor do tema (azul
+  Cavalcanti no claro, lime no escuro), saudação por hora de Brasília.
+- **Marca**: sidebar azul-marinho do cliente no tema claro; preto/petróleo nos escuros.
+- Acentos corrigidos em dezenas de rótulos, 404 e erro em português com a cara do app,
+  login empilhado no celular, formulários com controles do mesmo tamanho.
+
+Sem migration, sem mudança de banco. 274 testes, typecheck, lint e build limpos; CI
+verde no PR. **Pode mergear.** Depois do merge, abra o app no celular e no desktop e
+troque o tema pelo botão do topo — é o que o cliente vai ver.
+
+### 4.1 — PR #19: a revisão geral (mergeado em 2026-09-12)
 
 <https://github.com/NogmaBR/CRM-CAVALCANTI/pull/19> — três revisores independentes
 (segurança, corretude, qualidade) leram o repositório inteiro depois do merge das Fases
@@ -185,8 +209,8 @@ importam:
   tabela. E mais 20 menores.
 
 **Já apliquei e conferi a migration em produção**: `/api/health` 200, `/login` 200,
-webhook 200. 274 testes, typecheck, lint e build limpos; CI verde no PR. **Pode
-mergear.** O PR #18 (saúde sem alarme falso) você já mergeou.
+webhook 200. 274 testes, typecheck, lint e build limpos; CI verde no PR. **Mergeado
+em 2026-09-12 às 11:04**, deploy READY conferido.
 
 O que a revisão **não** conseguiu provar: o banimento de usuário arquivado com um
 usuário real (só existe um em produção) e o fluxo do WhatsApp com provider real.
