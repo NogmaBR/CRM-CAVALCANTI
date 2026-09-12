@@ -22,7 +22,12 @@ export type ClassifierKind =
 
 export interface ClassifierInput {
   texto: string | null;
-  midiaUrl: string | null;
+  /**
+   * Caminho da mídia no bucket `documents` (prefixo `whatsapp/`), já baixada
+   * pelo inbound enquanto a URL do provider valia. O classificador real lê
+   * daqui para enxergar a foto da nota; o mock ignora.
+   */
+  midiaStoragePath: string | null;
   midiaMime: string | null;
   telefone: string; // já normalizado, só dígitos
   contexto: {

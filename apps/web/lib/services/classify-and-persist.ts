@@ -1,5 +1,5 @@
 import 'server-only';
-import { type ClassifierInput, getClassifier } from '@/lib/ia/classifier';
+import { type Classifier, type ClassifierInput, getClassifier } from '@/lib/ia/classifier';
 import { logger } from '@/lib/log';
 import { hojeBR } from '@/lib/util/datas';
 import type { Database } from '@nogma/db';
@@ -41,8 +41,9 @@ function autoAprovacaoLigada(): boolean {
  *
  * O download da mídia acontece ANTES desta função, em `inbound-whatsapp`,
  * enquanto a URL do provider ainda é válida (ela expira em minutos). Aqui a
- * mídia já chega como `midia_storage_path`, e o áudio já chega transcrito em
- * `texto_transcrito`.
+ * mídia já chega como `midia_storage_path` — o classificador real relê o
+ * objeto do Storage para enxergar a foto da nota — e o áudio já chega
+ * transcrito em `texto_transcrito`.
  *
  * Chamado por `processarInbound` depois de gravar a mensagem.
  */
@@ -87,7 +88,7 @@ export async function classifyAndPersist(mensagemId: string): Promise<
     // Áudio chega com `texto_bruto` nulo: quem tem o conteúdo é a transcrição.
     // Sem este fallback todo áudio caía direto em `nao_identificado`.
     texto: msg.texto_bruto ?? msg.texto_transcrito,
-    midiaUrl: null, // hoje não baixamos; ver nota no header
+    midiaStoragePath: msg.midia_storage_path,
     midiaMime: msg.midia_mime,
     telefone: msg.telefone_from,
     contexto: {
@@ -96,8 +97,21 @@ export async function classifyAndPersist(mensagemId: string): Promise<
     },
   };
 
-  const classifier = await getClassifier();
-  const out = await classifier.classify(input);
+  // Falha do classificador (rede, chave, modelo) não pode deixar a mensagem
+  // presa em `processando` para sempre: o gestor precisa ver que deu erro e
+  // lançar à mão. O erro técnico vai para o log, não para a tela.
+  let out: Awaited<ReturnType<Classifier['classify']>>;
+  try {
+    const classifier = await getClassifier();
+    out = await classifier.classify(input);
+  } catch (err) {
+    log.erro('classificador_falhou', { mensagem_id: mensagemId, err });
+    await supabase
+      .from('mensagens_whats')
+      .update({ status: 'erro', erro_msg: 'Classificador indisponível; lançar manualmente.' })
+      .eq('id', mensagemId);
+    return { ok: false, error: 'classificador indisponível' };
+  }
 
   if (out.kind === 'nao_identificado') {
     await supabase
@@ -118,20 +132,21 @@ export async function classifyAndPersist(mensagemId: string): Promise<
     };
   }
 
+  const { valor: valorExtraido, obra_id: obraExtraida } = out.extracted;
   const autoAprovar =
     autoAprovacaoLigada() &&
     out.kind === 'pagamento_completo' &&
     out.confidence >= CONFIANCA_AUTO_APROVAR &&
-    out.extracted.valor != null &&
-    out.extracted.obra_id != null;
+    valorExtraido != null &&
+    obraExtraida != null;
 
   if (autoAprovar) {
     const insertPagto = await supabase
       .from('pagamentos')
       .insert({
-        obra_id: out.extracted.obra_id!,
+        obra_id: obraExtraida,
         fornecedor_id: out.extracted.fornecedor_id ?? null,
-        valor: out.extracted.valor!,
+        valor: valorExtraido,
         data_pagamento: out.extracted.data_pagamento ?? hojeBR(),
         origem: 'whatsapp',
         status_pagto: 'confirmado',

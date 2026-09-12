@@ -1,8 +1,10 @@
 import 'server-only';
 import { logger } from '@/lib/log';
+import { downloadDocumentBytes } from '@/lib/storage/documents';
 import { hojeBR } from '@/lib/util/datas';
 import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
+import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages/messages';
 // `zod/v4`, e não `zod`: o helper `zodOutputFormat` do SDK exige os tipos do
 // Zod 4, e o resto do projeto está no Zod 3 (o pacote 3.25 expõe as duas APIs
 // em subpaths separados). Importar de 'zod' aqui compila em erro de tipo.
@@ -27,6 +29,15 @@ const log = logger('classificador');
  * ou um `obra_id` inventado, viraria lançamento errado no financeiro do
  * cliente. Com schema, ou a resposta é válida ou falha explicitamente.
  *
+ * ## A foto entra no prompt
+ *
+ * O núcleo do contrato é "manda a foto da nota, a IA extrai". Até a revisão
+ * gstack de 2026-09-12 o classificador recebia só o texto: uma foto sem
+ * legenda virava pendência sem valor e o "SIM" terminava em "o gestor vai
+ * revisar" — a aprovação manual que o produto elimina. Agora a mídia gravada
+ * pelo inbound é relida do Storage (não passa bytes pela fila) e entra como
+ * bloco `image` ou `document`. Falha de download degrada para texto, com log.
+ *
  * ## Por que os IDs entram no prompt
  *
  * O modelo não escolhe texto livre pra obra/fornecedor: ele recebe a lista de
@@ -40,6 +51,18 @@ const MODELO_PADRAO = 'claude-opus-5';
 
 /** O classificador roda dentro do webhook; não pode demorar minutos. */
 const MAX_TOKENS = 2048;
+
+/** Formatos que a API aceita como bloco de imagem/documento. */
+const MIMES_IMAGEM = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+const MIME_PDF = 'application/pdf';
+/** Limites da API (5 MB por imagem, 32 MB por PDF); um pouco abaixo por margem. */
+const MAX_BYTES_IMAGEM = 4.5 * 1024 * 1024;
+const MAX_BYTES_PDF = 20 * 1024 * 1024;
+
+/** Como o classificador obtém os bytes da mídia. Injetável para teste. */
+export interface DepsClassificador {
+  baixarMidia: (storagePath: string) => Promise<Uint8Array | null>;
+}
 
 const SaidaSchema = z.object({
   kind: z.enum(['pagamento_completo', 'pagamento_parcial', 'documento_apenas', 'nao_identificado']),
@@ -65,6 +88,8 @@ As mensagens são informais, ditadas ou digitadas no canteiro de obra. Exemplos 
 - "segue a nota do material" (com uma foto anexada)
 - "bom dia" (não é lançamento)
 
+Quando houver uma foto ou PDF anexado, ele costuma ser a nota fiscal, o comprovante de pagamento ou o contrato. Leia o documento: valor total, data, número da nota, nome do fornecedor e a obra (quando aparecer no endereço ou na descrição). O texto da mensagem, quando existir, complementa ou corrige o que está no documento.
+
 Regras:
 1. valor sempre em reais, como número. "1.200,50" -> 1200.5. "1200 conto" -> 1200. Nunca invente valor.
 2. data_pagamento em YYYY-MM-DD. "ontem"/"hoje" resolvem contra a data informada no contexto. Sem data explícita, deixe null.
@@ -83,14 +108,16 @@ Nunca invente dados que não estão na mensagem. Faltou informação, o campo é
 export class AnthropicClassifier implements Classifier {
   private readonly client: Anthropic;
   private readonly modelo: string;
+  private readonly deps: DepsClassificador;
 
-  constructor() {
+  constructor(deps: Partial<DepsClassificador> = {}) {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
       throw new Error('IA_PROVIDER=anthropic exige ANTHROPIC_API_KEY configurada.');
     }
     this.client = new Anthropic({ apiKey });
     this.modelo = process.env.IA_MODEL ?? MODELO_PADRAO;
+    this.deps = { baixarMidia: deps.baixarMidia ?? downloadDocumentBytes };
   }
 
   async classify(input: ClassifierInput): Promise<ClassifierOutput> {
@@ -116,6 +143,9 @@ export class AnthropicClassifier implements Classifier {
       input.texto?.trim() || '(sem texto — só anexo)',
     ].join('\n');
 
+    const midia = await this.carregarMidia(input);
+    const conteudo = montarConteudo(contexto, midia);
+
     const resposta = await this.client.messages.parse({
       model: this.modelo,
       max_tokens: MAX_TOKENS,
@@ -128,7 +158,7 @@ export class AnthropicClassifier implements Classifier {
         effort: 'low',
         format: zodOutputFormat(SaidaSchema),
       },
-      messages: [{ role: 'user', content: contexto }],
+      messages: [{ role: 'user', content: conteudo }],
     });
 
     const saida = resposta.parsed_output;
@@ -145,6 +175,69 @@ export class AnthropicClassifier implements Classifier {
 
     return montarSaida(saida, input);
   }
+
+  /**
+   * Relê a mídia do Storage quando o formato é um que a API entende. Qualquer
+   * falha vira aviso no log e o modelo segue só com o texto — nunca derruba
+   * a classificação por causa do anexo.
+   */
+  private async carregarMidia(input: ClassifierInput): Promise<MidiaCarregada | null> {
+    const mime = input.midiaMime?.split(';')[0]?.trim().toLowerCase() ?? null;
+    if (!input.midiaStoragePath || !mime || !mimeSuportado(mime)) return null;
+    try {
+      const bytes = await this.deps.baixarMidia(input.midiaStoragePath);
+      if (!bytes) {
+        log.aviso('midia_nao_lida', { storage_path: input.midiaStoragePath });
+        return null;
+      }
+      return { bytes, mime };
+    } catch (err) {
+      log.aviso('midia_nao_lida', { storage_path: input.midiaStoragePath, err });
+      return null;
+    }
+  }
+}
+
+interface MidiaCarregada {
+  bytes: Uint8Array;
+  mime: string;
+}
+
+function mimeSuportado(mime: string): boolean {
+  return MIMES_IMAGEM.has(mime) || mime === MIME_PDF;
+}
+
+/**
+ * Monta o conteúdo da mensagem: a mídia primeiro (imagem ou PDF em base64),
+ * depois o contexto em texto. Mídia grande demais para a API entra como
+ * aviso em texto, para o modelo saber que havia um anexo que ele não viu.
+ *
+ * Exportada para teste: é a parte da visão que dá para verificar sem rede.
+ */
+export function montarConteudo(
+  contexto: string,
+  midia: MidiaCarregada | null,
+): string | ContentBlockParam[] {
+  if (!midia) return contexto;
+
+  const ehPdf = midia.mime === MIME_PDF;
+  const limite = ehPdf ? MAX_BYTES_PDF : MAX_BYTES_IMAGEM;
+  if (midia.bytes.byteLength > limite) {
+    return `${contexto}\n\n(Havia um anexo ${midia.mime} de ${Math.round(midia.bytes.byteLength / 1024)} KB, grande demais para ser lido. Classifique só pelo texto.)`;
+  }
+
+  const data = Buffer.from(midia.bytes).toString('base64');
+  const bloco: ContentBlockParam = ehPdf
+    ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data } }
+    : {
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: midia.mime as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+          data,
+        },
+      };
+  return [bloco, { type: 'text', text: contexto }];
 }
 
 /**

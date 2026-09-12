@@ -47,6 +47,18 @@ export async function uploadDocumentBuffer(
   if (error) throw new Error(`Falha no upload: ${error.message}`);
 }
 
+/**
+ * Baixa um objeto do bucket como bytes. Usado pelo classificador real para
+ * enxergar a foto/PDF que o WhatsApp mandou. `null` quando o objeto não
+ * existe ou o Storage falha — quem chama decide se segue só com o texto.
+ */
+export async function downloadDocumentBytes(path: string): Promise<Uint8Array | null> {
+  const supabase = serviceClient();
+  const { data, error } = await supabase.storage.from(BUCKET).download(path);
+  if (error || !data) return null;
+  return new Uint8Array(await data.arrayBuffer());
+}
+
 /** Delete objeto do Storage. Usado no rollback se DB insert falhar. */
 export async function deleteDocumentFile(path: string): Promise<void> {
   const supabase = serviceClient();
