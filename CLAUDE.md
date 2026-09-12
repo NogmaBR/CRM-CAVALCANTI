@@ -4,7 +4,7 @@
 > **Mantenha-o atualizado**: ao terminar um trabalho relevante, atualize a §7 (estado)
 > e acrescente em §8 (armadilhas) qualquer erro novo que você cometeu.
 >
-> Última atualização: **2026-09-12**, após a revisão do banco (PR #21) e do front-end (PR #20).
+> Última atualização: **2026-09-12**, após a rodada do time gstack (PR #22; #20 e #21 mergeados).
 
 ---
 
@@ -501,6 +501,28 @@ aplicada e conferida; PR #21).** Inventário real + dois revisores; plano e acha
   com RLS, papel sem permissão faz zero linhas sem erro. Pendências já seguem isso.
 - Painel conta `STATUS_QUE_CONTAM` como o resto do sistema (decisão fechada).
 - Tela de pendentes usa a RPC `pagamentos_sem_documento` (EXECUTE para authenticated).
+
+**Rodada do time gstack de 2026-09-12 (PR #22, sem migration).** Cinco personas
+(`docs/gstack/2026-09-12-{ceo,eng,design,qa}-*.md`), backlog em `TODOS.md`. Regras
+novas para quem for mexer:
+- **`ClassifierInput.midiaStoragePath`** (não existe mais `midiaUrl`): o classificador
+  Anthropic relê a mídia do Storage e manda como bloco `image`/`document`; o download é
+  injetável (`deps.baixarMidia`) e `montarConteudo` é pura e testada. Falha de download
+  degrada para texto, com `log.aviso('midia_nao_lida')`.
+- **Exceção do classificador marca a mensagem como `erro`** com texto humano
+  (`classificador_falhou` no log). Nunca deixe `mensagens_whats` em `processando`.
+- Texto interno da IA não vai para a tela: `raciocinio` do mock é escondido em
+  `/pendentes`; `/whatsapp` mostra frase humana e o erro técnico só no `title`.
+- Contraste: `--text-muted` claro `#6b7070`, petróleo `petroleum-200`; badge de sucesso
+  `#1f7a4d`; `--danger #c73f33`; cabeçalho de tabela em `--text-secondary`. Não volte
+  ao `#a1a1a1` como texto (é cor de marca, não de leitura).
+- Sidebar: `Pagamentos` no grupo principal, `Auditoria` no secundário. Tabbar 12px.
+- Cartão mobile de pagamento: `valor` primeiro (`order:-1`), data por último.
+- **Nada do `TODOS.md` entra antes de 16/09.** Com `IA_PROVIDER=mock`, foto vira
+  `documento_apenas` sem valor — a demo sem `ANTHROPIC_API_KEY` é em texto.
+- O `next dev` em `:3000` está com o worker do PostCSS morto desde 12/09 (toda rota
+  dinâmica 500); use `next build && next start -p <porta>` para testar até o usuário
+  reiniciar. O classificador barra `kill`.
 
 ### O que falta — e é ação humana, não código
 
