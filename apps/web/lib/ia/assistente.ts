@@ -1,6 +1,7 @@
 import 'server-only';
 import { logger } from '@/lib/log';
 import { buscar, fontesDe, montarContexto } from '@/lib/rag/busca';
+import { hojeBR } from '@/lib/util/datas';
 import Anthropic from '@anthropic-ai/sdk';
 import type {
   ContentBlockParam,
@@ -155,7 +156,7 @@ export async function perguntar(
   // 3. Modelo, com ferramentas.
   const contexto =
     trechos.length > 0 ? montarContexto(trechos) : '(nenhum lançamento parecido encontrado)';
-  const hoje = deps.hoje ? deps.hoje() : new Date().toISOString().slice(0, 10);
+  const hoje = deps.hoje ? deps.hoje() : hojeBR();
   const client = deps.criarCliente
     ? deps.criarCliente()
     : new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }).messages;

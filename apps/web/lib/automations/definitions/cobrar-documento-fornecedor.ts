@@ -20,13 +20,24 @@ const DIAS_PADRAO = 7;
 /** Teto por execução: uma varredura não pode virar disparo em massa. */
 const LIMITE_POR_RODADA = 25;
 
+/**
+ * Dias entre duas cobranças do MESMO pagamento. A idempotência do motor é
+ * por dia; sem este intervalo o fornecedor recebia a mesma cobrança todo
+ * dia até a nota chegar. Uma vez por semana é cobrança; todo dia é assédio.
+ */
+const DIAS_ENTRE_COBRANCAS = 7;
+
 export const cobrarDocumentoFornecedor: AutomacaoAgendada = {
   chave: 'cobrar-documento-fornecedor',
   descricao: 'Cobra por WhatsApp a nota ou comprovante de pagamentos sem documento.',
   gatilhos: ['pagamento.sem_documento'],
   apenasAgendada: true,
   efeitoExterno: true,
-  configPadrao: { dias_sem_documento: DIAS_PADRAO, limite_por_rodada: LIMITE_POR_RODADA },
+  configPadrao: {
+    dias_sem_documento: DIAS_PADRAO,
+    limite_por_rodada: LIMITE_POR_RODADA,
+    dias_entre_cobrancas: DIAS_ENTRE_COBRANCAS,
+  },
 
   /**
    * Varre pagamentos sem documento e emite um evento sintético por
@@ -38,38 +49,30 @@ export const cobrarDocumentoFornecedor: AutomacaoAgendada = {
 
     const corte = new Date(Date.now() - dias * 86_400_000).toISOString().slice(0, 10);
 
-    const { data, error } = await supabase
-      .from('pagamentos')
-      .select('id, valor, data_pagamento, fornecedor_id, documentos ( id, deleted_at )')
-      .is('deleted_at', null)
-      .in('status_pagto', ['confirmado', 'aguardando'])
-      .lte('data_pagamento', corte)
-      .not('fornecedor_id', 'is', null)
-      .order('data_pagamento', { ascending: true })
-      .limit(limite * 4); // folga: o filtro "sem documento" é aplicado abaixo
+    // O filtro "sem documento vivo" roda no banco (`pagamentos_sem_documento`),
+    // não em JS sobre os 100 mais antigos: quando os 100 mais antigos já
+    // tinham nota, a lista vinha vazia e os mais novos nunca eram alcançados.
+    const { data, error } = await supabase.rpc('pagamentos_sem_documento', {
+      p_corte: corte,
+      p_limite: limite,
+    });
 
     if (error) throw new Error(`Varredura falhou: ${error.message}`);
 
     const hoje = Date.now();
+    const linhas = data ?? [];
 
-    return (data ?? [])
-      .filter((p) => {
-        // Documento arquivado não conta como entregue.
-        const docs = (p.documentos ?? []) as Array<{ id: string; deleted_at: string | null }>;
-        return docs.every((d) => d.deleted_at !== null);
-      })
-      .slice(0, limite)
-      .map((p): Evento => {
-        const diasCorridos = Math.floor(
-          (hoje - new Date(`${p.data_pagamento}T00:00:00`).getTime()) / 86_400_000,
-        );
-        return {
-          nome: 'pagamento.sem_documento',
-          payload: { pagamentoId: p.id, dias: diasCorridos, valor: Number(p.valor) },
-          em: new Date().toISOString(),
-          userId: null,
-        };
-      });
+    return linhas.map((p): Evento => {
+      const diasCorridos = Math.floor(
+        (hoje - new Date(`${p.data_pagamento}T00:00:00`).getTime()) / 86_400_000,
+      );
+      return {
+        nome: 'pagamento.sem_documento',
+        payload: { pagamentoId: p.id, dias: diasCorridos, valor: Number(p.valor) },
+        em: new Date().toISOString(),
+        userId: null,
+      };
+    });
   },
 
   /**
@@ -82,6 +85,20 @@ export const cobrarDocumentoFornecedor: AutomacaoAgendada = {
 
     if (dias < minimo) {
       return { passa: false, motivo: `Só ${dias} dia(s) sem documento; mínimo é ${minimo}.` };
+    }
+
+    // Intervalo entre cobranças do mesmo pagamento (ver DIAS_ENTRE_COBRANCAS).
+    const intervalo = numero(ctx.config.dias_entre_cobrancas, DIAS_ENTRE_COBRANCAS);
+    const desde = new Date(Date.now() - intervalo * 86_400_000).toISOString();
+    const { count: recentes } = await ctx.supabase
+      .from('automation_executions')
+      .select('*', { count: 'exact', head: true })
+      .eq('regra_chave', 'cobrar-documento-fornecedor')
+      .eq('entidade_id', pagamentoId)
+      .eq('status', 'sucesso')
+      .gte('created_at', desde);
+    if ((recentes ?? 0) > 0) {
+      return { passa: false, motivo: `Já cobrado nos últimos ${intervalo} dia(s).` };
     }
 
     const { data: pagamento } = await ctx.supabase

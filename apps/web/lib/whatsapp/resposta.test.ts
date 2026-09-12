@@ -94,10 +94,10 @@ describe('interpretarResposta — emojis', () => {
     expect(interpretarResposta('👍❌')).toBe('outro');
   });
 
-  it('a palavra vence o emoji contraditório', () => {
+  it('palavra com emoji contraditório não age (revisão 2026-09-11)', () => {
     // "nao 👍" é ambíguo, mas o texto é o canal explícito — e o resultado
     // seguro dos dois é não gravar nada automaticamente.
-    expect(interpretarResposta('nao 👍')).toBe('nao');
+    expect(interpretarResposta('nao 👍')).toBe('outro');
   });
 });
 

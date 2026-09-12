@@ -1,5 +1,6 @@
 import 'server-only';
 import { logger } from '@/lib/log';
+import { validarUrlWebhook } from '@/lib/security/ssrf';
 
 const log = logger('uazapi');
 
@@ -102,7 +103,11 @@ export async function enviarTexto(telefone: string, texto: string): Promise<Resu
 
 export type ResultadoMidia =
   | { ok: true; bytes: Uint8Array; mime: string }
-  | { ok: false; motivo: 'sem_url' | 'http' | 'grande_demais' | 'excecao'; detalhe?: string };
+  | {
+      ok: false;
+      motivo: 'sem_url' | 'bloqueada' | 'http' | 'grande_demais' | 'excecao';
+      detalhe?: string;
+    };
 
 /**
  * Baixa a mídia de uma mensagem a partir da URL que o provider mandou.
@@ -117,9 +122,30 @@ export async function baixarMidia(url: string | null | undefined): Promise<Resul
 
   const cfg = config();
 
+  // A URL vem do corpo do webhook. O HMAC prova que o provider mandou — mas o
+  // segredo já vazou uma vez, e o webhook de SAÍDA tem guarda de SSRF
+  // exatamente por isso. Sem esta checagem, um corpo assinado com
+  // `media.url = http://169.254.169.254/...` faria a função buscar um endereço
+  // interno e guardar a resposta no bucket. Mesma régua do outro lado.
+  const guarda = await validarUrlWebhook(url);
+  if (!guarda.ok) {
+    return { ok: false, motivo: 'bloqueada', detalhe: guarda.motivo };
+  }
+
+  // O token só vai para o host do próprio provider. Mandá-lo para qualquer
+  // host que o corpo apontasse seria entregar a credencial a quem pedisse.
+  let mesmoHostDoProvider = false;
+  if (cfg) {
+    try {
+      mesmoHostDoProvider = new URL(url).host === new URL(cfg.baseUrl).host;
+    } catch {
+      mesmoHostDoProvider = false;
+    }
+  }
+
   try {
     const res = await fetch(url, {
-      headers: cfg ? { token: cfg.token } : undefined,
+      headers: cfg && mesmoHostDoProvider ? { token: cfg.token } : undefined,
       signal: AbortSignal.timeout(TIMEOUT_MS * 2),
     });
 

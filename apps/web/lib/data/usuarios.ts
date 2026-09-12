@@ -1,7 +1,8 @@
 import 'server-only';
+import { logger } from '@/lib/log';
+import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@nogma/db';
 import { createClient as createSbClient } from '@supabase/supabase-js';
-import { createClient } from '@/lib/supabase/server';
 
 export type Profile = Database['public']['Tables']['profiles']['Row'];
 export type PapelUsuario = Database['public']['Enums']['papel_usuario'];
@@ -38,10 +39,13 @@ export const PAPEL_DESCRIPTIONS: Record<PapelUsuario, string> = {
  * Service role client. Bypassa RLS + acessa auth.admin API pra emails.
  * Só server-side; nunca expor.
  */
+const log = logger('usuarios');
+
 function serviceRoleClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error('SUPABASE_SERVICE_ROLE_KEY ou NEXT_PUBLIC_SUPABASE_URL ausente');
+  if (!url || !key)
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY ou NEXT_PUBLIC_SUPABASE_URL ausente');
   return createSbClient<Database>(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
@@ -190,11 +194,24 @@ export async function archiveUsuarioAdmin(
     .eq('user_id', userId);
   if (updErr) return { ok: false, error: updErr.message };
 
-  // Revoga sessions ativas — user precisa logar de novo (e vai falhar)
+  // Banir no Auth é o que de fato revoga o acesso. Só marcar `deleted_at` e
+  // revogar sessões NÃO bastava: a senha continuava válida, o login passava,
+  // e `has_role()` — a base de toda policy — ignorava a coluna. Um admin
+  // arquivado seguia admin. Descoberto na revisão de 2026-09-11.
+  //
+  // `ban_duration` bloqueia login e refresh; o `signOut` abaixo derruba o que
+  // já está aberto. A migration 20260911140000 fechou o outro lado: has_role
+  // exige deleted_at IS NULL, e o próprio usuário não consegue se desarquivar.
+  const { error: banErr } = await admin.auth.admin.updateUserById(userId, {
+    ban_duration: '876000h', // ~100 anos: "para sempre", reversível no restore
+  });
+  if (banErr) return { ok: false, error: `Arquivado, mas o banimento falhou: ${banErr.message}` };
+
   const { error: signOutErr } = await admin.auth.admin.signOut(userId);
   if (signOutErr) {
-    // Não bloqueia — soft delete já efetivo
-    console.error(`Sign out após archive falhou: ${signOutErr.message}`);
+    // Não bloqueia: com o ban, a sessão aberta morre no próximo refresh (≤ 1h)
+    // e a RLS já nega tudo pelo deleted_at.
+    log.aviso('signout_apos_arquivar_falhou', { erro: signOutErr.message });
   }
   return { ok: true };
 }
@@ -205,5 +222,9 @@ export async function restoreUsuarioAdmin(
   const admin = serviceRoleClient();
   const { error } = await admin.from('profiles').update({ deleted_at: null }).eq('user_id', userId);
   if (error) return { ok: false, error: error.message };
+
+  const { error: banErr } = await admin.auth.admin.updateUserById(userId, { ban_duration: 'none' });
+  if (banErr)
+    return { ok: false, error: `Restaurado, mas continua banido no Auth: ${banErr.message}` };
   return { ok: true };
 }

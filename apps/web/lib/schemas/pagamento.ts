@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const pagamentoOrigemEnum = z.enum(['whatsapp', 'manual', 'importado']);
-export const pagamentoStatusEnum = z.enum(['confirmado', 'aguardando', 'erro']);
+export const pagamentoStatusEnum = z.enum(['confirmado', 'aguardando', 'recusado', 'erro']);
 
 const isoDateRequired = z
   .string()
@@ -13,10 +13,12 @@ const valorRequired = z
   .trim()
   .min(1, 'Valor é obrigatório')
   .transform((v, ctx) => {
-    // Aceita "1.234,56" (pt-BR) e "1234.56" (padrão)
+    // Aceita "1.234,56" (pt-BR), "1.250" (milhar pt-BR) e "1234.56" (padrão)
     const normalized = v.includes(',')
       ? v.replace(/\./gu, '').replace(',', '.')
-      : v;
+      : /^\d{1,3}(\.\d{3})+$/u.test(v)
+        ? v.replace(/\./gu, '')
+        : v;
     const n = Number(normalized);
     if (!Number.isFinite(n) || n < 0) {
       ctx.addIssue({
@@ -39,7 +41,8 @@ const uuidOptional = z
   .optional()
   .transform((v) => (v == null || v === '' ? undefined : v))
   .refine(
-    (v) => v === undefined || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(v),
+    (v) =>
+      v === undefined || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(v),
     'ID inválido',
   );
 
@@ -65,7 +68,10 @@ export type PagamentoOrigem = z.infer<typeof pagamentoOrigemEnum>;
 export type PagamentoStatus = z.infer<typeof pagamentoStatusEnum>;
 
 /** Formata valor NUMERIC(12,2) como BRL. */
-export function formatBRL(n: number | string | null | undefined, opts: { compact?: boolean } = {}): string {
+export function formatBRL(
+  n: number | string | null | undefined,
+  opts: { compact?: boolean } = {},
+): string {
   if (n == null || n === '') return '—';
   const num = typeof n === 'string' ? Number(n) : n;
   if (!Number.isFinite(num)) return '—';

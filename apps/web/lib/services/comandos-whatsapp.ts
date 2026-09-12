@@ -1,4 +1,5 @@
 import 'server-only';
+import { inicioDoMesBR, inicioDoMesPassadoBR, nomeDoMesBR } from '@/lib/util/datas';
 import type { Comando } from '@/lib/whatsapp/comandos';
 import type { Database } from '@nogma/db';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -44,11 +45,10 @@ export async function executarComando(supabase: Client, comando: Comando): Promi
 
 /** Total do mês corrente + comparação com o mês anterior. */
 async function resumo(supabase: Client): Promise<string> {
-  const agora = new Date();
-  const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1).toISOString().slice(0, 10);
-  const inicioMesPassado = new Date(agora.getFullYear(), agora.getMonth() - 1, 1)
-    .toISOString()
-    .slice(0, 10);
+  // Mês civil em Brasília, não em UTC: às 21h do último dia o "mês corrente"
+  // já era o seguinte no servidor.
+  const inicioMes = inicioDoMesBR();
+  const inicioMesPassado = inicioDoMesPassadoBR();
 
   const [mesAtual, mesPassado, obrasAtivas] = await Promise.all([
     supabase
@@ -76,7 +76,7 @@ async function resumo(supabase: Client): Promise<string> {
   const qtd = (mesAtual.data ?? []).length;
 
   const linhas = [
-    `*Resumo de ${agora.toLocaleDateString('pt-BR', { month: 'long' })}*`,
+    `*Resumo de ${nomeDoMesBR()}*`,
     '',
     `Gasto no mês: *${formatBRL(total)}*`,
     `Lançamentos: ${qtd}`,

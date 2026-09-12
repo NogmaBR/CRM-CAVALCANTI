@@ -160,11 +160,14 @@ export async function getPlanilhaPorToken(token: string): Promise<Planilha | nul
 
   // Telemetria best-effort: saber se o cliente abriu é útil pro gestor, mas
   // não é motivo pra derrubar a página se o UPDATE falhar.
-  supabase
-    .rpc('registrar_acesso_compartilhamento', { p_token: token })
-    .then(undefined, (err: unknown) => {
-      console.error('[planilha] falha ao registrar acesso:', err);
-    });
+  // Aguardado: numa função serverless, o que não foi aguardado pode não rodar
+  // depois da resposta. É uma RPC barata; falha só vira log.
+  const { error: erroAcesso } = await supabase.rpc('registrar_acesso_compartilhamento', {
+    p_token: token,
+  });
+  if (erroAcesso) {
+    console.error('[planilha] falha ao registrar acesso:', erroAcesso.message);
+  }
 
   return {
     obra: {

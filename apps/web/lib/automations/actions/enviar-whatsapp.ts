@@ -1,4 +1,5 @@
 import 'server-only';
+import { normalizeTelefone } from '@/lib/schemas/uazapi';
 import { enviarTexto, whatsappConfigurado } from '@/lib/services/uazapi';
 import type { ContextoExecucao } from '../tipos';
 
@@ -27,7 +28,16 @@ export async function enviarWhatsapp(
     );
   }
 
-  const envio = await enviarTexto(telefone, texto);
+  // O provider espera só dígitos; o cadastro vem "(51) 99999-8888". E número
+  // com menos de 10 dígitos não é telefone — é o cheiro dos placeholders do
+  // protótipo. Recusar aqui vira linha de `falha` com motivo claro, em vez de
+  // um HTTP 4xx opaco todo dia.
+  const digitos = normalizeTelefone(telefone);
+  if (digitos.length < 10) {
+    throw new Error(`Telefone inválido para envio (${digitos.length} dígitos após normalizar).`);
+  }
+
+  const envio = await enviarTexto(digitos, texto);
   if (!envio.ok) {
     throw new Error(`Envio falhou: ${envio.motivo}${envio.detalhe ? ` — ${envio.detalhe}` : ''}`);
   }

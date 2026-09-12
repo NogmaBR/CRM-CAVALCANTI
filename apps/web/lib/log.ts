@@ -79,7 +79,21 @@ export function mascararTelefone(valor: unknown): string {
 }
 
 function ehCampoDeTelefone(chave: string): boolean {
-  return chave === 'telefone' || /Telefone$/u.test(chave) || chave === 'from';
+  // `telefone`, `telefone_from`, `telefone_whats`, `remetenteTelefone`,
+  // `from`, `number`, `numero`, `fone` — tudo que o projeto usa para número.
+  return /telefone|fone|numero|^from$|^number$/iu.test(chave);
+}
+
+/**
+ * Um erro do Postgres por violação de NOT NULL/CHECK traz "Failing row
+ * contains (…)" com a linha inteira — telefone, texto da mensagem, tudo.
+ * Sai do log.
+ */
+function semLinhaDoPostgres(texto: string): string {
+  return texto.replace(
+    /Failing row contains \([^)]*\)/gu,
+    'Failing row contains ([linha omitida])',
+  );
 }
 
 /**
@@ -99,7 +113,7 @@ function sanear(valor: unknown, chave = '', profundidade = 0): unknown {
 
   switch (typeof valor) {
     case 'string':
-      return cortar(valor);
+      return cortar(semLinhaDoPostgres(valor));
     case 'number':
     case 'boolean':
       return valor;

@@ -1,5 +1,6 @@
 import 'server-only';
 import { logger } from '@/lib/log';
+import { hojeBR } from '@/lib/util/datas';
 import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 // `zod/v4`, e não `zod`: o helper `zodOutputFormat` do SDK exige os tipos do
@@ -93,7 +94,7 @@ export class AnthropicClassifier implements Classifier {
   }
 
   async classify(input: ClassifierInput): Promise<ClassifierOutput> {
-    const hoje = new Date().toISOString().slice(0, 10);
+    const hoje = hojeBR();
 
     const contexto = [
       `Data de hoje: ${hoje}`,

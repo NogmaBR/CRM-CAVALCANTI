@@ -1,7 +1,8 @@
 import 'server-only';
-import type { Database } from '@nogma/db';
+import { type PagamentoStatus, STATUS_QUE_CONTAM } from '@/lib/status-labels';
 import { createClient } from '@/lib/supabase/server';
 import { sanitizeSearchQuery } from '@/lib/util/search';
+import type { Database } from '@nogma/db';
 
 export type Pagamento = Database['public']['Tables']['pagamentos']['Row'];
 
@@ -10,10 +11,10 @@ export interface ListPagamentosFilters {
   obra_id?: string;
   fornecedor_id?: string;
   categoria_id?: string;
-  status_pagto?: 'confirmado' | 'aguardando' | 'erro';
+  status_pagto?: PagamentoStatus;
   origem?: 'whatsapp' | 'manual' | 'importado';
   from?: string; // AAAA-MM-DD inclusive
-  to?: string;   // AAAA-MM-DD inclusive
+  to?: string; // AAAA-MM-DD inclusive
   includeArchived?: boolean;
   onlyArchived?: boolean;
 }
@@ -61,7 +62,7 @@ export async function getPagamento(id: string): Promise<Pagamento | null> {
 
 export interface SumPagamentosFilters {
   obra_id?: string;
-  status_pagto?: 'confirmado' | 'aguardando' | 'erro';
+  status_pagto?: PagamentoStatus;
   /** AAAA-MM (ex: '2026-09') — agrega o mês inteiro */
   month?: string;
   from?: string;
@@ -77,10 +78,16 @@ export async function sumPagamentosBy(
   filters: SumPagamentosFilters = {},
 ): Promise<{ total: number; count: number }> {
   const supabase = await createClient();
-  let query = supabase.from('pagamentos').select('valor', { count: 'exact' }).is('deleted_at', null);
+  let query = supabase
+    .from('pagamentos')
+    .select('valor', { count: 'exact' })
+    .is('deleted_at', null);
 
   if (filters.obra_id) query = query.eq('obra_id', filters.obra_id);
+  // Sem filtro explícito, soma só o que conta: recusado e erro ficavam dentro
+  // do total antes.
   if (filters.status_pagto) query = query.eq('status_pagto', filters.status_pagto);
+  else query = query.in('status_pagto', [...STATUS_QUE_CONTAM]);
   if (filters.month) {
     const [year, mo] = filters.month.split('-');
     if (year && mo) {

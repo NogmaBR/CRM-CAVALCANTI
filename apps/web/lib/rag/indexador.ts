@@ -38,6 +38,8 @@ type Client = SupabaseClient<Database>;
 const log = logger('rag');
 
 export interface ResultadoSincronizacao {
+  /** Documentos cuja origem sumiu do CRM (arquivada) e foram marcados apagados. */
+  removidos?: number;
   lidos: number;
   criados: number;
   atualizados: number;
@@ -260,6 +262,25 @@ export async function sincronizarDocumentos(supabase: Client): Promise<Resultado
     resultado.criados += Math.min(LOTE, aCriar.length - i);
   }
 
+  // O que sumiu do CRM sai da base: um pagamento arquivado (`deleted_at`)
+  // não vem mais em `coletar*`, mas o documento dele continuava vivo e o
+  // assistente seguia citando um lançamento que não existe. Soft-delete —
+  // o índice único parcial ignora linhas apagadas, então um desarquivamento
+  // recria limpo.
+  const vistos = new Set(documentos.map((d) => `${d.origem}|${d.origemId}`));
+  const sumidos = (existentes ?? []).filter((e) => !vistos.has(`${e.origem}|${e.origem_id}`));
+  if (sumidos.length > 0) {
+    const { error } = await supabase
+      .from('knowledge_documents')
+      .update({ deleted_at: new Date().toISOString() })
+      .in(
+        'id',
+        sumidos.map((e) => e.id),
+      );
+    if (error) throw new Error(`Falha ao apagar conhecimento órfão: ${error.message}`);
+    resultado.removidos = sumidos.length;
+  }
+
   return resultado;
 }
 
@@ -307,21 +328,23 @@ export async function gerarEmbeddingsPendentes(
   const textos: string[] = [];
   const dono: Array<{ documentoId: string; ordem: number }> = [];
 
+  // O corte respeita a fronteira do documento: cortar no meio marcaria um
+  // documento como indexado com metade dos trechos. Os que não couberam
+  // continuam pendentes e entram na próxima leva.
+  let documentosForaDoLote = 0;
   for (const doc of lista) {
     const trechos = dividirEmTrechos(doc.conteudo);
+    if (textos.length > 0 && textos.length + trechos.length > MAX_LOTE) {
+      documentosForaDoLote += 1;
+      continue;
+    }
     trechos.forEach((t, i) => {
       textos.push(t);
       dono.push({ documentoId: doc.id, ordem: i });
     });
   }
-
-  if (textos.length > MAX_LOTE) {
-    // Corta no limite do lote em vez de falhar: os que sobraram continuam
-    // pendentes e entram na próxima leva.
-    const corte = textos.length - MAX_LOTE;
-    textos.length = MAX_LOTE;
-    dono.length = MAX_LOTE;
-    log.aviso('lote_cortado', { sobraram: corte, maxLote: MAX_LOTE });
+  if (documentosForaDoLote > 0) {
+    log.aviso('lote_cortado', { sobraram: documentosForaDoLote, maxLote: MAX_LOTE });
   }
 
   const emb = await gerarEmbeddings(textos);
@@ -340,6 +363,15 @@ export async function gerarEmbeddingsPendentes(
     conteudo,
     embedding: paraLiteralVetor(emb.vetores[i] ?? []),
   }));
+
+  // Apaga antes de inserir: se a marcação de `indexado_em` falhou na leva
+  // anterior, os trechos já estão lá e o índice único recusaria o insert.
+  const idsDoLote = [...new Set(dono.map((d) => d.documentoId))];
+  const { error: erroLimpeza } = await supabase
+    .from('knowledge_chunks')
+    .delete()
+    .in('documento_id', idsDoLote);
+  if (erroLimpeza) throw new Error(`Falha ao limpar trechos antigos: ${erroLimpeza.message}`);
 
   const { error: erroInsert } = await supabase.from('knowledge_chunks').insert(linhas as never);
   if (erroInsert) throw new Error(`Falha ao gravar trechos: ${erroInsert.message}`);

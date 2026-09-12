@@ -87,9 +87,16 @@ jobs:
             git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
             RANGE="$(git merge-base "$BASE" HEAD)...HEAD"
           else
-            RANGE="${{ github.event.before }}...${{ github.sha }}"
+            ANTES="${{ github.event.before }}"
+            # Branch nova ou force push: `before` vem zerado e o diff falharia
+            # em silêncio, deixando o lint verde sem lintar nada.
+            if [ -z "$ANTES" ] || [ "$ANTES" = "0000000000000000000000000000000000000000" ]; then
+              ANTES="$(git rev-parse HEAD~1)"
+            fi
+            RANGE="$ANTES...${{ github.sha }}"
           fi
           echo "range: $RANGE"
+          set -o pipefail
           # Um caminho por linha, num arquivo — nunca numa string de shell.
           # Caminhos do App Router têm parênteses (`app/(app)/...`), e um
           # `biome check a/(b)/c.ts` sem aspas é erro de sintaxe do bash.

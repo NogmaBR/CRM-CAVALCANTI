@@ -1,6 +1,7 @@
 import 'server-only';
-import type { Database } from '@nogma/db';
+import { STATUS_QUE_CONTAM } from '@/lib/status-labels';
 import { createClient } from '@/lib/supabase/server';
+import type { Database } from '@nogma/db';
 
 /**
  * Data layer para os 4 relatórios oficiais (Obra Completa · Mês ·
@@ -23,9 +24,7 @@ type Categoria = Database['public']['Tables']['categorias']['Row'];
 
 export interface ObraCompletaData {
   obra: Obra;
-  pagamentos: Array<
-    Pagamento & { fornecedor_nome: string | null; categoria_nome: string | null }
-  >;
+  pagamentos: Array<Pagamento & { fornecedor_nome: string | null; categoria_nome: string | null }>;
   documentos: Array<Documento & { fornecedor_nome: string | null }>;
   totais: {
     valorTotalPago: number;
@@ -52,6 +51,7 @@ export async function getObraCompletaData(obraId: string): Promise<ObraCompletaD
       .select('*')
       .eq('obra_id', obraId)
       .is('deleted_at', null)
+      .in('status_pagto', [...STATUS_QUE_CONTAM])
       .order('data_pagamento', { ascending: false }),
     supabase
       .from('documentos')
@@ -74,10 +74,16 @@ export async function getObraCompletaData(obraId: string): Promise<ObraCompletaD
 
   const [fornRes, catRes] = await Promise.all([
     fornIds.size > 0
-      ? supabase.from('fornecedores').select('id, nome').in('id', [...fornIds])
+      ? supabase
+          .from('fornecedores')
+          .select('id, nome')
+          .in('id', [...fornIds])
       : Promise.resolve({ data: [] as Array<Pick<Fornecedor, 'id' | 'nome'>>, error: null }),
     catIds.size > 0
-      ? supabase.from('categorias').select('id, nome').in('id', [...catIds])
+      ? supabase
+          .from('categorias')
+          .select('id, nome')
+          .in('id', [...catIds])
       : Promise.resolve({ data: [] as Array<Pick<Categoria, 'id' | 'nome'>>, error: null }),
   ]);
 
@@ -91,9 +97,13 @@ export async function getObraCompletaData(obraId: string): Promise<ObraCompletaD
   const pagamentosEnriched = pagamentos.map((p) => {
     const v = Number(p.valor);
     valorTotalPago += v;
-    const catNome = p.categoria_id ? (catMap.get(p.categoria_id) ?? 'Sem categoria') : 'Sem categoria';
+    const catNome = p.categoria_id
+      ? (catMap.get(p.categoria_id) ?? 'Sem categoria')
+      : 'Sem categoria';
     valorPorCategoria[catNome] = (valorPorCategoria[catNome] ?? 0) + v;
-    const fornNome = p.fornecedor_id ? (fornMap.get(p.fornecedor_id) ?? 'Fornecedor desconhecido') : 'Sem fornecedor';
+    const fornNome = p.fornecedor_id
+      ? (fornMap.get(p.fornecedor_id) ?? 'Fornecedor desconhecido')
+      : 'Sem fornecedor';
     valorPorFornecedor[fornNome] = (valorPorFornecedor[fornNome] ?? 0) + v;
     return {
       ...p,
@@ -132,7 +142,11 @@ export interface MesData {
   ano: number;
   mes: number; // 1..12
   pagamentos: Array<
-    Pagamento & { obra_nome: string | null; fornecedor_nome: string | null; categoria_nome: string | null }
+    Pagamento & {
+      obra_nome: string | null;
+      fornecedor_nome: string | null;
+      categoria_nome: string | null;
+    }
   >;
   totais: {
     valorTotal: number;
@@ -156,6 +170,7 @@ export async function getMesData(ano: number, mes: number): Promise<MesData> {
     .gte('data_pagamento', inicio)
     .lt('data_pagamento', fim)
     .is('deleted_at', null)
+    .in('status_pagto', [...STATUS_QUE_CONTAM])
     .order('data_pagamento', { ascending: true });
 
   const pags = pagamentos ?? [];
@@ -210,7 +225,9 @@ export async function getMesData(ano: number, mes: number): Promise<MesData> {
       count: (obraCurrent?.count ?? 0) + 1,
     });
 
-    const catNome = p.categoria_id ? (catMap.get(p.categoria_id) ?? 'Sem categoria') : 'Sem categoria';
+    const catNome = p.categoria_id
+      ? (catMap.get(p.categoria_id) ?? 'Sem categoria')
+      : 'Sem categoria';
     const catCurrent = porCategoriaMap.get(catNome);
     porCategoriaMap.set(catNome, {
       total: (catCurrent?.total ?? 0) + v,
@@ -280,6 +297,7 @@ export async function getFornecedorData(
     .select('*')
     .eq('fornecedor_id', fornecedorId)
     .is('deleted_at', null)
+    .in('status_pagto', [...STATUS_QUE_CONTAM])
     .order('data_pagamento', { ascending: false });
   if (from) query = query.gte('data_pagamento', from);
   if (to) query = query.lte('data_pagamento', to);
@@ -312,7 +330,9 @@ export async function getFornecedorData(
       ),
     ),
   ];
-  const catIds = [...new Set(pagamentos.map((p) => p.categoria_id).filter((v): v is string => !!v))];
+  const catIds = [
+    ...new Set(pagamentos.map((p) => p.categoria_id).filter((v): v is string => !!v)),
+  ];
 
   const [obrasRes, catsRes] = await Promise.all([
     obraIds.length > 0
@@ -426,13 +446,18 @@ export async function getAtividadeData(from: string, to: string): Promise<Ativid
   const docs = docRes.data ?? [];
 
   const obraIds = [
-    ...new Set([...pags.map((p) => p.obra_id), ...docs.map((d) => d.obra_id)].filter((v): v is string => !!v)),
+    ...new Set(
+      [...pags.map((p) => p.obra_id), ...docs.map((d) => d.obra_id)].filter(
+        (v): v is string => !!v,
+      ),
+    ),
   ];
   const fornIds = [
-    ...new Set([
-      ...pags.map((p) => p.fornecedor_id),
-      ...docs.map((d) => d.fornecedor_id),
-    ].filter((v): v is string => !!v)),
+    ...new Set(
+      [...pags.map((p) => p.fornecedor_id), ...docs.map((d) => d.fornecedor_id)].filter(
+        (v): v is string => !!v,
+      ),
+    ),
   ];
 
   const [obrasRes, fornsRes] = await Promise.all([

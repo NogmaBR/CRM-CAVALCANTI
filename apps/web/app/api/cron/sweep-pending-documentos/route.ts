@@ -1,5 +1,6 @@
 import 'server-only';
 import { logger } from '@/lib/log';
+import { bearerConfere } from '@/lib/security/bearer';
 import type { Database } from '@nogma/db';
 import { createClient as createSbClient } from '@supabase/supabase-js';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -22,9 +23,7 @@ const log = logger('cron');
  * Runtime nodejs porque usa service role key (Node-only).
  */
 export async function GET(request: NextRequest) {
-  const auth = request.headers.get('authorization');
-  const secret = process.env.CRON_SECRET;
-  if (!secret || auth !== `Bearer ${secret}`) {
+  if (!bearerConfere(request.headers.get('authorization'), process.env.CRON_SECRET)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
@@ -56,6 +55,17 @@ export async function GET(request: NextRequest) {
 
   // Housekeeping do rate limiting: sem isso a tabela `rate_limits` só cresce.
   // Best-effort — falhar aqui não invalida a limpeza de documentos órfãos.
+  // A dedupe de comandos/perguntas do WhatsApp só precisa cobrir a janela de
+  // retry do provider (minutos). Sete dias é folga; depois disso é lixo.
+  const seteDias = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  const { error: erroRespostas } = await supabase
+    .from('whatsapp_respostas')
+    .delete()
+    .lt('created_at', seteDias);
+  if (erroRespostas) {
+    log.erro('sweep_whatsapp_respostas_falhou', { erro: erroRespostas.message });
+  }
+
   let rateLimitsPurgados = 0;
   const purge = await supabase.rpc('rate_limit_purge', { p_idade_horas: 24 });
   if (purge.error) {

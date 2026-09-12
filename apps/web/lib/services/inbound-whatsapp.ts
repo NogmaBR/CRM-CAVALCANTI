@@ -159,6 +159,11 @@ export async function processarInbound(
   // mensagem — encheriam a fila do gestor com coisa que já foi respondida.
   const comando = interpretarComando(textoEfetivo);
   if (comando) {
+    // Comando não vira `mensagens_whats`, então a dedupe do passo 2 não o vê.
+    // Sem isto, um retry do provider respondia o resumo duas vezes.
+    if (await jaRespondida(supabase, payload.id, `comando:${comando.tipo}`)) {
+      return { acao: 'duplicada' };
+    }
     const resposta = await executarComando(supabase, comando).catch((err) => {
       log.erro('comando_falhou', { comando: comando.tipo, err });
       return 'Não consegui consultar isso agora. Tente de novo em instantes.';
@@ -187,6 +192,11 @@ export async function processarInbound(
     const { assistenteDisponivel, perguntar } = await import('@/lib/ia/assistente');
 
     if (assistenteDisponivel()) {
+      // Mesma dedupe dos comandos: 4 rodadas de modelo é onde o provider
+      // mais dá timeout e reenvia — e a segunda resposta seria diferente.
+      if (await jaRespondida(supabase, payload.id, 'pergunta')) {
+        return { acao: 'duplicada' };
+      }
       const resposta = await perguntar(supabase, {
         pergunta: textoEfetivo ?? '',
         canal: 'whatsapp',
@@ -212,7 +222,7 @@ export async function processarInbound(
   // ---------------------------------------------------------------------
   // 6. Mensagem nova: grava e classifica.
   // ---------------------------------------------------------------------
-  const mensagemId = await gravarMensagem({
+  const gravada = await gravarMensagem({
     supabase,
     payload,
     telefone,
@@ -222,6 +232,13 @@ export async function processarInbound(
     status: 'recebida',
   });
 
+  // Retry do provider que chegou enquanto o primeiro ainda processava: o
+  // primeiro é quem classifica e pergunta. Este só reconhece e sai.
+  if (gravada.duplicada) {
+    return { acao: 'duplicada' };
+  }
+
+  const mensagemId = gravada.id;
   if (!mensagemId) {
     return { acao: 'erro', detalhe: 'falha ao gravar mensagem' };
   }
@@ -334,7 +351,9 @@ interface ArgsGravar {
   pagamentoId?: string | null;
 }
 
-async function gravarMensagem(args: ArgsGravar): Promise<string | null> {
+async function gravarMensagem(
+  args: ArgsGravar,
+): Promise<{ id: string | null; duplicada: boolean }> {
   const { supabase, payload, telefone, autorizadoId, tipoDb, midia, status } = args;
 
   const { data, error } = await supabase
@@ -359,18 +378,16 @@ async function gravarMensagem(args: ArgsGravar): Promise<string | null> {
     // 23505 = outro retry do provider venceu a corrida entre a checagem de
     // duplicidade e este insert. O trabalho dele vale; não é erro nosso.
     if (error?.code === '23505') {
-      const { data: vencedor } = await supabase
-        .from('mensagens_whats')
-        .select('id')
-        .eq('msg_id_uazapi', payload.id)
-        .maybeSingle();
-      return vencedor?.id ?? null;
+      // Sinaliza a corrida perdida: quem chamou NÃO pode classificar de novo.
+      // Antes devolvia só o id, e o chamador reclassificava a mensagem do
+      // vencedor — segunda pendência, segunda pergunta no WhatsApp.
+      return { id: null, duplicada: true };
     }
     log.erro('gravar_mensagem_falhou', { erro: error });
-    return null;
+    return { id: null, duplicada: false };
   }
 
-  return data.id;
+  return { id: data.id, duplicada: false };
 }
 
 interface MidiaMaterializada {
@@ -436,6 +453,24 @@ function nomeArquivo(payload: UazapiInbound, mime: string): string {
 
   const ext = mime.split(';')[0]?.split('/')[1]?.replace(/[^\w]/gu, '') || 'bin';
   return `midia.${ext}`;
+}
+
+/**
+ * Registra que esta mensagem do provider já foi (ou está sendo) respondida.
+ *
+ * `true` = já existia: é retry, não responder de novo. A tabela
+ * `whatsapp_respostas` tem o id do provider como chave primária; o segundo
+ * INSERT dá 23505. Falha de banco libera (`false`): pior responder duas
+ * vezes que nunca.
+ */
+async function jaRespondida(supabase: Client, msgIdUazapi: string, acao: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('whatsapp_respostas')
+    .insert({ msg_id_uazapi: msgIdUazapi, acao });
+  if (!error) return false;
+  if (error.code === '23505') return true;
+  log.aviso('dedupe_resposta_falhou', { erro: error.message });
+  return false;
 }
 
 /**

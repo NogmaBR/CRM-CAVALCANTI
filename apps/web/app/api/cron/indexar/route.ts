@@ -2,6 +2,7 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { comContexto, logger } from '@/lib/log';
 import { gerarEmbeddingsPendentes, sincronizarDocumentos } from '@/lib/rag/indexador';
+import { bearerConfere } from '@/lib/security/bearer';
 import type { Database } from '@nogma/db';
 import { createClient as createSbClient } from '@supabase/supabase-js';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -32,9 +33,7 @@ const log = logger('cron');
  * chamada.
  */
 export async function GET(request: NextRequest) {
-  const auth = request.headers.get('authorization');
-  const secret = process.env.CRON_SECRET;
-  if (!secret || auth !== `Bearer ${secret}`) {
+  if (!bearerConfere(request.headers.get('authorization'), process.env.CRON_SECRET)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
@@ -90,7 +89,9 @@ export async function GET(request: NextRequest) {
     } catch (err) {
       const detalhe = err instanceof Error ? err.message : String(err);
       log.erro('indexar_falhou', { detalhe });
-      return NextResponse.json({ ok: false, error: detalhe }, { status: 500 });
+      // Só o log recebe o detalhe: mensagem de Postgres ou de rede é
+      // reconhecimento de graça para quem chama.
+      return NextResponse.json({ ok: false, error: 'erro interno' }, { status: 500 });
     }
   });
 }

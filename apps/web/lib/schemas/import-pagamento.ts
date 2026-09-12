@@ -22,9 +22,13 @@ function parseValorBR(input: string): number {
   // Se só vírgula → pt-BR (1234,56)
   if (s.includes(',') && s.includes('.')) {
     const dotBeforeComma = s.lastIndexOf('.') < s.lastIndexOf(',');
-    return dotBeforeComma ? Number(s.replace(/\./gu, '').replace(',', '.')) : Number(s.replace(/,/gu, ''));
+    return dotBeforeComma
+      ? Number(s.replace(/\./gu, '').replace(',', '.'))
+      : Number(s.replace(/,/gu, ''));
   }
   if (s.includes(',')) return Number(s.replace(',', '.'));
+  // "1.250" e "12.000" são milhar pt-BR, não 1,25: grupos de exatamente 3.
+  if (/^\d{1,3}(\.\d{3})+$/u.test(s)) return Number(s.replace(/\./gu, ''));
   return Number(s);
 }
 
@@ -62,7 +66,10 @@ export const ImportPagamentoRowSchema = z
     data_pagamento: z.string().transform((v, ctx) => {
       const iso = parseDataBR(v);
       if (!iso) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Data inválida (use DD/MM/AAAA ou AAAA-MM-DD)' });
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Data inválida (use DD/MM/AAAA ou AAAA-MM-DD)',
+        });
         return z.NEVER;
       }
       return iso;

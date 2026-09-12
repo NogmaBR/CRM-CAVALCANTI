@@ -1,4 +1,5 @@
 import 'server-only';
+import { hojeBR } from '@/lib/util/datas';
 import type { Classifier, ClassifierInput, ClassifierOutput } from './classifier';
 
 /**
@@ -43,8 +44,12 @@ export class MockClassifier implements Classifier {
       };
     }
 
-    // Regex simples pra valor em reais: "R$ 1.234,56" ou "1234,56" ou "R$ 500"
-    const valorMatch = texto.match(/(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*(?:,\d{2})?|\d+(?:,\d{2})?)/u);
+    // Regex simples pra valor em reais: "R$ 1.234,56" ou "1234,56" ou "R$ 500".
+    //
+    // A primeira alternativa exige o grupo de milhar com ponto (`+`, não `*`).
+    // Com `*` ela casava "120" dentro de "1200" e o regex nunca tentava a
+    // segunda: "paguei 1200 de areia" virava R$ 120,00. Revisão de 2026-09-11.
+    const valorMatch = texto.match(/(?:R\$\s*)?(\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d+(?:,\d{2})?)/u);
     const valor = valorMatch ? parseValor(valorMatch[1]!) : undefined;
 
     if (valor == null) {
@@ -71,7 +76,7 @@ export class MockClassifier implements Classifier {
       confidence: obra && forn ? 0.65 : 0.4,
       extracted: {
         valor,
-        data_pagamento: new Date().toISOString().slice(0, 10),
+        data_pagamento: hojeBR(),
         obra_id: obra?.id,
         fornecedor_id: forn?.id,
         fornecedor_nome_novo: !forn ? extractFornecedorNovo(texto) : undefined,
@@ -97,7 +102,7 @@ function normalize(s: string): string {
   return s
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[̀-ͯ]/gu, '')
+    .replace(/\p{Diacritic}/gu, '')
     .replace(/[^\w\s]/gu, ' ')
     .replace(/\s+/gu, ' ')
     .trim();

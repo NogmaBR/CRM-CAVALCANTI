@@ -1,5 +1,5 @@
-import type { Database } from '@nogma/db';
 import type { BadgeVariant } from '@/components/nogma/Badge';
+import type { Database } from '@nogma/db';
 
 /**
  * Fonte única dos rótulos e cores de status.
@@ -36,6 +36,16 @@ export const PAGAMENTO_STATUS_LABEL: Record<PagamentoStatus, string> = {
 };
 
 /** Ordem e rótulos do filtro de status em /pagamentos. */
+/**
+ * O que entra na soma de "gasto": aprovado e pendente. `recusado` e `erro`
+ * são decisão contra o lançamento; `arquivado` já é `deleted_at`. Antes cada
+ * tela tinha a própria regra, e o PDF de fechamento somava até recusado.
+ */
+export const STATUS_QUE_CONTAM = [
+  'confirmado',
+  'aguardando',
+] as const satisfies readonly PagamentoStatus[];
+
 export const PAGAMENTO_STATUS_FILTROS: Array<{ value: PagamentoStatus | ''; label: string }> = [
   { value: '', label: 'Todos' },
   { value: 'aguardando', label: 'Pendente' },

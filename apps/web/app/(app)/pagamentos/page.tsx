@@ -1,29 +1,26 @@
-import Link from 'next/link';
-import { Plus } from 'lucide-react';
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
 import { Card } from '@/components/nogma/Card';
 import { listCategorias } from '@/lib/data/categorias';
 import { listFornecedores } from '@/lib/data/fornecedores';
 import { listObras } from '@/lib/data/obras';
-import {
-  listPagamentos,
-  sumPagamentosBy,
-  type Pagamento,
-} from '@/lib/data/pagamentos';
+import { type Pagamento, listPagamentos, sumPagamentosBy } from '@/lib/data/pagamentos';
 import { formatBRL } from '@/lib/schemas/pagamento';
+import { PAGAMENTO_STATUS_FILTROS, type PagamentoStatus } from '@/lib/status-labels';
+import { Plus } from 'lucide-react';
+import Link from 'next/link';
 import { PagamentosFilters } from './pagamentos-filters';
 import { PagamentosTable } from './pagamentos-table';
 
+// Vocabulário e lista vêm de um lugar só (`status-labels.ts`): antes esta
+// tela tinha a própria lista, sem `recusado` — o filtro que o gestor pediu.
 const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: '', label: 'Todos' },
-  { value: 'confirmado', label: 'Confirmados' },
-  { value: 'aguardando', label: 'Aguardando' },
-  { value: 'erro', label: 'Erro' },
+  ...PAGAMENTO_STATUS_FILTROS,
   { value: 'arquivado', label: 'Arquivados' },
 ];
 
-type Status = 'confirmado' | 'aguardando' | 'erro';
+const STATUS_VALIDOS: readonly PagamentoStatus[] = ['confirmado', 'aguardando', 'recusado', 'erro'];
+type Status = PagamentoStatus;
 
 export default async function PagamentosPage({
   searchParams,
@@ -44,7 +41,7 @@ export default async function PagamentosPage({
   const isArquivado = status === 'arquivado';
   const statusPagto: Status | undefined = isArquivado
     ? undefined
-    : (['confirmado', 'aguardando', 'erro'] as const).includes(status as Status)
+    : STATUS_VALIDOS.includes(status as Status)
       ? (status as Status)
       : undefined;
 
