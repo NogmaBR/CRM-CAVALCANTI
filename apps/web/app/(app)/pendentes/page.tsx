@@ -1,6 +1,10 @@
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
-import { listPagamentosSemDocumento, listPendentes } from '@/lib/data/pendentes';
+import {
+  LIMITE_SEM_DOCUMENTO,
+  listPagamentosSemDocumento,
+  listPendentes,
+} from '@/lib/data/pendentes';
 import { Check, Clock, FileWarning, Inbox, Paperclip, X } from 'lucide-react';
 import Link from 'next/link';
 import { confirmarPendencia, rejeitarPendencia } from './actions';
@@ -225,7 +229,10 @@ export default async function PendentesPage({
             <h2 id="sem-doc-titulo" className="pendentes-sem-doc__titulo">
               <FileWarning size={16} aria-hidden="true" />
               Pagamentos sem nota fiscal ou comprovante
-              <span className="pendentes-sem-doc__contagem">{semDocumento.length}</span>
+              <span className="pendentes-sem-doc__contagem">
+                {semDocumento.length}
+                {semDocumento.length >= LIMITE_SEM_DOCUMENTO ? '+' : ''}
+              </span>
             </h2>
 
             <div className="pendentes-sem-doc__lista">

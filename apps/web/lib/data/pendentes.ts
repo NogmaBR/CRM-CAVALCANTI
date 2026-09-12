@@ -155,9 +155,16 @@ export interface PagamentoSemDocumento {
  * manhã: só é pendência de verdade depois de um tempo razoável sem o papel
  * chegar. O padrão de 3 dias é conservador e ajustável pela chamada.
  */
+/**
+ * Teto padrão da listagem. Quem exibe contagem a partir do array tem que
+ * comparar com isto: lista cheia significa "pelo menos N", não "N". A
+ * produção tinha 80 pagamentos sem nota e o painel dizia "50".
+ */
+export const LIMITE_SEM_DOCUMENTO = 50;
+
 export async function listPagamentosSemDocumento(
   diasMinimos = 3,
-  limite = 50,
+  limite = LIMITE_SEM_DOCUMENTO,
 ): Promise<PagamentoSemDocumento[]> {
   const supabase = await createClient();
 
