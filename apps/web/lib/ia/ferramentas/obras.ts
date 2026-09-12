@@ -1,3 +1,4 @@
+import { hojeBR } from '@/lib/util/datas';
 import { z } from 'zod/v4';
 import { type Client, ferramenta } from './registro';
 
@@ -21,7 +22,7 @@ import { type Client, ferramenta } from './registro';
  */
 
 const STATUS_QUE_CONTAM = ['confirmado', 'aguardando'] as const;
-const HOJE = () => new Date().toISOString().slice(0, 10);
+const HOJE = () => hojeBR();
 
 const Data = z
   .string()

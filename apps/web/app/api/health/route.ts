@@ -1,4 +1,5 @@
 import 'server-only';
+import { bearerConfere } from '@/lib/security/bearer';
 import type { Database } from '@nogma/db';
 import { createClient as createSbClient } from '@supabase/supabase-js';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -32,9 +33,7 @@ export const dynamic = 'force-dynamic';
  * fraquezas para quem quiser sondar. Mesma autenticação dos crons.
  */
 export async function GET(request: NextRequest) {
-  const auth = request.headers.get('authorization');
-  const secret = process.env.CRON_SECRET;
-  if (!secret || auth !== `Bearer ${secret}`) {
+  if (!bearerConfere(request.headers.get('authorization'), process.env.CRON_SECRET)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 

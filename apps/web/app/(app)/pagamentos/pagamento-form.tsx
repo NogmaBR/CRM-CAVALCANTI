@@ -1,10 +1,10 @@
-import Link from 'next/link';
 import { Button } from '@/components/nogma/Button';
 import { Input } from '@/components/nogma/Input';
 import type { Categoria } from '@/lib/data/categorias';
 import type { Fornecedor } from '@/lib/data/fornecedores';
 import type { Obra } from '@/lib/data/obras';
 import type { Pagamento } from '@/lib/data/pagamentos';
+import Link from 'next/link';
 import '../_shared/form-layout.css';
 
 function todayISO(): string {
@@ -85,7 +85,9 @@ export function PagamentoForm({
             </select>
           </div>
           <div className="form-layout__field">
-            <label className="form-layout__label" htmlFor="pag-fornecedor">Fornecedor</label>
+            <label className="form-layout__label" htmlFor="pag-fornecedor">
+              Fornecedor
+            </label>
             <select
               id="pag-fornecedor"
               name="fornecedor_id"
@@ -102,7 +104,9 @@ export function PagamentoForm({
             </select>
           </div>
           <div className="form-layout__field">
-            <label className="form-layout__label" htmlFor="pag-categoria">Categoria</label>
+            <label className="form-layout__label" htmlFor="pag-categoria">
+              Categoria
+            </label>
             <select
               id="pag-categoria"
               name="categoria_id"
@@ -146,7 +150,9 @@ export function PagamentoForm({
             />
           </div>
           <div className="form-layout__field">
-            <label className="form-layout__label" htmlFor="pag-status">Status</label>
+            <label className="form-layout__label" htmlFor="pag-status">
+              Status
+            </label>
             <select
               id="pag-status"
               name="status_pagto"
@@ -155,6 +161,7 @@ export function PagamentoForm({
             >
               <option value="confirmado">Confirmado</option>
               <option value="aguardando">Aguardando</option>
+              <option value="recusado">Recusado</option>
               <option value="erro">Erro</option>
             </select>
           </div>
@@ -174,7 +181,9 @@ export function PagamentoForm({
             />
           </div>
           <div className="form-layout__field form-layout__field--full">
-            <label className="form-layout__label" htmlFor="pag-obs">Observações</label>
+            <label className="form-layout__label" htmlFor="pag-obs">
+              Observações
+            </label>
             <textarea
               id="pag-obs"
               name="observacoes"
@@ -192,7 +201,9 @@ export function PagamentoForm({
         <Link href={cancelHref} className="form-layout__cancel">
           Cancelar
         </Link>
-        <Button type="submit" variant="primary">{submitLabel}</Button>
+        <Button type="submit" variant="primary">
+          {submitLabel}
+        </Button>
       </div>
     </form>
   );

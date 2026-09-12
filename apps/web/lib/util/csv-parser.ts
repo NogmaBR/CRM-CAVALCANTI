@@ -76,9 +76,15 @@ export function parseCsv(input: string): ParsedCsv {
 
   if (rows.length === 0) return { headers: [], rows: [], separator };
   const [headers, ...body] = rows;
+  // Excel costuma terminar cada linha com um separador a mais, o que gerava
+  // um cabeçalho vazio '' — e o schema `.strict()` recusava TODAS as linhas.
+  const cabecalhos = (headers ?? []).map((h) => h.trim());
+  while (cabecalhos.length > 0 && cabecalhos[cabecalhos.length - 1] === '') cabecalhos.pop();
   return {
-    headers: (headers ?? []).map((h) => h.trim()),
-    rows: body.filter((r) => r.some((cell) => cell.trim().length > 0)),
+    headers: cabecalhos,
+    rows: body
+      .filter((r) => r.some((cell) => cell.trim().length > 0))
+      .map((r) => r.slice(0, cabecalhos.length)),
     separator,
   };
 }

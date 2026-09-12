@@ -26,10 +26,10 @@
 
 **C-1 — Senha real do banco de dados e secret HMAC commitados em texto plano no histórico do git público**
 
-- **Evidência:** `git show ff16552:docs/PROJETO-STATUS.md` (commit original, 2026-09-03) contém em cleartext a senha do Postgres `BPGAbjzxuDkrJsvbLCuVIBtUPSaH4Fq` e o secret HMAC `dcbb2015380e3413b379246af50cce1f6de9a7978ec42f2224ada934da65993d`. Confirmado via `git log --all -S"BPGAbjzxuDkrJsvbLCuVIBtUPSaH4Fq"` → commits `ff16552`, `1e59187`, `44d805a`. O commit `1e59187` ("scrub leaked pre-gen secrets") removeu os valores da versão atual do arquivo, mas o blob original em `ff16552` continua 100% acessível via `git show` — o remote é `github.com/NogmaBR/CRM-CAVALCANTI`, **público**.
+- **Evidência:** `git show ff16552:docs/PROJETO-STATUS.md` (commit original, 2026-09-03) contém em cleartext a senha do Postgres `BPGA…` e o secret HMAC `dcbb…`. Confirmado via `git log --all -S"BPGA…"` → commits `ff16552`, `1e59187`, `44d805a`. O commit `1e59187` ("scrub leaked pre-gen secrets") removeu os valores da versão atual do arquivo, mas o blob original em `ff16552` continua 100% acessível via `git show` — o remote é `github.com/NogmaBR/CRM-CAVALCANTI`, **público**.
 - **Cenário de exploração:** Qualquer pessoa (ou bot scraper de secrets do GitHub) que já tenha clonado/visto o repo público antes do scrub, ou que rode `git log -p` no histórico, obtém a senha do Postgres e o secret de assinatura HMAC. `gh api repos/NogmaBR/CRM-CAVALCANTI/secret-scanning/alerts` retornou `[]` (sem alerta aberto), mas isso não prova que o valor não foi indexado por outro scraper/fork/cache enquanto o repo esteve público.
 - **Fix (AÇÃO MANUAL — precisa de acesso ao dashboard/Vercel):**
-  1. Confirmar AGORA no Supabase Dashboard que a senha do DB em produção não é `BPGAbjzxuDkrJsvbLCuVIBtUPSaH4Fq` — resetar de qualquer forma.
+  1. Confirmar AGORA no Supabase Dashboard que a senha do DB em produção não é `BPGA…` — resetar de qualquer forma.
   2. Confirmar que `WEBHOOK_HMAC_SECRET` em produção não é/deriva de `dcbb2015…93d` — regenerar com `openssl rand -hex 32`.
   3. Reescrever o histórico (`git filter-repo`/BFG) para parar re-exposição futura — mas isso **não desfaz** a exposição que já ocorreu; rotação é obrigatória independentemente disso.
 

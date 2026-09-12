@@ -4,7 +4,8 @@ import { comContexto, logger } from '@/lib/log';
 import { consumirFila } from '@/lib/queue/consumidor';
 import { metricas } from '@/lib/queue/fila';
 import { HANDLERS, filasComHandler } from '@/lib/queue/handlers';
-import type { NomeFila } from '@/lib/queue/tipos';
+import { LOTE_POR_FILA, type NomeFila } from '@/lib/queue/tipos';
+import { bearerConfere } from '@/lib/security/bearer';
 import type { Database } from '@nogma/db';
 import { createClient as createSbClient } from '@supabase/supabase-js';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -37,9 +38,7 @@ const log = logger('fila');
  * Lote pequeno e chamada frequente é melhor que lote grande e chamada rara.
  */
 export async function GET(request: NextRequest) {
-  const auth = request.headers.get('authorization');
-  const secret = process.env.CRON_SECRET;
-  if (!secret || auth !== `Bearer ${secret}`) {
+  if (!bearerConfere(request.headers.get('authorization'), process.env.CRON_SECRET)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
@@ -84,7 +83,13 @@ export async function GET(request: NextRequest) {
       // o registro é tipado por fila — só não sobrevive à indexação dinâmica.
       lotes.push(
         await comContexto({ invocacao }, () =>
-          consumirFila(supabase, fila, handler as Parameters<typeof consumirFila>[2], qtd),
+          consumirFila(
+            supabase,
+            fila,
+            handler as Parameters<typeof consumirFila>[2],
+            // `?qtd=` só reduz; nunca passa do lote seguro da fila.
+            Math.min(qtd, LOTE_POR_FILA[fila]),
+          ),
         ),
       );
     } catch (err) {

@@ -1,6 +1,6 @@
 import 'server-only';
-import type { Database } from '@nogma/db';
 import { createClient } from '@/lib/supabase/server';
+import type { Database } from '@nogma/db';
 
 export type ConfirmacaoPendente = Database['public']['Tables']['confirmacoes_pendentes']['Row'];
 export type MensagemWhats = Database['public']['Tables']['mensagens_whats']['Row'];
@@ -51,6 +51,7 @@ export async function listPendentes(): Promise<PendenteItem[]> {
          tipo,
          midia_mime,
          texto_bruto,
+         texto_transcrito,
          recebida_em,
          dados_extraidos,
          confianca_ia
@@ -90,9 +91,7 @@ export async function listPendentes(): Promise<PendenteItem[]> {
       : Promise.resolve({ data: [], error: null }),
   ]);
 
-  const obraMap = new Map<string, string>(
-    (obrasRes.data ?? []).map((o) => [o.id, o.nome]),
-  );
+  const obraMap = new Map<string, string>((obrasRes.data ?? []).map((o) => [o.id, o.nome]));
   const fornecedorMap = new Map<string, string>(
     (fornecedoresRes.data ?? []).map((f) => [f.id, f.nome]),
   );
@@ -104,10 +103,9 @@ export async function listPendentes(): Promise<PendenteItem[]> {
       const de = msg.dados_extraidos as DadosExtraidos | null;
 
       const obra_nome = de?.obra_id ? (obraMap.get(de.obra_id) ?? null) : null;
-      const fornecedor_nome =
-        de?.fornecedor_id
-          ? (fornecedorMap.get(de.fornecedor_id) ?? null)
-          : (de?.fornecedor_nome_novo ?? null);
+      const fornecedor_nome = de?.fornecedor_id
+        ? (fornecedorMap.get(de.fornecedor_id) ?? null)
+        : (de?.fornecedor_nome_novo ?? null);
 
       return {
         confirmacao_id: row.id,
@@ -117,7 +115,9 @@ export async function listPendentes(): Promise<PendenteItem[]> {
         telefone_from: msg.telefone_from,
         tipo: msg.tipo,
         midia_mime: msg.midia_mime,
-        texto_bruto: msg.texto_bruto,
+        // Áudio chega com `texto_bruto` nulo: o que o gestor precisa ler é a
+        // transcrição. Sem isto o card pedia confirmação de um texto vazio.
+        texto_bruto: msg.texto_bruto ?? msg.texto_transcrito ?? null,
         recebida_em: msg.recebida_em,
         dados_extraidos: de,
         confianca_ia: msg.confianca_ia,

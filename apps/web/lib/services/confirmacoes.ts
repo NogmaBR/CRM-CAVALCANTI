@@ -1,6 +1,7 @@
 import 'server-only';
 import type { DadosExtraidos } from '@/lib/data/pendentes';
 import { logger } from '@/lib/log';
+import { hojeBR } from '@/lib/util/datas';
 import type { Database } from '@nogma/db';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -141,7 +142,7 @@ async function obterOuCriarPagamento(
 
   if (existente) return { ok: true, id: existente.id };
 
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = hojeBR();
   const { data: novo, error } = await supabase
     .from('pagamentos')
     .insert({

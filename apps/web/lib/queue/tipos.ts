@@ -131,8 +131,26 @@ export const MAX_TENTATIVAS = 3;
  * conhecido do sistema.
  */
 export const VISIBILITY_TIMEOUT: Record<NomeFila, number> = {
-  whatsapp_inbound: 30,
+  // Download (16 s) + transcrição (30 s) + IA com ferramentas: 30 s era
+  // menos que UM job, e o lote de 5 rodava em série. O mesmo job era
+  // entregue a duas invocações e `read_ct` subia sem falha nenhuma.
+  whatsapp_inbound: 180,
   midia: 120,
   ia_classificacao: 180,
   whatsapp_outbound: 60,
+};
+
+/**
+ * Quantas mensagens ler por invocação, por fila.
+ *
+ * O consumidor processa o lote em série, e o visibility timeout de cada
+ * mensagem começa a contar na leitura — não quando chega a vez dela. Ler 5 da
+ * `whatsapp_inbound` faria a 5ª esperar quatro processamentos inteiros com o
+ * relógio correndo. Uma por vez; o `pg_cron` volta no minuto seguinte.
+ */
+export const LOTE_POR_FILA: Record<NomeFila, number> = {
+  whatsapp_inbound: 1,
+  midia: 3,
+  ia_classificacao: 1,
+  whatsapp_outbound: 5,
 };

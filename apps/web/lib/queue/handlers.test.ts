@@ -27,14 +27,16 @@ describe('catálogo de filas', () => {
   it('nenhum visibility timeout é curto a ponto de causar processamento duplo', () => {
     for (const fila of FILAS) {
       expect(VISIBILITY_TIMEOUT[fila], `${fila} com timeout curto demais`).toBeGreaterThanOrEqual(
-        30,
+        // Piso: download (16 s) + transcrição (30 s) cabem em qualquer fila que
+        // processe uma mensagem inteira. 30 s era menos que um job.
+        fila === 'whatsapp_inbound' ? 120 : 30,
       );
     }
   });
 
-  it('a fila mais lenta é a da IA', () => {
+  it('a fila mais lenta é a do inbound: download + transcrição + IA rodam nela', () => {
     const maior = FILAS.reduce((a, b) => (VISIBILITY_TIMEOUT[a] >= VISIBILITY_TIMEOUT[b] ? a : b));
-    expect(maior).toBe('ia_classificacao');
+    expect(maior).toBe('whatsapp_inbound');
   });
 });
 

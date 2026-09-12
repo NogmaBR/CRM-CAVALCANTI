@@ -121,10 +121,9 @@ export async function POST(request: NextRequest) {
 
     const resultado = await processarInbound(supabase, payload).catch((err) => {
       log.erro('processamento_falhou', { err });
-      return {
-        acao: 'erro' as const,
-        detalhe: err instanceof Error ? err.message : String(err),
-      };
+      // O detalhe fica no log (com correlação). Devolver a mensagem do
+      // Postgres ou do fetch ao provider é reconhecimento de graça.
+      return { acao: 'erro' as const, detalhe: 'erro interno; veja o log pela correlação' };
     });
 
     log.info('processada', { acao: resultado.acao, detalhe: resultado.detalhe });

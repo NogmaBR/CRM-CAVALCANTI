@@ -110,20 +110,10 @@ async function rodarUmaComContexto(
       return;
     }
 
-    if (simular) {
-      await registrar(supabase, {
-        regra_chave: automacao.chave,
-        evento: evento.nome,
-        status: 'simulada',
-        motivo: 'Condição passou; ação não executada (simulação).',
-        entidade_id: entidadeId,
-        payload: evento.payload,
-        duracao_ms: Date.now() - inicio,
-      });
-      return;
-    }
-
-    // Idempotência ANTES da ação, não depois.
+    // Idempotência ANTES da ação — e antes da simulação: o "Ensaiar sem agir"
+    // tem que dizer "já agiu hoje" para quem já agiu, senão ele promete um
+    // envio que a rodada de verdade não faria.
+    //
     //
     // O índice único em `automation_executions` é a rede de segurança, mas
     // ele só dispara no INSERT do log — que acontece depois da ação. Confiar
@@ -136,6 +126,19 @@ async function rodarUmaComContexto(
         evento: evento.nome,
         status: 'pulada',
         motivo: 'Esta regra já agiu sobre esta entidade hoje (idempotência).',
+        entidade_id: entidadeId,
+        payload: evento.payload,
+        duracao_ms: Date.now() - inicio,
+      });
+      return;
+    }
+
+    if (simular) {
+      await registrar(supabase, {
+        regra_chave: automacao.chave,
+        evento: evento.nome,
+        status: 'simulada',
+        motivo: 'Condição passou; ação não executada (simulação).',
         entidade_id: entidadeId,
         payload: evento.payload,
         duracao_ms: Date.now() - inicio,

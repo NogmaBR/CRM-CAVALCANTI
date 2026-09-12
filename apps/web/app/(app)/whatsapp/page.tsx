@@ -1,12 +1,12 @@
-import Link from 'next/link';
-import { MessageSquare, Paperclip, ArrowRight } from 'lucide-react';
 import { TopBar } from '@/components/layout/topbar';
 import { Badge } from '@/components/nogma/Badge';
-import { listMensagens, type MensagemFeedItem, type MsgStatus } from '@/lib/data/mensagens';
+import { type MensagemFeedItem, type MsgStatus, listMensagens } from '@/lib/data/mensagens';
 import {
   MSG_STATUS_LABEL as STATUS_LABEL,
   MSG_STATUS_VARIANT as STATUS_VARIANT,
 } from '@/lib/status-labels';
+import { ArrowRight, MessageSquare, Paperclip } from 'lucide-react';
+import Link from 'next/link';
 import './whatsapp.css';
 
 const FILTER_OPTIONS: Array<{ value: string; label: string }> = [
@@ -49,7 +49,10 @@ export default async function WhatsAppPage({
   searchParams: Promise<{ status?: string }>;
 }) {
   const params = await searchParams;
-  const statusFilter = (params.status ?? '') as '' | MsgStatus;
+  // `?status=` só vale se for um status conhecido; antes qualquer lixo virava
+  // 'Nenhuma mensagem com status "undefined"'.
+  const pedido = params.status ?? '';
+  const statusFilter = (pedido in STATUS_LABEL ? pedido : '') as '' | MsgStatus;
 
   const all = await listMensagens(200);
   const items = statusFilter === '' ? all : all.filter((m) => m.status === statusFilter);
@@ -111,13 +114,19 @@ function MensagemRow({ m }: { m: MensagemFeedItem }) {
             <>
               <span>·</span>
               <span aria-label={`Anexo ${m.midia_mime}`}>
-                <Paperclip size={12} aria-hidden="true" style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                <Paperclip
+                  size={12}
+                  aria-hidden="true"
+                  style={{ verticalAlign: 'middle', marginRight: 4 }}
+                />
                 {m.midia_mime}
               </span>
             </>
           ) : null}
         </div>
-        <div className="wa-item__body">{m.texto_bruto ?? <em style={{ color: 'var(--text-secondary)' }}>(sem texto)</em>}</div>
+        <div className="wa-item__body">
+          {m.texto_bruto ?? <em style={{ color: 'var(--text-secondary)' }}>(sem texto)</em>}
+        </div>
         {m.status === 'erro' && m.erro_msg ? (
           <div className="wa-item__error">Erro: {m.erro_msg}</div>
         ) : null}
@@ -132,7 +141,8 @@ function MensagemRow({ m }: { m: MensagemFeedItem }) {
           </Link>
         ) : m.status === 'classificada' ? (
           <Link href="/pendentes" className="wa-item__link">
-            Confirmar em Pendentes <ArrowRight size={12} aria-hidden="true" style={{ verticalAlign: 'middle' }} />
+            Confirmar em Pendentes{' '}
+            <ArrowRight size={12} aria-hidden="true" style={{ verticalAlign: 'middle' }} />
           </Link>
         ) : null}
       </div>

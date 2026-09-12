@@ -30,22 +30,67 @@ export type Interpretacao = 'sim' | 'nao' | 'outro';
 const MAX_PALAVRAS = 4;
 
 const AFIRMATIVAS = new Set([
-  'sim', 's', 'ss', 'sim sim',
-  'ok', 'okay', 'okey', 'oks', 'blz', 'beleza',
-  'isso', 'isso mesmo', 'e isso', 'e isso mesmo',
-  'confirmo', 'confirmado', 'confirma', 'confirmar',
-  'certo', 'ta certo', 'esta certo', 'correto', 'exato', 'exatamente',
-  'perfeito', 'positivo', 'pode', 'pode lancar', 'pode sim', 'pode ser',
-  'aprovado', 'aprovo', 'tudo certo', 'tudo ok', 'show',
-  'yes', 'y',
+  'sim',
+  's',
+  'ss',
+  'sim sim',
+  'ok',
+  'okay',
+  'okey',
+  'oks',
+  'blz',
+  'beleza',
+  'isso',
+  'isso mesmo',
+  'e isso',
+  'e isso mesmo',
+  'confirmo',
+  'confirmado',
+  'confirma',
+  'confirmar',
+  'certo',
+  'ta certo',
+  'esta certo',
+  'correto',
+  'exato',
+  'exatamente',
+  'perfeito',
+  'positivo',
+  'pode',
+  'pode lancar',
+  'pode sim',
+  'pode ser',
+  'aprovado',
+  'aprovo',
+  'tudo certo',
+  'tudo ok',
+  'show',
+  'yes',
+  'y',
 ]);
 
 const NEGATIVAS = new Set([
-  'nao', 'n', 'nn', 'nao nao',
-  'negativo', 'cancela', 'cancelar', 'cancele', 'cancelado',
-  'errado', 'ta errado', 'esta errado', 'nada disso',
-  'esquece', 'esquecer', 'deixa', 'deixa pra la',
-  'recuso', 'recusado', 'nao aprovo', 'nao confirmo',
+  'nao',
+  'n',
+  'nn',
+  'nao nao',
+  'negativo',
+  'cancela',
+  'cancelar',
+  'cancele',
+  'cancelado',
+  'errado',
+  'ta errado',
+  'esta errado',
+  'nada disso',
+  'esquece',
+  'esquecer',
+  'deixa',
+  'deixa pra la',
+  'recuso',
+  'recusado',
+  'nao aprovo',
+  'nao confirmo',
   'no',
 ]);
 
@@ -73,10 +118,7 @@ function separarEmojis(texto: string): { semEmoji: string; emojis: string[] } {
   for (const e of [...EMOJI_SIM, ...EMOJI_NAO]) {
     if (texto.includes(e)) emojis.push(e);
   }
-  const semEmoji = [...EMOJI_SIM, ...EMOJI_NAO].reduce(
-    (acc, e) => acc.split(e).join(' '),
-    texto,
-  );
+  const semEmoji = [...EMOJI_SIM, ...EMOJI_NAO].reduce((acc, e) => acc.split(e).join(' '), texto);
   return { semEmoji, emojis };
 }
 
@@ -97,23 +139,26 @@ export function interpretarResposta(texto: string | null | undefined): Interpret
 
   if (normalizado === '') return 'outro';
 
+  // Pergunta não é resposta. "sim?", "ok?", "confirma?" são a pessoa
+  // perguntando de volta — e a normalização apaga o "?", então sem esta
+  // checagem no texto cru "confirma?" gravava o pagamento. O custo de errar
+  // é assimétrico: um falso "sim" grava; um falso "outro" só vai pro painel.
+  if (/\?\s*$/u.test(texto.trim())) return 'outro';
+
   // Resposta longa é correção/contexto, não um "sim" ou "não" puro.
   const palavras = normalizado.split(' ');
   if (palavras.length > MAX_PALAVRAS) return 'outro';
 
+  // Emoji que contradiz a palavra não age: "sim 👎" e "ok ❌" são ambíguos,
+  // e ambíguo não grava. A versão anterior checava isto DEPOIS de já ter
+  // devolvido pela palavra — o ramo nunca rodava e "sim 👎" confirmava.
+  const temSim = emojis.some((e) => EMOJI_SIM.includes(e));
+  const temNao = emojis.some((e) => EMOJI_NAO.includes(e));
+
   // Negativa antes de afirmativa: "nao confirmo" contém "confirmo", e a
   // intenção real é a negativa.
-  if (NEGATIVAS.has(normalizado)) return 'nao';
-  if (AFIRMATIVAS.has(normalizado)) return 'sim';
-
-  // Emoji acompanhado de uma palavra curta que concorda com ele
-  // ("ok 👍", "sim ✅") — o emoji reforça, não contradiz.
-  if (emojis.length > 0) {
-    const temSim = emojis.some((e) => EMOJI_SIM.includes(e));
-    const temNao = emojis.some((e) => EMOJI_NAO.includes(e));
-    if (temSim && !temNao && AFIRMATIVAS.has(normalizado)) return 'sim';
-    if (temNao && !temSim && NEGATIVAS.has(normalizado)) return 'nao';
-  }
+  if (NEGATIVAS.has(normalizado)) return temSim ? 'outro' : 'nao';
+  if (AFIRMATIVAS.has(normalizado)) return temNao ? 'outro' : 'sim';
 
   return 'outro';
 }

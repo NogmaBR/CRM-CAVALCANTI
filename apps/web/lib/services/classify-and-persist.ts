@@ -1,6 +1,7 @@
 import 'server-only';
 import { type ClassifierInput, getClassifier } from '@/lib/ia/classifier';
 import { logger } from '@/lib/log';
+import { hojeBR } from '@/lib/util/datas';
 import type { Database } from '@nogma/db';
 import { createClient as createSbClient } from '@supabase/supabase-js';
 
@@ -131,7 +132,7 @@ export async function classifyAndPersist(mensagemId: string): Promise<
         obra_id: out.extracted.obra_id!,
         fornecedor_id: out.extracted.fornecedor_id ?? null,
         valor: out.extracted.valor!,
-        data_pagamento: out.extracted.data_pagamento ?? new Date().toISOString().slice(0, 10),
+        data_pagamento: out.extracted.data_pagamento ?? hojeBR(),
         origem: 'whatsapp',
         status_pagto: 'confirmado',
         descricao: out.extracted.descricao ?? null,
@@ -186,6 +187,26 @@ export async function classifyAndPersist(mensagemId: string): Promise<
     .select('id')
     .single();
 
+  if (erroConfirmacao?.code === '23505') {
+    // Já há uma pendência aberta para esta mensagem (índice parcial
+    // `idx_confirmacoes_uma_aberta_por_mensagem`). É a trava contra a segunda
+    // pergunta no WhatsApp: a primeira passagem já perguntou.
+    await supabase
+      .from('mensagens_whats')
+      .update({
+        status: 'classificada',
+        confianca_ia: out.confidence,
+        dados_extraidos: out.extracted,
+      })
+      .eq('id', mensagemId);
+    return {
+      ok: true,
+      status: 'classificada',
+      confianca: out.confidence,
+      kind: out.kind,
+      confirmacao: null,
+    };
+  }
   if (erroConfirmacao) {
     log.erro('abrir_pendencia_falhou', { mensagemId, erro: erroConfirmacao.message });
   }
