@@ -187,7 +187,7 @@ Rode os três antes de dizer que algo está pronto:
 
 ```bash
 pnpm --filter web typecheck          # tsc --noEmit
-pnpm --filter web exec vitest run    # 240 testes, 13 arquivos (Vitest 4)
+pnpm --filter web exec vitest run    # 274 testes, 17 arquivos (Vitest 4)
 pnpm --filter web build              # next build
 ```
 
@@ -426,8 +426,29 @@ WhatsApp (marcos M1–M4, 4–6 semanas) e só depois leads próprios (M5). **Na
 antes de 16/09** (congelamento da Fase 1). Bloqueador real do M0: HTTPS/IP do ERP e as
 respostas do parceiro. A demo de 16/09 tem roteiro em `docs/ROTEIRO-DEMO-16-09.md`.
 
-**Saúde: tolerância por agenda (PR #18, aplicada).** `cron_tolerancia(schedule)` — um
+**Saúde: tolerância por agenda (PR #18, mergeado).** `cron_tolerancia(schedule)` — um
 cron diário não pode ser cobrado com régua de 3 horas; foi o 503 falso de 2026-09-11.
+
+**Revisão geral de 2026-09-11 (PR #19, migration `20260911140000` já aplicada).** Três
+revisores em paralelo (segurança, corretude, qualidade), 30 achados corrigidos. O que
+mudou de regra e vale saber antes de mexer:
+- `has_role()` exige `deleted_at IS NULL`; arquivar usuário **bane no Auth**
+  (`ban_duration`), restaurar desbane. O layout de `(app)` mostra "Conta arquivada".
+- `anon` **não tem privilégio nenhum** em `public`. Nada no app lê como anon; a planilha
+  pública usa service_role no servidor.
+- Uma pendência aberta por mensagem (índice parcial). `gravarMensagem` devolve
+  `{ id, duplicada }`; o perdedor da corrida do retry NÃO classifica.
+- Comandos e perguntas passam por `whatsapp_respostas` (dedupe pelo id do provider).
+- **Data civil é Brasília**: `hojeBR()`/`inicioDoMesBR()` em `lib/util/datas.ts`. A
+  única exceção deliberada é a janela de idempotência das automações (UTC nos dois lados).
+- `STATUS_QUE_CONTAM` (`confirmado`+`aguardando`) é a definição única de "gasto" em
+  relatórios e somas. O painel ainda conta só `confirmado` — decisão pendente.
+- Fila `whatsapp_inbound`: VT 180 s, **1 mensagem por invocação** (`LOTE_POR_FILA`).
+- Cobrança: varredura pela RPC `pagamentos_sem_documento`, `dias_entre_cobrancas`=7.
+- `baixarMidia` passa pela guarda SSRF e só manda o token para o host do provider.
+- `bearerConfere()` em `lib/security/bearer.ts` para todo `CRON_SECRET`.
+- Mock classifier: `(\d{1,3}(?:\.\d{3})+…)` — o `*` lia "1200" como 120.
+- `interpretarResposta`: pergunta (`?` no fim) e emoji contraditório = `outro`.
 
 ### O que falta — e é ação humana, não código
 
@@ -476,6 +497,11 @@ cron diário não pode ser cobrado com régua de 3 horas; foi o 503 falso de 202
 - **`gh run download -D pasta/` cria uma subpasta com o nome do artifact** e põe o
   arquivo dentro. `find -name '*.enc' | head -1` devolve a pasta, não o arquivo — use
   `-type f`.
+- **Edição em massa de código: escreva o script Python num ARQUIVO (Write) e rode
+  `python3 arquivo.py`.** Heredoc do Bash com código contendo `\`, crases e aspas
+  quebrou três vezes na revisão de 2026-09-11 (`unexpected EOF`, `bad escape \p`,
+  assertion no matcher). Em arquivo, `\\d` vira `\d` de forma previsível. Para regex
+  com barras, a ferramenta Edit continua sendo a mais segura.
 - **Caminhos do App Router têm parênteses (`app/(app)/…`) e quebram qualquer linha de
   shell sem aspas.** O primeiro `ci.yml` montava `biome check <lista>` numa string e
   morreu com `syntax error near unexpected token '('` no PR #7. Lista de arquivos vai

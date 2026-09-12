@@ -26,7 +26,7 @@ SÓ FALTA VOCÊ
   🔴 1. Telefones reais dos fornecedores        ← antes de qualquer automação
   🔴 2. Credenciais (UAZAPI, Anthropic, OpenAI) + redeploy
   🔴 3. Webhook da UAZAPI + cadastrar a equipe em /config/autorizados
-  🟠 4. Mergear o PR #18 + 5 limpezas que só você faz
+  🟠 4. Mergear o PR #19 (revisão geral) + 5 limpezas que só você faz
   🟠 5. Vercel Pro → um comando faz o resto (região + repo privado)
   🟠 6. Backup: restore de teste + guardar a frase + PITR
   🟡 7. Domínio próprio + Cloudflare
@@ -164,16 +164,32 @@ Os PRs #13 a #17 estão mergeados e **auditados**: deploy READY, CI verde na `ma
 para 5 (os 5 restantes são intencionais ou exigem plano Pro). Com o #17, o assistente
 funciona **sem** os embeddings do item 8: basta a `ANTHROPIC_API_KEY` do item 2.
 
-### 4.1 — PR #18: a saúde parou de dar alarme falso (já está em produção)
+### 4.1 — PR #19: a revisão geral (migration já em produção)
 
-<https://github.com/NogmaBR/CRM-CAVALCANTI/pull/18> — em 2026-09-11 à noite o
-`/api/health` devolveu **503** dizendo que o cron diário `saude-alerta` "não roda há
-11h". Ele tinha rodado ao meio-dia, como devia: a régua era de 3 horas para qualquer
-cron, e um diário passa 21 horas por dia "doente" por ela. No dia seguinte isso viraria
-um **WhatsApp de alarme falso** para o gestor.
+<https://github.com/NogmaBR/CRM-CAVALCANTI/pull/19> — três revisores independentes
+(segurança, corretude, qualidade) leram o repositório inteiro depois do merge das Fases
+1–5. **30 achados corrigidos**, cada um confirmado no código antes de mexer. Os que
+importam:
 
-A tolerância agora vem da agenda de cada cron (5 min, 3 h, 26 h, 8 dias). **Já apliquei
-e conferi**: `/api/health` voltou a 200. O PR só versiona o arquivo. Pode mergear.
+- **Usuário arquivado continuava entrando com o papel inteiro.** Agora é banido no
+  Auth e a RLS exige `deleted_at` nulo.
+- **Retry do WhatsApp abria duas pendências** e perguntava duas vezes. A produção **já
+  tinha** uma duplicata (mensagem de teste de 07/09) — a migration encerrou.
+- **O classificador simulado lia "1200" como R$ 120.** É o de produção hoje e o da
+  demo. Corrigido e pinado em teste.
+- **"sim?" e "sim 👎" confirmavam pagamento.** Não confirmam mais.
+- **"Hoje" era em UTC**: pagamento das 22h ganhava a data de amanhã. Agora é Brasília.
+- Cobrança: telefone sem normalizar, re-cobrança diária, pagamentos novos nunca
+  alcançados. PDF de fechamento somava recusado/erro. Fila com timeout menor que o
+  processamento. Download de mídia sem guarda SSRF. `anon` com privilégios em toda
+  tabela. E mais 20 menores.
+
+**Já apliquei e conferi a migration em produção**: `/api/health` 200, `/login` 200,
+webhook 200. 274 testes, typecheck, lint e build limpos; CI verde no PR. **Pode
+mergear.** O PR #18 (saúde sem alarme falso) você já mergeou.
+
+O que a revisão **não** conseguiu provar: o banimento de usuário arquivado com um
+usuário real (só existe um em produção) e o fluxo do WhatsApp com provider real.
 
 ### 4.1b — Apagar as 3 mensagens de teste de 07/09
 
