@@ -709,9 +709,25 @@ body {
   border-bottom: 1px solid var(--border-subtle);
   padding-bottom: 12px;
 }
+@media (max-width: 767.98px) {
+  .obras-filter-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px;
+  }
+  .obras-filter-tabs .obras-filter-tab {
+    flex: none;
+    scroll-snap-align: start;
+  }
+}
 
 .obras-filter-tab {
-  padding: 8px 14px;
+  padding: 12px 14px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 500;

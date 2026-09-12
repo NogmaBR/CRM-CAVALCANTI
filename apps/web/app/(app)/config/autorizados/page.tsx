@@ -1,5 +1,6 @@
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
+import { EmptyState } from '@/components/nogma/EmptyState';
 import { formatarTelefone } from '@/lib/schemas/autorizado';
 import { createClient } from '@/lib/supabase/server';
 import { Ban, Pencil, Plus, RotateCcw, ShieldCheck, TriangleAlert } from 'lucide-react';
@@ -59,7 +60,11 @@ export default async function AutorizadosPage({
 
       <div className="nos-page-body">
         {successMsg ? (
-          <div className="categorias-banner categorias-banner--success" role="status">
+          <div
+            className="categorias-banner categorias-banner--success"
+            // biome-ignore lint/a11y/useSemanticElements: banner de status (padrão do projeto)
+            role="status"
+          >
             {successMsg}
           </div>
         ) : null}
@@ -85,12 +90,17 @@ export default async function AutorizadosPage({
         ) : null}
 
         {lista.length === 0 ? (
-          <div className="categorias-empty">
-            <ShieldCheck size={32} aria-hidden="true" style={{ opacity: 0.5, marginBottom: 8 }} />
-            <p style={{ margin: 0 }}>
-              Cadastre os números da equipe que pode enviar pagamentos por WhatsApp.
-            </p>
-          </div>
+          <EmptyState
+            icon={<ShieldCheck size={28} aria-hidden="true" />}
+            title="Nenhum número autorizado"
+            actions={
+              <Link href="/config/autorizados/novo" className="ng-btn ng-btn--primary ng-btn--md">
+                <Plus size={16} aria-hidden="true" /> Autorizar número
+              </Link>
+            }
+          >
+            Cadastre os números da equipe que pode enviar pagamentos por WhatsApp.
+          </EmptyState>
         ) : (
           <div className="categorias-table-wrap">
             <table className="categorias-table">

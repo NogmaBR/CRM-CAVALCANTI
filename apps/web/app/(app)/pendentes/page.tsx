@@ -177,7 +177,10 @@ export default async function PendentesPage({
                         </div>
                       ) : null}
 
-                      {de?.raciocinio ? (
+                      {/* O raciocínio cru do classificador é informação interna, como a
+                          métrica de confiança que o cliente pediu para esconder. Só o do
+                          modelo real ajuda o gestor; o do mock entrega o modo de teste. */}
+                      {de?.raciocinio && !de.raciocinio.startsWith('MockClassifier') ? (
                         <div className="pendente-extracted__field pendente-extracted__value--wide">
                           <span className="pendente-extracted__label">Raciocínio da IA</span>
                           <span className="pendente-extracted__value">{de.raciocinio}</span>

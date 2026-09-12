@@ -61,7 +61,7 @@
   --success-bg: #e7f5ee;
   --warning: #e8a317;
   --warning-bg: #fbf1dc;
-  --danger: #d6483b;
+  --danger: #c73f33; /* 4,9:1 com branco (era #d6483b, 4,3:1) */
   --danger-bg: #fbe9e7;
   --info: var(--petroleum-600);
   --info-bg: var(--petroleum-050);
@@ -216,7 +216,7 @@
 
   --text-primary: var(--white);
   --text-secondary: var(--petroleum-200);
-  --text-muted: var(--petroleum-300);
+  --text-muted: var(--petroleum-200); /* petroleum-300 dava 3,65:1 sobre o card */
   --heading-color: var(--white);
 
   --border-subtle: color-mix(in srgb, var(--white) 12%, transparent);

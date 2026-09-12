@@ -6,8 +6,8 @@ export type Tema = z.infer<typeof temaEnum>;
 
 export const TEMA_LABELS: Record<Tema, string> = {
   light: 'Claro',
-  black: 'Preto (padrão Nogma)',
-  dark: 'Petróleo (dark alt)',
+  black: 'Escuro',
+  dark: 'Petróleo',
 };
 
 /** Whitelist de timezones populares no BR + globals — evita input livre. */

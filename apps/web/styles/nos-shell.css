@@ -852,3 +852,26 @@ a.ng-btn {
 .nos-drawer__tema .ng-iconbtn {
   color: var(--sidebar-fg);
 }
+
+/* ---- Design review 2026-09-12: alvos e legibilidade ---- */
+.nos-tabbar__item {
+  font-size: 12px;
+} /* P1: mínimo para caption */
+.nos-topbar__sub {
+  font-size: 12px;
+  letter-spacing: .1em;
+} /* P2 */
+.nos-userpill__logout {
+  width: 44px;
+  height: 44px;
+} /* P3 */
+.nos-dt__td[data-col="actions"] a {
+  min-width: 44px;
+  min-height: 44px;
+} /* M2: lápis */
+.audit-row__fields {
+  display: none;
+} /* M9: ruído de admin */
+.wa-item__link {
+  white-space: nowrap;
+} /* P5: seta não quebra sozinha */

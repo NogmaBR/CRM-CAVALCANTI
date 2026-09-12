@@ -73,6 +73,10 @@
 }
 
 .painel-alertas__link {
+  display: block;
+  padding: 10px 0;
+  font-size: 14px;
+  font-weight: 600;
   color: inherit;
   text-decoration: none;
   border-bottom: 1px solid transparent;
@@ -221,4 +225,6 @@
 .painel-saudacao .nos-greeting {
   margin: 0 auto;
   max-width: 24ch;
+  /* Um degrau abaixo do hero: a saudação apresenta, os alertas mandam agir. */
+  font-size: clamp(26px, 3.2vw, 36px);
 }
