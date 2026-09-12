@@ -510,9 +510,12 @@ novas para quem for mexer:
   injetável (`deps.baixarMidia`) e `montarConteudo` é pura e testada. Falha de download
   degrada para texto, com `log.aviso('midia_nao_lida')`.
 - **Exceção do classificador marca a mensagem como `erro`** com texto humano
-  (`classificador_falhou` no log). Nunca deixe `mensagens_whats` em `processando`.
-- Texto interno da IA não vai para a tela: `raciocinio` do mock é escondido em
-  `/pendentes`; `/whatsapp` mostra frase humana e o erro técnico só no `title`.
+  (`classificador_falhou` no log). Isso cobre exceção, não kill da função — `maxDuration`
+  está em `TODOS.md` (G6). A API recusando o anexo refaz a chamada só com texto;
+  mídia passa por `validateFileMagicBytes` antes de ir para o modelo (só jpeg/png/webp/pdf).
+- Texto interno da IA não vai para a tela: `/pendentes` só mostra `raciocinio` com
+  `IA_PROVIDER=anthropic`; `/whatsapp` mostra frase humana com link para lançar em
+  Pagamentos (mensagem com erro **não** abre pendência) e o erro técnico só no `title`.
 - Contraste: `--text-muted` claro `#6b7070`, petróleo `petroleum-200`; badge de sucesso
   `#1f7a4d`; `--danger #c73f33`; cabeçalho de tabela em `--text-secondary`. Não volte
   ao `#a1a1a1` como texto (é cor de marca, não de leitura).

@@ -491,22 +491,6 @@ body {
   color: var(--petroleum-200);
   max-width: 400px;
 }
-.nos-login__stats {
-  display: flex;
-  gap: 36px;
-}
-.nos-login__stats strong {
-  display: block;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 30px;
-  color: var(--lime-500);
-  letter-spacing: -.01em;
-}
-.nos-login__stats span {
-  font-size: 12.5px;
-  color: var(--petroleum-200);
-}
 .nos-login__panel {
   display: flex;
   align-items: center;

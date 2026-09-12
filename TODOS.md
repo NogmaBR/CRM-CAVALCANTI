@@ -21,6 +21,10 @@
   (`webhooks/uazapi/route.ts:54-64`) e HMAC nunca provado com payload real. Gravar o
   *shape* do payload rejeitado (nunca o corpo: é pré-autorizados) numa tabela ou log
   estruturado; adaptador se o formato divergir. Fonte: ceo-review D5/D7/E6/E7.
+- [ ] **G7 Falha transitória do classificador deixa o remetente sem resposta** — com
+  429/timeout a mensagem vira `erro` (visível no painel) mas o WhatsApp fica mudo e o
+  retry do provider morre no dedupe. Enviar "não consegui processar, reenvie" no catch
+  e/ou distinguir erro retentável. Fonte: revisão adversarial do PR #22. Depois de 16/09.
 - [ ] **G6 `maxDuration` no webhook síncrono** — sem ele a função pode morrer no meio da
   classificação com foto. Fonte: ceo-review E3.
 - [ ] **Risco de demo**: com `IA_PROVIDER=mock`, qualquer imagem vira `documento_apenas`

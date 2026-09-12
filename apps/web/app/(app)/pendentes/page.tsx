@@ -44,6 +44,9 @@ function formatDate(iso: string): string {
   return `${d}/${m}/${y}`;
 }
 
+/** O raciocínio só ajuda quando vem do modelo real; o do mock é texto de teste. */
+const mostrarRaciocinio = process.env.IA_PROVIDER === 'anthropic';
+
 export default async function PendentesPage({
   searchParams,
 }: {
@@ -180,7 +183,7 @@ export default async function PendentesPage({
                       {/* O raciocínio cru do classificador é informação interna, como a
                           métrica de confiança que o cliente pediu para esconder. Só o do
                           modelo real ajuda o gestor; o do mock entrega o modo de teste. */}
-                      {de?.raciocinio && !de.raciocinio.startsWith('MockClassifier') ? (
+                      {de?.raciocinio && mostrarRaciocinio ? (
                         <div className="pendente-extracted__field pendente-extracted__value--wide">
                           <span className="pendente-extracted__label">Raciocínio da IA</span>
                           <span className="pendente-extracted__value">{de.raciocinio}</span>

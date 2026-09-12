@@ -866,6 +866,9 @@ a.ng-btn {
   height: 44px;
 } /* P3 */
 .nos-dt__td[data-col="actions"] a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: 44px;
   min-height: 44px;
 } /* M2: lápis */

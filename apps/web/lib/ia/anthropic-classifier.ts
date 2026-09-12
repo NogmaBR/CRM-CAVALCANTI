@@ -1,5 +1,6 @@
 import 'server-only';
 import { logger } from '@/lib/log';
+import { validateFileMagicBytes } from '@/lib/schemas/documento';
 import { downloadDocumentBytes } from '@/lib/storage/documents';
 import { hojeBR } from '@/lib/util/datas';
 import Anthropic from '@anthropic-ai/sdk';
@@ -53,7 +54,7 @@ const MODELO_PADRAO = 'claude-opus-5';
 const MAX_TOKENS = 2048;
 
 /** Formatos que a API aceita como bloco de imagem/documento. */
-const MIMES_IMAGEM = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+const MIMES_IMAGEM = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const MIME_PDF = 'application/pdf';
 /** Limites da API (5 MB por imagem, 32 MB por PDF); um pouco abaixo por margem. */
 const MAX_BYTES_IMAGEM = 4.5 * 1024 * 1024;
@@ -146,19 +147,15 @@ export class AnthropicClassifier implements Classifier {
     const midia = await this.carregarMidia(input);
     const conteudo = montarConteudo(contexto, midia);
 
-    const resposta = await this.client.messages.parse({
-      model: this.modelo,
-      max_tokens: MAX_TOKENS,
-      system: INSTRUCOES,
-      // Adaptive thinking: a extração é curta, mas casar "obra do Recreio" com
-      // a obra certa entre várias parecidas é exatamente onde o raciocínio
-      // paga o custo. `effort: low` mantém a latência compatível com o webhook.
-      thinking: { type: 'adaptive' },
-      output_config: {
-        effort: 'low',
-        format: zodOutputFormat(SaidaSchema),
-      },
-      messages: [{ role: 'user', content: conteudo }],
+    const resposta = await this.chamar(conteudo).catch(async (err: unknown) => {
+      // A API pode recusar o anexo (imagem corrompida, PDF longo demais)
+      // mesmo com assinatura válida. Se havia mídia, tenta uma vez só com o
+      // texto: perder a foto é melhor que perder a mensagem inteira.
+      if (midia && err instanceof Anthropic.BadRequestError) {
+        log.aviso('midia_recusada_pela_api', { mime: midia.mime, status: err.status });
+        return this.chamar(contexto);
+      }
+      throw err;
     });
 
     const saida = resposta.parsed_output;
@@ -176,6 +173,24 @@ export class AnthropicClassifier implements Classifier {
     return montarSaida(saida, input);
   }
 
+  /** Uma chamada ao modelo com o conteúdo pronto (texto ou texto + mídia). */
+  private chamar(conteudo: string | ContentBlockParam[]) {
+    return this.client.messages.parse({
+      model: this.modelo,
+      max_tokens: MAX_TOKENS,
+      system: INSTRUCOES,
+      // Adaptive thinking: a extração é curta, mas casar "obra do Recreio" com
+      // a obra certa entre várias parecidas é exatamente onde o raciocínio
+      // paga o custo. `effort: low` mantém a latência compatível com o webhook.
+      thinking: { type: 'adaptive' },
+      output_config: {
+        effort: 'low',
+        format: zodOutputFormat(SaidaSchema),
+      },
+      messages: [{ role: 'user', content: conteudo }],
+    });
+  }
+
   /**
    * Relê a mídia do Storage quando o formato é um que a API entende. Qualquer
    * falha vira aviso no log e o modelo segue só com o texto — nunca derruba
@@ -188,6 +203,16 @@ export class AnthropicClassifier implements Classifier {
       const bytes = await this.deps.baixarMidia(input.midiaStoragePath);
       if (!bytes) {
         log.aviso('midia_nao_lida', { storage_path: input.midiaStoragePath });
+        return null;
+      }
+      // O mime é o que o provider declarou; a assinatura é o que garante que
+      // os bytes são o que dizem ser (mesma regra dos uploads do painel).
+      const assinatura = validateFileMagicBytes(
+        bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer,
+        mime,
+      );
+      if (!assinatura.ok) {
+        log.aviso('midia_assinatura_invalida', { storage_path: input.midiaStoragePath, mime });
         return null;
       }
       return { bytes, mime };
