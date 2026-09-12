@@ -1,10 +1,14 @@
 'use server';
 
+import { logger } from '@/lib/log';
+
+const log = logger('login');
+
+import { LIMITES, ipDaRequest, limparLimite, verificarLimite } from '@/lib/security/rate-limit';
+import { createClient } from '@/lib/supabase/server';
+import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { revalidatePath } from 'next/cache';
-import { createClient } from '@/lib/supabase/server';
-import { LIMITES, verificarLimite, limparLimite, ipDaRequest } from '@/lib/security/rate-limit';
 
 export async function login(formData: FormData) {
   const email = String(formData.get('email') ?? '').trim();
@@ -44,7 +48,7 @@ export async function login(formData: FormData) {
     // Mensagem genérica de propósito: `error.message` distingue "usuário não
     // existe" de "senha errada" de "e-mail não confirmado", o que transforma
     // a tela de login num oráculo de enumeração de contas.
-    console.error('[login] falha de autenticação:', error.message);
+    log.aviso('login_falhou', { erro: error.message });
     redirect(`/login?error=${encodeURIComponent('E-mail ou senha incorretos.')}`);
   }
 

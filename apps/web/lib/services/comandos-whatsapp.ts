@@ -1,5 +1,5 @@
 import 'server-only';
-import { inicioDoMesBR, inicioDoMesPassadoBR, nomeDoMesBR } from '@/lib/util/datas';
+import { hojeBR, inicioDoMesBR, inicioDoMesPassadoBR, nomeDoMesBR } from '@/lib/util/datas';
 import type { Comando } from '@/lib/whatsapp/comandos';
 import type { Database } from '@nogma/db';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -96,7 +96,7 @@ async function resumo(supabase: Client): Promise<string> {
 
 /** Confirmações em aberto + pagamentos sem documento. */
 async function pendencias(supabase: Client): Promise<string> {
-  const corte = new Date(Date.now() - 3 * 86_400_000).toISOString().slice(0, 10);
+  const corte = hojeBR(new Date(Date.now() - 3 * 86_400_000));
 
   const [confirmacoes, semDoc] = await Promise.all([
     supabase

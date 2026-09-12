@@ -1,6 +1,8 @@
 import 'server-only';
-import type { Database } from '@nogma/db';
+import { STATUS_QUE_CONTAM } from '@/lib/status-labels';
 import { createClient } from '@/lib/supabase/server';
+import { hojeBR } from '@/lib/util/datas';
+import type { Database } from '@nogma/db';
 
 /**
  * Data layer para o Painel (Fase 17).
@@ -63,18 +65,33 @@ function mesKey(d: Date): string {
 function mesLabel(mesKey: string): string {
   const [y, m] = mesKey.split('-');
   if (!y || !m) return mesKey;
-  const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  const meses = [
+    'Jan',
+    'Fev',
+    'Mar',
+    'Abr',
+    'Mai',
+    'Jun',
+    'Jul',
+    'Ago',
+    'Set',
+    'Out',
+    'Nov',
+    'Dez',
+  ];
   const idx = Number(m) - 1;
   const yy = y.slice(-2);
   return `${meses[idx] ?? m}/${yy}`;
 }
 
 function lastNMeses(n: number): string[] {
+  // Mês civil de Brasília: o runtime da Vercel é UTC, e às 21h do último
+  // dia do mês o "gasto no mês" já mostrava o mês seguinte.
+  const [anoBR, mesBR] = hojeBR().split('-').map(Number) as [number, number];
   const out: string[] = [];
-  const now = new Date();
   for (let i = n - 1; i >= 0; i -= 1) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    out.push(mesKey(d));
+    const d = new Date(Date.UTC(anoBR, mesBR - 1 - i, 1));
+    out.push(`${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`);
   }
   return out;
 }
@@ -109,13 +126,17 @@ export async function getKpisResumo(): Promise<KpisResumo> {
     supabase
       .from('pagamentos')
       .select('valor, data_pagamento, status_pagto, created_at')
-      .eq('status_pagto', 'confirmado')
+      .in('status_pagto', [...STATUS_QUE_CONTAM])
       .is('deleted_at', null),
     supabase
       .from('mensagens_whats')
       .select('id, status, recebida_em')
       .in('status', ['recebida', 'classificada']),
-    supabase.from('pagamentos').select('valor').eq('status_pagto', 'confirmado').is('deleted_at', null),
+    supabase
+      .from('pagamentos')
+      .select('valor')
+      .in('status_pagto', [...STATUS_QUE_CONTAM])
+      .is('deleted_at', null),
   ]);
 
   const obras = obrasR.data ?? [];
@@ -177,7 +198,10 @@ export async function getKpisResumo(): Promise<KpisResumo> {
   const brl = (v: number) =>
     v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 
-  const pctDelta = (atual: number, anterior: number): { pct: number | null; dir: 'up' | 'down' | 'flat' } => {
+  const pctDelta = (
+    atual: number,
+    anterior: number,
+  ): { pct: number | null; dir: 'up' | 'down' | 'flat' } => {
     if (anterior === 0) return { pct: null, dir: atual > 0 ? 'up' : 'flat' };
     const pct = ((atual - anterior) / anterior) * 100;
     if (Math.abs(pct) < 0.5) return { pct, dir: 'flat' };
@@ -238,7 +262,7 @@ export async function getSerieMensal(nMeses = 12): Promise<SerieMensalPoint[]> {
   const { data } = await supabase
     .from('pagamentos')
     .select('valor, data_pagamento')
-    .eq('status_pagto', 'confirmado')
+    .in('status_pagto', [...STATUS_QUE_CONTAM])
     .is('deleted_at', null)
     .gte('data_pagamento', inicio)
     .order('data_pagamento');
@@ -275,7 +299,7 @@ export async function getGastoPorCategoria(topN = 5): Promise<CategoriaGasto[]> 
     supabase
       .from('pagamentos')
       .select('valor, categoria_id')
-      .eq('status_pagto', 'confirmado')
+      .in('status_pagto', [...STATUS_QUE_CONTAM])
       .is('deleted_at', null)
       .gte('data_pagamento', inicio),
     supabase.from('categorias').select('id, nome, cor').is('deleted_at', null),
@@ -347,11 +371,13 @@ export async function getAtividadeRecente(limit = 10): Promise<AtividadeItem[]> 
   const msgs = msgsR.data ?? [];
 
   const obraIds = [
-    ...new Set([...pags.map((p) => p.obra_id), ...docs.map((d) => d.obra_id)].filter((v): v is string => !!v)),
+    ...new Set(
+      [...pags.map((p) => p.obra_id), ...docs.map((d) => d.obra_id)].filter(
+        (v): v is string => !!v,
+      ),
+    ),
   ];
-  const fornIds = [
-    ...new Set(pags.map((p) => p.fornecedor_id).filter((v): v is string => !!v)),
-  ];
+  const fornIds = [...new Set(pags.map((p) => p.fornecedor_id).filter((v): v is string => !!v))];
   const autorizadoIds = [
     ...new Set(msgs.map((m) => m.autorizado_id).filter((v): v is string => !!v)),
   ];
@@ -391,7 +417,7 @@ export async function getAtividadeRecente(limit = 10): Promise<AtividadeItem[]> 
         id: `pag-${p.id}`,
         tipo: 'pagamento',
         titulo: `Pagamento ${brl(Number(p.valor))} · ${p.origem}`,
-        meta: `${obraMap.get(p.obra_id) ?? '(obra)'}${p.fornecedor_id ? ' · ' + (fornMap.get(p.fornecedor_id) ?? '') : ''}`,
+        meta: `${obraMap.get(p.obra_id) ?? '(obra)'}${p.fornecedor_id ? ` · ${fornMap.get(p.fornecedor_id) ?? ''}` : ''}`,
         timestamp: p.created_at ?? new Date().toISOString(),
         href: `/pagamentos/${p.id}`,
       }),
@@ -408,7 +434,7 @@ export async function getAtividadeRecente(limit = 10): Promise<AtividadeItem[]> 
     ),
     ...msgs.map((m): AtividadeItem => {
       const quem = m.autorizado_id ? autorizadoMap.get(m.autorizado_id) : null;
-      const meta = quem ? `via ${quem}` : `via WhatsApp`;
+      const meta = quem ? `via ${quem}` : 'via WhatsApp';
       const href = m.pagamento_id
         ? `/pagamentos/${m.pagamento_id}`
         : m.documento_id

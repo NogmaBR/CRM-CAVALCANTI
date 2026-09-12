@@ -1,10 +1,14 @@
 'use server';
 
+import { logger } from '@/lib/log';
+
+const log = logger('definir-senha');
+
+import { LIMITES, ipDaRequest, verificarLimite } from '@/lib/security/rate-limit';
+import { createClient } from '@/lib/supabase/server';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/server';
-import { LIMITES, verificarLimite, ipDaRequest } from '@/lib/security/rate-limit';
 
 const SenhaSchema = z
   .object({
@@ -49,7 +53,7 @@ export async function definirSenha(formData: FormData) {
 
   const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
   if (error) {
-    console.error('[definir-senha] updateUser falhou:', error.message);
+    log.erro('definir_senha_falhou', { erro: error.message });
     redirect(
       `/definir-senha?error=${encodeURIComponent(
         'Não foi possível definir a senha. Verifique se ela tem ao menos 8 caracteres e tente de novo.',

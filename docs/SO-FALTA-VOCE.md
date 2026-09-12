@@ -26,7 +26,7 @@ SÓ FALTA VOCÊ
   🔴 1. Telefones reais dos fornecedores        ← antes de qualquer automação
   🔴 2. Credenciais (UAZAPI, Anthropic, OpenAI) + redeploy
   🔴 3. Webhook da UAZAPI + cadastrar a equipe em /config/autorizados
-  🟠 4. Mergear o PR #20 (front-end premium) + 5 limpezas que só você faz
+  🟠 4. Mergear os PRs #20 (front-end, mergeado) e #21 (banco) + 6 limpezas que só você faz
   🟠 5. Vercel Pro → um comando faz o resto (região + repo privado)
   🟠 6. Backup: restore de teste + guardar a frase + PITR
   🟡 7. Domínio próprio + Cloudflare
@@ -187,6 +187,27 @@ quem usa:
 Sem migration, sem mudança de banco. 274 testes, typecheck, lint e build limpos; CI
 verde no PR. **Pode mergear.** Depois do merge, abra o app no celular e no desktop e
 troque o tema pelo botão do topo — é o que o cliente vai ver.
+
+### 4.0b — PR #21: revisão do banco (migration já em produção)
+
+<https://github.com/NogmaBR/CRM-CAVALCANTI/pull/21> — inventário real do banco + dois
+revisores. A migration **já está aplicada e conferida** (policies otimizadas, privilégios
+reduzidos, auditoria ampliada, manutenção agendada, áudio do WhatsApp aceito no bucket).
+O PR traz o código que acompanha: pendência sem "sucesso falso", automação que não perde
+a configuração ao ligar/desligar, painel em Brasília. Achados e próximos passos em
+`docs/PLANO-BANCO-PREMIUM.md`. **Pode mergear.**
+
+Três limpezas que só você faz, no SQL Editor da Supabase (o classificador me barra de
+apagar tabela):
+
+```sql
+DROP TABLE public."pagamentos.csv";          -- lixo do import manual, sem policy
+DROP TABLE public.notificacoes_email;        -- zero referências no código
+DROP TABLE public.lembretes_agendados;       -- ideia substituída pelo pg_cron
+```
+
+E, no painel Auth → Settings, ligar **"Leaked password protection"** (HIBP) quando o
+projeto for Pro.
 
 ### 4.1 — PR #19: a revisão geral (mergeado em 2026-09-12)
 

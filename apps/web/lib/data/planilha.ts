@@ -1,4 +1,7 @@
 import 'server-only';
+import { logger } from '@/lib/log';
+
+const log = logger('planilha');
 import type { Database } from '@nogma/db';
 import { createClient as createSbClient } from '@supabase/supabase-js';
 
@@ -81,7 +84,9 @@ export async function getPlanilhaPorToken(token: string): Promise<Planilha | nul
 
   const supabase = serviceClient();
   if (!supabase) {
-    console.error('[planilha] service role ausente — a página pública não funciona sem ela.');
+    log.erro('planilha_service_role_ausente', {
+      dica: 'a página pública não funciona sem SUPABASE_SERVICE_ROLE_KEY',
+    });
     return null;
   }
 
@@ -89,6 +94,7 @@ export async function getPlanilhaPorToken(token: string): Promise<Planilha | nul
     .from('obra_compartilhamentos')
     .select('obra_id, revogado_em, expira_em')
     .eq('token', token)
+    .is('revogado_em', null)
     .maybeSingle();
 
   if (!link || link.revogado_em) return null;
@@ -166,7 +172,7 @@ export async function getPlanilhaPorToken(token: string): Promise<Planilha | nul
     p_token: token,
   });
   if (erroAcesso) {
-    console.error('[planilha] falha ao registrar acesso:', erroAcesso.message);
+    log.erro('planilha_registrar_acesso_falhou', { erro: erroAcesso.message });
   }
 
   return {

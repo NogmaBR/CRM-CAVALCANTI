@@ -1,10 +1,10 @@
 'use server';
 
+import { mergeFornecedores } from '@/lib/services/merge-fornecedores';
+import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/server';
-import { mergeFornecedores } from '@/lib/services/merge-fornecedores';
 
 const MergeSchema = z.object({
   keepId: z.string().uuid('keepId deve ser UUID válido'),
@@ -57,7 +57,7 @@ export async function mergeFornecedoresAction(formData: FormData) {
   if (!result.ok) {
     redirect(
       `/fornecedores/duplicatas?error=${encodeURIComponent(
-        `Falha na fusão: ${result.error ?? 'Erro desconhecido'}`,
+        'Falha na fusão. O detalhe está no log do servidor.',
       )}`,
     );
   }

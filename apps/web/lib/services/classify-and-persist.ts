@@ -146,7 +146,7 @@ export async function classifyAndPersist(mensagemId: string): Promise<
         .from('mensagens_whats')
         .update({
           status: 'erro',
-          erro_msg: `insert pagamento falhou: ${insertPagto.error.message}`,
+          erro_msg: `insert pagamento falhou (${insertPagto.error.code ?? 'erro'}); veja o log pela correlação`,
           confianca_ia: out.confidence,
           dados_extraidos: out.extracted,
         })
