@@ -1,5 +1,7 @@
 'use server';
 
+import { pareceUuid } from '@/lib/util/uuid';
+
 import { mapDbError } from '@/lib/schemas/errors';
 import { ObraCreateSchema, ObraUpdateSchema } from '@/lib/schemas/obra';
 import { createClient } from '@/lib/supabase/server';
@@ -124,6 +126,7 @@ export async function bulkArchiveObras(formData: FormData) {
   try {
     ids = JSON.parse(idsRaw);
     if (!Array.isArray(ids) || ids.length === 0 || ids.length > 100) throw new Error();
+    if (!ids.every((v) => typeof v === 'string' && pareceUuid(v))) throw new Error();
   } catch {
     redirect('/obras?error=IDs%20inv%C3%A1lidos');
   }

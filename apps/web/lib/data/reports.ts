@@ -164,7 +164,7 @@ export async function getMesData(ano: number, mes: number): Promise<MesData> {
   const proxMes = mes === 12 ? { y: ano + 1, m: 1 } : { y: ano, m: mes + 1 };
   const fim = `${proxMes.y}-${String(proxMes.m).padStart(2, '0')}-01`;
 
-  const { data: pagamentos } = await supabase
+  const { data: pagamentos, error: erroPags } = await supabase
     .from('pagamentos')
     .select('*')
     .gte('data_pagamento', inicio)
@@ -172,6 +172,8 @@ export async function getMesData(ano: number, mes: number): Promise<MesData> {
     .is('deleted_at', null)
     .in('status_pagto', [...STATUS_QUE_CONTAM])
     .order('data_pagamento', { ascending: true });
+  // Erro aqui virava um fechamento de R$ 0,00 com cara de válido.
+  if (erroPags) throw new Error(`Falha ao carregar o fechamento: ${erroPags.message}`);
 
   const pags = pagamentos ?? [];
 
@@ -429,15 +431,15 @@ export async function getAtividadeData(from: string, to: string): Promise<Ativid
     supabase
       .from('pagamentos')
       .select('id, created_at, valor, obra_id, fornecedor_id, descricao, origem')
-      .gte('created_at', `${from}T00:00:00.000Z`)
-      .lte('created_at', `${to}T23:59:59.999Z`)
+      .gte('created_at', `${from}T00:00:00.000-03:00`)
+      .lte('created_at', `${to}T23:59:59.999-03:00`)
       .is('deleted_at', null)
       .order('created_at', { ascending: false }),
     supabase
       .from('documentos')
       .select('id, created_at, nome_arquivo, obra_id, fornecedor_id, tipo')
-      .gte('created_at', `${from}T00:00:00.000Z`)
-      .lte('created_at', `${to}T23:59:59.999Z`)
+      .gte('created_at', `${from}T00:00:00.000-03:00`)
+      .lte('created_at', `${to}T23:59:59.999-03:00`)
       .is('deleted_at', null)
       .order('created_at', { ascending: false }),
   ]);

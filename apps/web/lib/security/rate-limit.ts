@@ -1,6 +1,9 @@
 import 'server-only';
-import { createClient as createSbClient } from '@supabase/supabase-js';
+import { logger } from '@/lib/log';
+
+const log = logger('rate-limit');
 import type { Database } from '@nogma/db';
+import { createClient as createSbClient } from '@supabase/supabase-js';
 
 /**
  * Rate limiting (auditoria 2026-09-09, finding M-3).
@@ -103,7 +106,9 @@ export async function verificarLimite(
   } catch (err) {
     // Fail-open deliberado (ver header do arquivo). Registramos pra não passar
     // despercebido caso a RPC suma numa migration futura.
-    console.error('[rate-limit] falha ao consultar contador, liberando request:', err);
+    log.erro('rate_limit_indisponivel_liberando', {
+      erro: err instanceof Error ? err.message : String(err),
+    });
     return { permitido: true, hits: 0, retryApos: 0 };
   }
 }
@@ -113,7 +118,9 @@ export async function limparLimite(config: LimiteConfig, identificador: string):
   const supabase = serviceRoleClient();
   if (!supabase) return;
   try {
-    await supabase.rpc('rate_limit_reset', { p_chave: `${config.escopo}:${identificador}`.slice(0, 512) });
+    await supabase.rpc('rate_limit_reset', {
+      p_chave: `${config.escopo}:${identificador}`.slice(0, 512),
+    });
   } catch {
     // Best-effort: o contador expira sozinho ao fim da janela.
   }
@@ -121,14 +128,11 @@ export async function limparLimite(config: LimiteConfig, identificador: string):
 
 /** Resposta 429 padronizada para route handlers. */
 export function resposta429(retryApos: number): Response {
-  return new Response(
-    JSON.stringify({ error: 'too many requests', retry_after: retryApos }),
-    {
-      status: 429,
-      headers: {
-        'Content-Type': 'application/json',
-        'Retry-After': String(retryApos),
-      },
+  return new Response(JSON.stringify({ error: 'too many requests', retry_after: retryApos }), {
+    status: 429,
+    headers: {
+      'Content-Type': 'application/json',
+      'Retry-After': String(retryApos),
     },
-  );
+  });
 }

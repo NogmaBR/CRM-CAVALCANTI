@@ -4,7 +4,7 @@
 > **Mantenha-o atualizado**: ao terminar um trabalho relevante, atualize a §7 (estado)
 > e acrescente em §8 (armadilhas) qualquer erro novo que você cometeu.
 >
-> Última atualização: **2026-09-12**, após a revisão de front-end (PR #20).
+> Última atualização: **2026-09-12**, após a revisão do banco (PR #21) e do front-end (PR #20).
 
 ---
 
@@ -478,6 +478,29 @@ screenshot real de cada tela (1440px e 390px, três temas), plano em
   `select`/`textarea` têm 44px como o `Input`.
 - Headless Chromium às vezes não aplica `:hover` na primeira movimentação do mouse
   depois do `goto` — mova o mouse para longe e volte antes de fotografar a sidebar.
+
+**Revisão do banco de 2026-09-12 (migration `20260912150000_revisao_banco.sql`, já
+aplicada e conferida; PR #21).** Inventário real + dois revisores; plano e achados em
+`docs/PLANO-BANCO-PREMIUM.md`. Regras novas:
+- **Policies usam `(select auth.uid())` e `(select has_role(...))`, `TO authenticated`.**
+  Policy nova segue o mesmo formato — o advisor `auth_rls_initplan` está em zero.
+- `authenticated` não tem TRUNCATE/REFERENCES/TRIGGER em tabela nenhuma, nem escrita em
+  `audit_log`, `ai_*`, `knowledge_*`, `automation_executions`; `rate_limits` e
+  `whatsapp_respostas` são só `service_role`.
+- Auditoria cobre também `profiles`, `automation_rules`, `obra_compartilhamentos` e o
+  UPDATE de `confirmacoes_pendentes`. O trigger esconde `secret` e `token`.
+- **`scripts/apply-migration.mjs` registra em `schema_migrations` e tem `--ensaio`**
+  (transação + rollback). Ensaie antes de aplicar; confira o catálogo depois.
+- Crons de manutenção: `manutencao-cron-historico`, `manutencao-automacoes`,
+  `manutencao-filas` (03:20–03:30 UTC). `saude_sistema` avisa "nunca rodou" até o
+  primeiro dia — é aviso, não problema.
+- `autorizados.telefone_norm` (gerada, só dígitos) é a coluna única; `categorias.nome`
+  é única só entre vivas. `resolvida`, `status_pagto`, `ativo`, `status` são NOT NULL.
+- Obra arquivada rejeita pagamento novo (trigger, erro `pagamentos_obra_arquivada`).
+- **Escrita com `.update().eq()` confere `error` E linhas afetadas** (`.select('id')`):
+  com RLS, papel sem permissão faz zero linhas sem erro. Pendências já seguem isso.
+- Painel conta `STATUS_QUE_CONTAM` como o resto do sistema (decisão fechada).
+- Tela de pendentes usa a RPC `pagamentos_sem_documento` (EXECUTE para authenticated).
 
 ### O que falta — e é ação humana, não código
 

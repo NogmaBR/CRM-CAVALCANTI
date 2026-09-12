@@ -1,3 +1,6 @@
+import { logger } from '@/lib/log';
+
+const log = logger('erros');
 /**
  * Traduz erros conhecidos do Postgres/Supabase para mensagens amigáveis
  * que podem ser expostas ao usuário via `?error=` sem vazar detalhes
@@ -23,7 +26,10 @@ const CODE_MESSAGES: Record<string, string> = {
   PGRST301: 'Sessão expirada. Faça login novamente.',
 };
 
-export function mapDbError(err: DbErrorLike | null | undefined, fallback = 'Erro ao processar. Tente novamente.'): string {
+export function mapDbError(
+  err: DbErrorLike | null | undefined,
+  fallback = 'Erro ao processar. Tente novamente.',
+): string {
   if (!err) return fallback;
   const code = err.code ?? '';
   if (code && CODE_MESSAGES[code]) return CODE_MESSAGES[code]!;
@@ -61,7 +67,7 @@ export function mapDbErrorWithContext(
  * usuário recebe o que consegue acionar.
  */
 export function sanitizarErroAdmin(operacao: string, erroBruto: string): string {
-  console.error(`[admin-api] ${operacao} falhou:`, erroBruto);
+  log.erro('admin_api_falhou', { operacao, erro: erroBruto });
 
   const normalizado = erroBruto.toLowerCase();
   if (normalizado.includes('already') || normalizado.includes('422')) {

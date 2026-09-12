@@ -32,13 +32,18 @@ export type ResultadoConfirmacao =
   | { ok: true; pagamentoId: string; jaEstavaResolvida: boolean }
   | {
       ok: false;
-      codigo: 'nao_encontrada' | 'ja_resolvida' | 'dados_incompletos' | 'erro_insert';
+      codigo:
+        | 'nao_encontrada'
+        | 'ja_resolvida'
+        | 'dados_incompletos'
+        | 'erro_insert'
+        | 'sem_permissao';
       motivo: string;
     };
 
 export type ResultadoRecusa =
   | { ok: true; jaEstavaResolvida: boolean }
-  | { ok: false; codigo: 'nao_encontrada'; motivo: string };
+  | { ok: false; codigo: 'nao_encontrada' | 'sem_permissao'; motivo: string };
 
 type Client = SupabaseClient<Database>;
 
@@ -108,12 +113,27 @@ export async function aplicarConfirmacao(
   const pagamento = await obterOuCriarPagamento(supabase, mensagem.id, dados, ctx.userId ?? null);
   if (!pagamento.ok) return pagamento;
 
-  await supabase
+  // Cada escrita confere erro E linhas afetadas: com a RLS, um papel sem
+  // permissão faz o UPDATE atingir zero linhas sem erro nenhum — e a
+  // pendência ficava "resolvida" só na mensagem de sucesso.
+  const msgUpd = await supabase
     .from('mensagens_whats')
     .update({ status: 'confirmada', pagamento_id: pagamento.id })
-    .eq('id', mensagem.id);
+    .eq('id', mensagem.id)
+    .select('id');
+  if (msgUpd.error || (msgUpd.data?.length ?? 0) === 0) {
+    log.erro('confirmacao_mensagem_nao_atualizada', {
+      mensagemId: mensagem.id,
+      erro: msgUpd.error?.message ?? 'zero linhas (permissão?)',
+    });
+    return {
+      ok: false,
+      codigo: 'sem_permissao',
+      motivo: 'Sem permissão para confirmar esta pendência.',
+    };
+  }
 
-  await supabase
+  const confUpd = await supabase
     .from('confirmacoes_pendentes')
     .update({
       resolvida: true,
@@ -123,7 +143,19 @@ export async function aplicarConfirmacao(
       resultado: 'confirmada',
       pagamento_id: pagamento.id,
     })
-    .eq('id', ctx.confirmacaoId);
+    .eq('id', ctx.confirmacaoId)
+    .select('id');
+  if (confUpd.error || (confUpd.data?.length ?? 0) === 0) {
+    log.erro('confirmacao_pendencia_nao_fechada', {
+      confirmacaoId: ctx.confirmacaoId,
+      erro: confUpd.error?.message ?? 'zero linhas (permissão?)',
+    });
+    return {
+      ok: false,
+      codigo: 'sem_permissao',
+      motivo: 'Sem permissão para confirmar esta pendência.',
+    };
+  }
 
   return { ok: true, pagamentoId: pagamento.id, jaEstavaResolvida: false };
 }
@@ -206,7 +238,7 @@ export async function recusarConfirmacao(
     return { ok: true, jaEstavaResolvida: true };
   }
 
-  await supabase
+  const msgUpd = await supabase
     .from('mensagens_whats')
     .update({
       status: 'recusada',
@@ -216,9 +248,21 @@ export async function recusarConfirmacao(
           ? 'Recusada pelo remetente no WhatsApp'
           : 'Recusada pelo gestor no painel'),
     })
-    .eq('id', confirmacao.mensagem_id);
+    .eq('id', confirmacao.mensagem_id)
+    .select('id');
+  if (msgUpd.error || (msgUpd.data?.length ?? 0) === 0) {
+    log.erro('recusa_mensagem_nao_atualizada', {
+      mensagemId: confirmacao.mensagem_id,
+      erro: msgUpd.error?.message ?? 'zero linhas (permissão?)',
+    });
+    return {
+      ok: false,
+      codigo: 'sem_permissao',
+      motivo: 'Sem permissão para recusar esta pendência.',
+    };
+  }
 
-  await supabase
+  const confUpd = await supabase
     .from('confirmacoes_pendentes')
     .update({
       resolvida: true,
@@ -227,7 +271,19 @@ export async function recusarConfirmacao(
       resolvida_via: ctx.via,
       resultado: 'recusada',
     })
-    .eq('id', ctx.confirmacaoId);
+    .eq('id', ctx.confirmacaoId)
+    .select('id');
+  if (confUpd.error || (confUpd.data?.length ?? 0) === 0) {
+    log.erro('recusa_pendencia_nao_fechada', {
+      confirmacaoId: ctx.confirmacaoId,
+      erro: confUpd.error?.message ?? 'zero linhas (permissão?)',
+    });
+    return {
+      ok: false,
+      codigo: 'sem_permissao',
+      motivo: 'Sem permissão para recusar esta pendência.',
+    };
+  }
 
   return { ok: true, jaEstavaResolvida: false };
 }

@@ -1,5 +1,6 @@
 import 'server-only';
 import type { Evento } from '@/lib/events/tipos';
+import { hojeBR } from '@/lib/util/datas';
 import { enviarWhatsapp } from '../actions/enviar-whatsapp';
 import type { AutomacaoAgendada, ContextoExecucao, ResultadoCondicao } from '../tipos';
 
@@ -47,7 +48,7 @@ export const cobrarDocumentoFornecedor: AutomacaoAgendada = {
     const dias = numero(config.dias_sem_documento, DIAS_PADRAO);
     const limite = numero(config.limite_por_rodada, LIMITE_POR_RODADA);
 
-    const corte = new Date(Date.now() - dias * 86_400_000).toISOString().slice(0, 10);
+    const corte = hojeBR(new Date(Date.now() - dias * 86_400_000));
 
     // O filtro "sem documento vivo" roda no banco (`pagamentos_sem_documento`),
     // não em JS sobre os 100 mais antigos: quando os 100 mais antigos já

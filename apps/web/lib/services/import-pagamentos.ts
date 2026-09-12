@@ -1,8 +1,9 @@
 import 'server-only';
-import { createClient as createSbClient } from '@supabase/supabase-js';
+import { mapDbError } from '@/lib/schemas/errors';
+import { type ImportPagamentoRow, ImportPagamentoRowSchema } from '@/lib/schemas/import-pagamento';
+import { type ParsedCsv, parseCsv, rowsToObjects } from '@/lib/util/csv-parser';
 import type { Database } from '@nogma/db';
-import { rowsToObjects, parseCsv, type ParsedCsv } from '@/lib/util/csv-parser';
-import { ImportPagamentoRowSchema, type ImportPagamentoRow } from '@/lib/schemas/import-pagamento';
+import { createClient as createSbClient } from '@supabase/supabase-js';
 
 /**
  * Service pra import de pagamentos via CSV.
@@ -20,7 +21,8 @@ import { ImportPagamentoRowSchema, type ImportPagamentoRow } from '@/lib/schemas
 function serviceRoleClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error('SUPABASE_SERVICE_ROLE_KEY ou NEXT_PUBLIC_SUPABASE_URL ausente');
+  if (!url || !key)
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY ou NEXT_PUBLIC_SUPABASE_URL ausente');
   return createSbClient<Database>(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
@@ -30,7 +32,7 @@ function normalize(s: string): string {
   return s
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[̀-ͯ]/gu, '')
+    .replace(/\p{Diacritic}/gu, '')
     .replace(/\s+/gu, ' ')
     .trim();
 }
@@ -73,9 +75,7 @@ export interface PreviewResult {
  * do round-trip pra lançar pagamentos numa obra diferente da que estava no
  * CSV. Agora o nome no arquivo é a única fonte de verdade, dos dois lados.
  */
-async function resolverLinhas(
-  objects: Array<Record<string, string>>,
-): Promise<PreviewRow[]> {
+async function resolverLinhas(objects: Array<Record<string, string>>): Promise<PreviewRow[]> {
   const supabase = serviceRoleClient();
 
   // Batched lookup de obras/fornecedores/categorias (uma query cada)
@@ -128,7 +128,9 @@ async function resolverLinhas(
           matched.fornecedor_nome = forn.nome;
         } else {
           // Fornecedor opcional — não bloqueia, mas alerta
-          errors.push(`fornecedor: não encontrado ("${data.fornecedor}"). Será importado sem fornecedor.`);
+          errors.push(
+            `fornecedor: não encontrado ("${data.fornecedor}"). Será importado sem fornecedor.`,
+          );
           matched.fornecedor_nome = data.fornecedor;
         }
       }
@@ -139,7 +141,9 @@ async function resolverLinhas(
           matched.categoria_id = cat.id;
           matched.categoria_nome = cat.nome;
         } else {
-          errors.push(`categoria: não encontrada ("${data.categoria}"). Será importado sem categoria.`);
+          errors.push(
+            `categoria: não encontrada ("${data.categoria}"). Será importado sem categoria.`,
+          );
           matched.categoria_nome = data.categoria;
         }
       }
@@ -190,10 +194,13 @@ export async function commitImport(
     (r) =>
       r.data != null &&
       r.matched.obra_id != null &&
-      !r.errors.some((e) => e.startsWith('obra:') || e.startsWith('valor:') || e.startsWith('data_pagamento:')),
+      !r.errors.some(
+        (e) => e.startsWith('obra:') || e.startsWith('valor:') || e.startsWith('data_pagamento:'),
+      ),
   );
 
-  if (insertable.length === 0) return { inserted: 0, failed: 0, errors: ['Nenhuma linha válida pra importar'] };
+  if (insertable.length === 0)
+    return { inserted: 0, failed: 0, errors: ['Nenhuma linha válida pra importar'] };
 
   const rows = insertable.map((r) => ({
     obra_id: r.matched.obra_id!,
@@ -217,7 +224,7 @@ export async function commitImport(
     const chunk = rows.slice(i, i + CHUNK);
     const { data, error } = await supabase.from('pagamentos').insert(chunk).select('id');
     if (error) {
-      errors.push(`Chunk ${i}-${i + chunk.length}: ${error.message}`);
+      errors.push(`Linhas ${i + 1}–${i + chunk.length}: ${mapDbError(error)}`);
     } else {
       inserted += data?.length ?? 0;
     }
