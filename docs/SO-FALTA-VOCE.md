@@ -26,7 +26,7 @@ SÓ FALTA VOCÊ
   🔴 1. Telefones reais dos fornecedores        ← antes de qualquer automação
   🔴 2. Credenciais (UAZAPI, Anthropic, OpenAI) + redeploy
   🔴 3. Webhook da UAZAPI + cadastrar a equipe em /config/autorizados
-  🟠 4. Mergear os PRs #20 (front-end) e #21 (banco) + 6 limpezas que só você faz
+  🟠 4. Mergear os PR #20 (front-end + banco) + 6 limpezas que só você faz
   🟠 5. Vercel Pro → um comando faz o resto (região + repo privado)
   🟠 6. Backup: restore de teste + guardar a frase + PITR
   🟡 7. Domínio próprio + Cloudflare
@@ -188,9 +188,9 @@ Sem migration, sem mudança de banco. 274 testes, typecheck, lint e build limpos
 verde no PR. **Pode mergear.** Depois do merge, abra o app no celular e no desktop e
 troque o tema pelo botão do topo — é o que o cliente vai ver.
 
-### 4.0b — PR #21: revisão do banco (migration já em produção)
+### 4.0b — PR #20: revisão do banco (migration já em produção)
 
-<https://github.com/NogmaBR/CRM-CAVALCANTI/pull/21> — inventário real do banco + dois
+<https://github.com/NogmaBR/CRM-CAVALCANTI/pull/20> — inventário real do banco + dois
 revisores. A migration **já está aplicada e conferida** (policies otimizadas, privilégios
 reduzidos, auditoria ampliada, manutenção agendada, áudio do WhatsApp aceito no bucket).
 O PR traz o código que acompanha: pendência sem "sucesso falso", automação que não perde
