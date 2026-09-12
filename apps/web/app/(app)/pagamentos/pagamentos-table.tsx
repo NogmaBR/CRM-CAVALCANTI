@@ -47,8 +47,12 @@ export function PagamentosTable({
           <span className="obras-orcamento">{formatDate(row.original.data_pagamento)}</span>
         ),
       },
+      // `accessorFn` nas três colunas de lookup: sem ele a busca global do
+      // TanStack ignora a coluna (só filtra o que tem accessor), e digitar o
+      // nome da obra ou do fornecedor devolvia "0 resultados".
       {
         id: 'obra',
+        accessorFn: (p) => obraMap.get(p.obra_id)?.nome ?? '',
         header: 'Obra',
         cell: ({ row }) => {
           const obra = obraMap.get(row.original.obra_id);
@@ -62,6 +66,7 @@ export function PagamentosTable({
       },
       {
         id: 'fornecedor',
+        accessorFn: (p) => (p.fornecedor_id ? (fornMap.get(p.fornecedor_id)?.nome ?? '') : ''),
         header: 'Fornecedor',
         cell: ({ row }) => {
           const fid = row.original.fornecedor_id;
@@ -72,6 +77,7 @@ export function PagamentosTable({
       },
       {
         id: 'categoria',
+        accessorFn: (p) => (p.categoria_id ? (catMap.get(p.categoria_id)?.nome ?? '') : ''),
         header: 'Categoria',
         cell: ({ row }) => {
           const cid = row.original.categoria_id;
@@ -153,7 +159,7 @@ export function PagamentosTable({
     <DataTable
       columns={columns}
       data={pagamentos}
-      searchPlaceholder="Buscar por descrição ou observações..."
+      searchPlaceholder="Buscar por obra, fornecedor, categoria ou valor..."
       emptyMessage="Nenhum pagamento encontrado. Clique em 'Novo Pagamento' para começar."
     />
   );
