@@ -630,3 +630,40 @@ aplicada e conferida; PR #21).** Inventário real + dois revisores; plano e acha
 - Trata o contexto de sessões anteriores como perdido — por isso este arquivo existe.
 - **Não coloque secret em chat.** Se ele colar uma credencial, avise uma vez, sem
   sermão, e siga o trabalho.
+
+---
+
+## 10. gstack — o time virtual (Garry Tan)
+
+O projeto usa o [gstack](https://github.com/garrytan/gstack) (MIT, instalado em
+`~/.claude/skills/gstack`, v1.84.1.0 em 2026-09-12) como time de revisão:
+**CEO/fundador** (`/plan-ceo-review`), **designer sênior** (`/plan-design-review`,
+`/design-review`), **gerente de engenharia** (`/plan-eng-review`, `/review`), **QA**
+(`/qa`, `/qa-only`) e **engenheiro de release** (`/ship`, `/land-and-deploy`, `/canary`).
+Fluxo recomendado: pensar → planejar → construir → revisar → testar → entregar →
+refletir: `/office-hours` → `/plan-ceo-review` → `/plan-eng-review` →
+`/plan-design-review` → implementar → `/review` → `/qa` → `/ship` →
+`/land-and-deploy` → `/retro`. `/autoplan` encadeia as quatro revisões de plano.
+
+Regras para quem for usar:
+- **Navegação web é pelo `/browse` do gstack** (no Windows ele usa o Chromium
+  empacotado). Nunca use ferramentas `mcp__claude-in-chrome__*`.
+- Skills disponíveis: /office-hours, /plan-ceo-review, /plan-eng-review,
+  /plan-design-review, /plan-devex-review, /design-consultation, /design-shotgun,
+  /design-html, /design-review, /review, /investigate, /qa, /qa-only, /devex-review,
+  /browse, /connect-chrome, /scrape, /pair-agent, /cso, /ship, /land-and-deploy,
+  /canary, /benchmark, /document-release, /document-generate, /autoplan, /retro,
+  /codex, /setup-browser-cookies, /setup-deploy, /setup-gbrain, /sync-gbrain,
+  /careful, /freeze, /guard, /unfreeze, /gstack-upgrade, /learn, /make-pdf, /diagram.
+- **Windows sem Developer Mode:** o `./setup` copia arquivos em vez de symlink.
+  Depois de todo `git pull` em `~/.claude/skills/gstack`, rode `./setup` de novo
+  (ou `/gstack-upgrade`), senão as skills ficam desatualizadas.
+- **O classificador do Claude Code barra a execução dos binários do gstack**
+  (`./setup`, `bin/gstack-*`, e até o `Skill` router) em modo automático. As skills
+  têm "modo degradado" documentado: sem o preamble, trate a sessão como
+  interativa, pule telemetria e siga o SKILL.md. Instalação e `--team` são ação do
+  usuário (`! ...` no prompt).
+- Relatórios das revisões ficam em `docs/gstack/` (versionados, sem segredo).
+  Os `.gstack/` locais e `~/.gstack/` são estado de máquina, fora do Git.
+- As revisões de plano **não escrevem código**. QA escreve só correções mínimas,
+  um commit por bug. Ship nunca faz force push e nunca pula os três comandos da §5.
