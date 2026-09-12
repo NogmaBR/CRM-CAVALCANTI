@@ -78,7 +78,10 @@
 
   --text-primary: var(--petroleum-950);
   --text-secondary: var(--neutral-600);
-  --text-muted: var(--neutral-400);
+  /* Não é o cinza da marca (#a1a1a1): sobre branco ele dá 2,6:1 e reprova
+     WCAG AA em legenda, cabeçalho de tabela e subtítulo. Este dá 5,0:1 no
+     branco e 4,7:1 no --neutral-50; o cinza da marca segue em bordas/ícones. */
+  --text-muted: #6b7070;
   --heading-color: var(--text-primary); /* headings — lime under .on-black */
   --text-on-dark: var(--white);
   --text-on-lime: var(--petroleum-950);
