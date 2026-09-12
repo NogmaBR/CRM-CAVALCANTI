@@ -1,19 +1,11 @@
-import { notFound } from 'next/navigation';
-import Link from 'next/link';
-import { Users, UserPlus, Mail, RotateCw, Archive, RotateCcw, Pencil } from 'lucide-react';
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
+import { PAPEL_LABELS, type UsuarioItem, listUsuarios } from '@/lib/data/usuarios';
 import { createClient } from '@/lib/supabase/server';
-import {
-  listUsuarios,
-  PAPEL_LABELS,
-  type UsuarioItem,
-} from '@/lib/data/usuarios';
-import {
-  reenviarConvite,
-  arquivarUsuario,
-  restaurarUsuario,
-} from './actions';
+import { Archive, Mail, Pencil, RotateCcw, RotateCw, UserPlus, Users } from 'lucide-react';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { arquivarUsuario, reenviarConvite, restaurarUsuario } from './actions';
 import './usuarios.css';
 
 type StatusFilter = 'ativos' | 'pendentes' | 'arquivados';
@@ -102,10 +94,7 @@ function UsuarioRow({
           {u.status === 'ativo' && (
             <>
               {!isSelf && (
-                <Link
-                  href={`/config/usuarios/${u.user_id}/editar`}
-                  className="usuarios-action-btn"
-                >
+                <Link href={`/config/usuarios/${u.user_id}/editar`} className="usuarios-action-btn">
                   <Pencil size={12} aria-hidden="true" />
                   Editar papel
                 </Link>
@@ -120,9 +109,7 @@ function UsuarioRow({
                 </form>
               )}
               {isSelf && (
-                <span style={{ fontSize: 12, color: 'var(--text-muted, #888)' }}>
-                  (voce)
-                </span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted, #888)' }}>(você)</span>
               )}
             </>
           )}
@@ -196,7 +183,7 @@ export default async function UsuariosPage({
   return (
     <>
       <TopBar
-        title="Usuarios"
+        title="Usuários"
         subtitle="Gerencie a equipe que acessa o painel"
         actions={
           <Link href="/config/usuarios/convidar" style={{ textDecoration: 'none' }}>
@@ -209,6 +196,7 @@ export default async function UsuariosPage({
 
       <div className="nos-page-body">
         {successMsg ? (
+          // biome-ignore lint/a11y/useSemanticElements: banner de status (padrão do projeto)
           <div className="usuarios-banner usuarios-banner--success" role="status">
             {successMsg}
           </div>
@@ -253,12 +241,12 @@ export default async function UsuariosPage({
             <table className="usuarios-table">
               <thead>
                 <tr>
-                  <th>Usuario</th>
+                  <th>Usuário</th>
                   <th>Email</th>
                   <th>Papel</th>
                   <th>Status</th>
-                  <th>Ultimo acesso</th>
-                  <th>Acoes</th>
+                  <th>Último acesso</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody>

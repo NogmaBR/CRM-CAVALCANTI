@@ -2,9 +2,15 @@
    Nogma — Base layer (resets + a few brand helpers)
    ========================================================================== */
 
-*, *::before, *::after { box-sizing: border-box; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
 
-html { -webkit-text-size-adjust: 100%; }
+html {
+  -webkit-text-size-adjust: 100%;
+}
 
 body {
   margin: 0;
@@ -19,7 +25,12 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   margin: 0;
   font-family: var(--heading-family);
   font-weight: var(--heading-weight);
@@ -29,16 +40,29 @@ h1, h2, h3, h4, h5, h6 {
   text-wrap: balance;
 }
 
-p { margin: 0; text-wrap: pretty; }
+p {
+  margin: 0;
+  text-wrap: pretty;
+}
 
-a { color: inherit; text-decoration: none; }
+a {
+  color: inherit;
+  text-decoration: none;
+}
 
-button { font-family: inherit; }
+button {
+  font-family: inherit;
+}
 
-::selection { background: var(--lime-500); color: var(--petroleum-950); }
+::selection {
+  background: var(--lime-500);
+  color: var(--petroleum-950);
+}
 
 /* ---- Brand helpers ---- */
-.font-display { font-family: var(--font-display); }
+.font-display {
+  font-family: var(--font-display);
+}
 .eyebrow {
   font-family: var(--eyebrow-family);
   font-weight: var(--eyebrow-weight);
@@ -47,13 +71,23 @@ button { font-family: inherit; }
   font-size: var(--text-sm);
   color: var(--text-secondary);
 }
-.text-lime      { color: var(--lime-500); }
-.text-petroleum { color: var(--petroleum-800); }
-.bg-petroleum   { background: var(--petroleum-800); color: var(--white); }
-.bg-lime        { background: var(--lime-500); color: var(--petroleum-950); }
+.text-lime {
+  color: var(--lime-500);
+}
+.text-petroleum {
+  color: var(--petroleum-800);
+}
+.bg-petroleum {
+  background: var(--petroleum-800);
+  color: var(--white);
+}
+.bg-lime {
+  background: var(--lime-500);
+  color: var(--petroleum-950);
+}
 
 /* Lime underline flourish (brand motif) */
 .mark-lime {
-  background: linear-gradient(transparent 62%, var(--lime-500) 62%);
+  background: linear-gradient(transparent 62%, var(--mark-bg, var(--lime-500)) 62%);
   padding: 0 0.04em;
 }

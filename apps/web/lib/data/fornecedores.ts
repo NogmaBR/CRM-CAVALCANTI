@@ -1,7 +1,8 @@
 import 'server-only';
-import type { Database } from '@nogma/db';
 import { createClient } from '@/lib/supabase/server';
 import { sanitizeSearchQuery } from '@/lib/util/search';
+import { pareceUuid } from '@/lib/util/uuid';
+import type { Database } from '@nogma/db';
 
 export type Fornecedor = Database['public']['Tables']['fornecedores']['Row'];
 export type FornecedorApelido = Database['public']['Tables']['fornecedor_apelidos']['Row'];
@@ -13,7 +14,9 @@ export interface ListFornecedoresFilters {
   onlyArchived?: boolean;
 }
 
-export async function listFornecedores(filters: ListFornecedoresFilters = {}): Promise<Fornecedor[]> {
+export async function listFornecedores(
+  filters: ListFornecedoresFilters = {},
+): Promise<Fornecedor[]> {
   const supabase = await createClient();
   let query = supabase.from('fornecedores').select('*').order('created_at', { ascending: false });
 
@@ -43,8 +46,14 @@ export async function listFornecedores(filters: ListFornecedoresFilters = {}): P
 }
 
 export async function getFornecedor(id: string): Promise<Fornecedor | null> {
+  // Id que não é uuid vira 404, não erro 500 (o Postgres recusaria o cast).
+  if (!pareceUuid(id)) return null;
   const supabase = await createClient();
-  const { data, error } = await supabase.from('fornecedores').select('*').eq('id', id).maybeSingle();
+  const { data, error } = await supabase
+    .from('fornecedores')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
   if (error) throw new Error(`Falha ao carregar fornecedor: ${error.message}`);
   return data;
 }

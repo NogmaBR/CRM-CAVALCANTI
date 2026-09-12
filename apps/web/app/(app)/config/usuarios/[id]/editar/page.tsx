@@ -1,9 +1,9 @@
-import { notFound, redirect } from 'next/navigation';
-import Link from 'next/link';
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
+import { PAPEL_DESCRIPTIONS, PAPEL_LABELS, getUsuario } from '@/lib/data/usuarios';
 import { createClient } from '@/lib/supabase/server';
-import { getUsuario, PAPEL_LABELS, PAPEL_DESCRIPTIONS } from '@/lib/data/usuarios';
+import Link from 'next/link';
+import { notFound, redirect } from 'next/navigation';
 import { alterarPapelUsuario } from '../../actions';
 import '../../usuarios.css';
 import '../../../../_shared/form-layout.css';
@@ -62,7 +62,9 @@ export default async function EditarPapelPage({
 
   // Self-edit guard: redirect with error
   if (usuario.user_id === currentUser.id) {
-    redirect(`/config/usuarios?error=${encodeURIComponent('Nao e possivel editar seu proprio papel')}`);
+    redirect(
+      `/config/usuarios?error=${encodeURIComponent('Nao e possivel editar seu proprio papel')}`,
+    );
   }
 
   const sp = await searchParams;
@@ -72,10 +74,7 @@ export default async function EditarPapelPage({
 
   return (
     <>
-      <TopBar
-        title={`Editar papel: ${usuario.nome}`}
-        subtitle={usuario.email}
-      />
+      <TopBar title={`Editar papel: ${usuario.nome}`} subtitle={usuario.email} />
 
       <div className="nos-page-body">
         <div style={{ maxWidth: 560 }}>
@@ -100,7 +99,7 @@ export default async function EditarPapelPage({
               <span className="usuario-info-value">{formatDateTime(usuario.created_at)}</span>
             </div>
             <div className="usuario-info-item">
-              <span className="usuario-info-label">Ultimo acesso</span>
+              <span className="usuario-info-label">Último acesso</span>
               <span className="usuario-info-value">{formatDateTime(usuario.last_sign_in_at)}</span>
             </div>
           </div>

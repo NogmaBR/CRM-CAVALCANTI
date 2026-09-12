@@ -66,6 +66,7 @@ export default async function PendentesPage({
         ) : null}
 
         {successMsg ? (
+          // biome-ignore lint/a11y/useSemanticElements: banner de status (padrão do projeto)
           <div className="pendentes-banner pendentes-banner--success" role="status">
             {successMsg}
           </div>
@@ -113,7 +114,7 @@ export default async function PendentesPage({
                           {de?.valor != null ? (
                             formatBRL(de.valor)
                           ) : (
-                            <span className="pendente-extracted__value--empty">nao informado</span>
+                            <span className="pendente-extracted__value--empty">não informado</span>
                           )}
                         </span>
                       </div>
@@ -124,7 +125,7 @@ export default async function PendentesPage({
                           {de?.data_pagamento ? (
                             formatDate(de.data_pagamento)
                           ) : (
-                            <span className="pendente-extracted__value--empty">nao informada</span>
+                            <span className="pendente-extracted__value--empty">não informada</span>
                           )}
                         </span>
                       </div>
@@ -134,7 +135,7 @@ export default async function PendentesPage({
                         <span className="pendente-extracted__value">
                           {item.obra_nome ?? (
                             <span className="pendente-extracted__value--empty">
-                              nao identificada
+                              não identificada
                             </span>
                           )}
                         </span>
@@ -145,7 +146,7 @@ export default async function PendentesPage({
                         <span className="pendente-extracted__value">
                           {item.fornecedor_nome ?? (
                             <span className="pendente-extracted__value--empty">
-                              nao identificado
+                              não identificado
                             </span>
                           )}
                         </span>
@@ -167,14 +168,14 @@ export default async function PendentesPage({
 
                       {de?.descricao ? (
                         <div className="pendente-extracted__field pendente-extracted__value--wide">
-                          <span className="pendente-extracted__label">Descricao</span>
+                          <span className="pendente-extracted__label">Descrição</span>
                           <span className="pendente-extracted__value">{de.descricao}</span>
                         </div>
                       ) : null}
 
                       {de?.raciocinio ? (
                         <div className="pendente-extracted__field pendente-extracted__value--wide">
-                          <span className="pendente-extracted__label">Raciocinio da IA</span>
+                          <span className="pendente-extracted__label">Raciocínio da IA</span>
                           <span className="pendente-extracted__value">{de.raciocinio}</span>
                         </div>
                       ) : null}

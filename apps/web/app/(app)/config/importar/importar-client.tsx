@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { Upload, FileText, CheckCircle, XCircle, AlertTriangle, RefreshCw } from 'lucide-react';
-import { Button } from '@/components/nogma/Button';
 import { Badge } from '@/components/nogma/Badge';
-import { previewImportCsv, commitImportCsv } from './actions';
+import { Button } from '@/components/nogma/Button';
 import type { PreviewResult, PreviewRow } from '@/lib/services/import-pagamentos';
+import { AlertTriangle, CheckCircle, FileText, RefreshCw, Upload, XCircle } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { commitImportCsv, previewImportCsv } from './actions';
 import './importar.css';
 
 type Phase = 'upload' | 'preview' | 'done';
@@ -47,7 +47,7 @@ function UploadPhase({
       <div className="importar-dropzone">
         <Upload size={28} color="var(--text-muted)" aria-hidden="true" />
         <p className="importar-dropzone__label">Selecione o arquivo CSV</p>
-        <p className="importar-dropzone__hint">Arquivos ate 2 MB · ate 500 linhas por vez</p>
+        <p className="importar-dropzone__hint">Arquivos até 2 MB · até 500 linhas por vez</p>
         <input
           ref={inputRef}
           type="file"
@@ -85,15 +85,9 @@ function UploadPhase({
 function SummaryBadges({ summary }: { summary: PreviewResult['summary'] }) {
   return (
     <div className="importar-summary-badges">
-      <Badge variant="neutral">
-        Total: {summary.total}
-      </Badge>
-      <Badge variant="success">
-        OK: {summary.ok}
-      </Badge>
-      <Badge variant="danger">
-        Erro: {summary.erro}
-      </Badge>
+      <Badge variant="neutral">Total: {summary.total}</Badge>
+      <Badge variant="success">OK: {summary.ok}</Badge>
+      <Badge variant="danger">Erro: {summary.erro}</Badge>
     </div>
   );
 }
@@ -101,8 +95,8 @@ function SummaryBadges({ summary }: { summary: PreviewResult['summary'] }) {
 function PreviewRowCells({ row }: { row: PreviewRow }) {
   const temErro = row.errors.length > 0;
   const obraOk = row.matched.obra_id != null;
-  const fornNome = row.matched.fornecedor_nome ?? row.raw['fornecedor'] ?? '—';
-  const catNome = row.matched.categoria_nome ?? row.raw['categoria'] ?? '—';
+  const fornNome = row.matched.fornecedor_nome ?? row.raw.fornecedor ?? '—';
+  const catNome = row.matched.categoria_nome ?? row.raw.categoria ?? '—';
   const valorNum = row.data?.valor;
   const dataPagamento = row.data?.data_pagamento;
 
@@ -118,7 +112,7 @@ function PreviewRowCells({ row }: { row: PreviewRow }) {
         ) : (
           <span className="importar-match importar-match--fail">
             <XCircle size={12} aria-hidden="true" />
-            {row.data?.obra ?? row.raw['obra'] ?? '—'}
+            {row.data?.obra ?? row.raw.obra ?? '—'}
           </span>
         )}
       </td>
@@ -129,7 +123,7 @@ function PreviewRowCells({ row }: { row: PreviewRow }) {
             {fornNome}
           </span>
         ) : (
-          <span className="importar-text--muted">{row.raw['fornecedor'] ? fornNome : '—'}</span>
+          <span className="importar-text--muted">{row.raw.fornecedor ? fornNome : '—'}</span>
         )}
       </td>
       <td>
@@ -139,20 +133,24 @@ function PreviewRowCells({ row }: { row: PreviewRow }) {
             {catNome}
           </span>
         ) : (
-          <span className="importar-text--muted">{row.raw['categoria'] ? catNome : '—'}</span>
+          <span className="importar-text--muted">{row.raw.categoria ? catNome : '—'}</span>
         )}
       </td>
       <td className="importar-cell--valor">
         {valorNum != null ? formatBRL(valorNum) : <span className="importar-text--muted">—</span>}
       </td>
       <td>
-        {dataPagamento ? formatDataBR(dataPagamento) : <span className="importar-text--muted">—</span>}
+        {dataPagamento ? (
+          formatDataBR(dataPagamento)
+        ) : (
+          <span className="importar-text--muted">—</span>
+        )}
       </td>
       <td>
         {row.errors.length > 0 ? (
           <div className="importar-erros-cell">
-            {row.errors.map((err, i) => (
-              <Badge key={i} variant="danger" className="importar-erro-badge">
+            {row.errors.map((err) => (
+              <Badge key={err} variant="danger" className="importar-erro-badge">
                 {err}
               </Badge>
             ))}
@@ -202,7 +200,7 @@ function PreviewPhase({
           <span>
             {preview.summary.erro === preview.summary.total
               ? 'Nenhuma linha valida. Corrija os erros e reenvie o arquivo.'
-              : `${preview.summary.erro} linha(s) com erro serao ignoradas. Apenas as ${preview.summary.ok} validas serao inseridas.`}
+              : `${preview.summary.erro} linha(s) com erro serão ignoradas. Apenas as ${preview.summary.ok} válidas serão inseridas.`}
           </span>
         </div>
       )}
@@ -243,7 +241,9 @@ function DonePhase({
   const success = result.inserted > 0;
   return (
     <div className="importar-done">
-      <div className={`importar-done__banner importar-done__banner--${success ? 'success' : 'error'}`}>
+      <div
+        className={`importar-done__banner importar-done__banner--${success ? 'success' : 'error'}`}
+      >
         {success ? (
           <CheckCircle size={18} aria-hidden="true" />
         ) : (
@@ -255,8 +255,10 @@ function DonePhase({
       </div>
       {result.errors.length > 0 && (
         <div className="importar-done__erros">
-          {result.errors.map((err, i) => (
-            <p key={i} className="importar-done__erro-item">{err}</p>
+          {result.errors.map((err) => (
+            <p key={err} className="importar-done__erro-item">
+              {err}
+            </p>
           ))}
         </div>
       )}
@@ -272,7 +274,11 @@ function DonePhase({
 export function ImportarClient() {
   const [phase, setPhase] = useState<Phase>('upload');
   const [preview, setPreview] = useState<PreviewResult | null>(null);
-  const [commitResult, setCommitResult] = useState<{ inserted: number; failed: number; errors: string[] } | null>(null);
+  const [commitResult, setCommitResult] = useState<{
+    inserted: number;
+    failed: number;
+    errors: string[];
+  } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -328,9 +334,7 @@ export function ImportarClient() {
         </div>
       )}
 
-      {phase === 'upload' && (
-        <UploadPhase onAnalyze={handleAnalyze} loading={loading} />
-      )}
+      {phase === 'upload' && <UploadPhase onAnalyze={handleAnalyze} loading={loading} />}
 
       {phase === 'preview' && preview && (
         <PreviewPhase

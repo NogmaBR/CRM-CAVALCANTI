@@ -1,16 +1,14 @@
-import { redirect } from 'next/navigation';
-import Link from 'next/link';
-import { User, Palette, Globe } from 'lucide-react';
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
 import { Input } from '@/components/nogma/Input';
 import { getMyProfile } from '@/lib/data/perfil';
 import { PAPEL_LABELS } from '@/lib/data/usuarios';
-import {
-  TEMA_LABELS,
-  TIMEZONE_OPTIONS,
-} from '@/lib/schemas/perfil';
+import { TEMA_LABELS, TIMEZONE_OPTIONS } from '@/lib/schemas/perfil';
 import type { Tema } from '@/lib/schemas/perfil';
+import { getServerTheme } from '@/lib/theme';
+import { Globe, Palette, User } from 'lucide-react';
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { salvarPerfil } from './actions';
 import './perfil.css';
 import '@/app/(app)/_shared/form-layout.css';
@@ -26,7 +24,7 @@ export default async function PerfilPage({
 }: {
   searchParams: Promise<{ success?: string; error?: string }>;
 }) {
-  const profile = await getMyProfile();
+  const [profile, temaAtual] = await Promise.all([getMyProfile(), getServerTheme()]);
   if (!profile) redirect('/login');
 
   const params = await searchParams;
@@ -41,6 +39,7 @@ export default async function PerfilPage({
 
       <div className="nos-page-body">
         {successMsg ? (
+          // biome-ignore lint/a11y/useSemanticElements: banner de status (padrão do projeto)
           <div
             role="status"
             style={{
@@ -67,7 +66,11 @@ export default async function PerfilPage({
           {/* ── Fieldset 1: Informações ── */}
           <fieldset className="form-layout__section">
             <legend className="form-layout__legend">
-              <User size={12} aria-hidden="true" style={{ verticalAlign: 'middle', marginRight: 4 }} />
+              <User
+                size={12}
+                aria-hidden="true"
+                style={{ verticalAlign: 'middle', marginRight: 4 }}
+              />
               Informações
             </legend>
             <div className="form-layout__grid">
@@ -121,7 +124,11 @@ export default async function PerfilPage({
           {/* ── Fieldset 2: Aparência ── */}
           <fieldset className="form-layout__section">
             <legend className="form-layout__legend">
-              <Palette size={12} aria-hidden="true" style={{ verticalAlign: 'middle', marginRight: 4 }} />
+              <Palette
+                size={12}
+                aria-hidden="true"
+                style={{ verticalAlign: 'middle', marginRight: 4 }}
+              />
               Aparência
             </legend>
             <div className="perfil-tema-grid">
@@ -131,11 +138,7 @@ export default async function PerfilPage({
                     type="radio"
                     name="tema"
                     value={value}
-                    defaultChecked={
-                      profile.tema_preferido != null
-                        ? profile.tema_preferido === value
-                        : value === 'black'
-                    }
+                    defaultChecked={temaAtual === value}
                   />
                   <span className={TEMA_PREVIEW_CLASS[value]} aria-hidden="true" />
                   <span className="perfil-tema-card__label">{label}</span>
@@ -147,7 +150,11 @@ export default async function PerfilPage({
           {/* ── Fieldset 3: Fuso horário ── */}
           <fieldset className="form-layout__section">
             <legend className="form-layout__legend">
-              <Globe size={12} aria-hidden="true" style={{ verticalAlign: 'middle', marginRight: 4 }} />
+              <Globe
+                size={12}
+                aria-hidden="true"
+                style={{ verticalAlign: 'middle', marginRight: 4 }}
+              />
               Fuso horário
             </legend>
             <div style={{ marginTop: 12 }}>

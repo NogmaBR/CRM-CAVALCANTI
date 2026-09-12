@@ -1,10 +1,10 @@
-import { notFound } from 'next/navigation';
-import Link from 'next/link';
-import { Webhook, PlusCircle, Send, Pencil, Archive } from 'lucide-react';
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
-import { createClient } from '@/lib/supabase/server';
 import { lerSecretFlash } from '@/lib/security/flash-secret';
+import { createClient } from '@/lib/supabase/server';
+import { Archive, Pencil, PlusCircle, Send, Webhook } from 'lucide-react';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { arquivarWebhook, testarWebhook } from './actions';
 import { SecretBanner } from './secret-banner';
 import './webhooks.css';
@@ -43,7 +43,7 @@ function relativeTime(iso: string | null): string {
 
 function truncateUrl(url: string, max = 48): string {
   if (url.length <= max) return url;
-  return url.slice(0, max) + '...';
+  return `${url.slice(0, max)}...`;
 }
 
 function WebhookTableRow({ wh }: { wh: WebhookRow }) {
@@ -53,17 +53,23 @@ function WebhookTableRow({ wh }: { wh: WebhookRow }) {
         <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{wh.nome}</span>
       </td>
       <td>
-        <span className="wh-url" title={wh.url}>{truncateUrl(wh.url)}</span>
+        <span className="wh-url" title={wh.url}>
+          {truncateUrl(wh.url)}
+        </span>
       </td>
       <td>
         <div className="wh-events">
           {wh.eventos.map((ev) => (
-            <span key={ev} className="wh-event-badge">{ev}</span>
+            <span key={ev} className="wh-event-badge">
+              {ev}
+            </span>
           ))}
         </div>
       </td>
       <td>
-        <span className={`wh-ativo-badge ${wh.ativo ? 'wh-ativo-badge--on' : 'wh-ativo-badge--off'}`}>
+        <span
+          className={`wh-ativo-badge ${wh.ativo ? 'wh-ativo-badge--on' : 'wh-ativo-badge--off'}`}
+        >
           {wh.ativo ? 'Ativo' : 'Inativo'}
         </span>
       </td>
@@ -174,22 +180,26 @@ export default async function WebhooksPage({
         {secretValue && (
           <SecretBanner
             secret={secretValue}
-            titulo={createdId ? 'Webhook criado — guarde este secret' : 'Secret regenerado — guarde agora'}
+            titulo={
+              createdId ? 'Webhook criado — guarde este secret' : 'Secret regenerado — guarde agora'
+            }
           />
         )}
 
         {testedId && testStatus && (
           <div
             className={`wh-test-banner ${testStatus === 'OK' ? 'wh-test-banner--ok' : 'wh-test-banner--err'}`}
+            // biome-ignore lint/a11y/useSemanticElements: banner de status (padrão do projeto)
             role="status"
           >
             {testStatus === 'OK'
               ? `Teste enviado com sucesso — resposta em ${testLatency}ms`
-              : `Falha no teste — verifique a URL e se o endpoint esta acessivel`}
+              : 'Falha no teste — verifique a URL e se o endpoint esta acessivel'}
           </div>
         )}
 
         {successMsg && (
+          // biome-ignore lint/a11y/useSemanticElements: banner de status (padrão do projeto)
           <div className="wh-banner wh-banner--success" role="status">
             {successMsg}
           </div>
@@ -217,9 +227,9 @@ export default async function WebhooksPage({
                   <th>URL</th>
                   <th>Eventos</th>
                   <th>Status</th>
-                  <th>Ultima execucao</th>
+                  <th>Última execução</th>
                   <th>Total</th>
-                  <th>Acoes</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody>

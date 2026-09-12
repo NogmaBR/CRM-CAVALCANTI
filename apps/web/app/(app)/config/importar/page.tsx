@@ -1,9 +1,9 @@
-import { notFound } from 'next/navigation';
-import { Upload } from 'lucide-react';
 import { TopBar } from '@/components/layout/topbar';
 import { Card } from '@/components/nogma/Card';
-import { createClient } from '@/lib/supabase/server';
 import { CSV_TEMPLATE } from '@/lib/schemas/import-pagamento';
+import { createClient } from '@/lib/supabase/server';
+import { Upload } from 'lucide-react';
+import { notFound } from 'next/navigation';
 import { ImportarClient } from './importar-client';
 
 async function getAdminOrNotFound() {
@@ -25,22 +25,15 @@ export default async function ImportarPage() {
 
   return (
     <>
-      <TopBar
-        title="Importar pagamentos"
-        subtitle="Upload de CSV em batch"
-      />
+      <TopBar title="Importar pagamentos" subtitle="Upload de CSV em batch" />
       <div className="nos-page-body">
-        <Card
-          title="Como usar"
-          accent
-          className="importar-how-to-card"
-        >
+        <Card title="Como usar" accent className="importar-how-to-card">
           <ol className="importar-how-to-list">
             <li>Baixe o template CSV e abra no Excel ou Google Sheets</li>
             <li>Preencha uma linha por pagamento (obra, fornecedor, categoria, valor, data)</li>
-            <li>Salve como CSV (UTF-8) e faca upload abaixo</li>
+            <li>Salve como CSV (UTF-8) e faça upload abaixo</li>
             <li>Verifique o preview: linhas com erro ficam destacadas</li>
-            <li>Confirme o import — apenas linhas validas sao inseridas</li>
+            <li>Confirme a importação — apenas linhas válidas são inseridas</li>
           </ol>
           <a
             href={templateDataUrl}

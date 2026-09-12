@@ -1,11 +1,11 @@
 'use client';
 
+import { IconButton } from '@/components/nogma/IconButton';
 import * as Dialog from '@radix-ui/react-dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Menu, X } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { IconButton } from '@/components/nogma/IconButton';
 import type { ReactNode } from 'react';
 import { SidebarNav } from './sidebar-nav';
 
@@ -17,7 +17,13 @@ import { SidebarNav } from './sidebar-nav';
  * Accepts `userMenu` as a ReactNode so the server parent can pass in the
  * async <UserMenu /> Server Component without violating the client boundary.
  */
-export function MobileNav({ userMenu }: { userMenu?: ReactNode }) {
+export function MobileNav({
+  userMenu,
+  themeToggle,
+}: {
+  userMenu?: ReactNode;
+  themeToggle?: ReactNode;
+}) {
   return (
     <Dialog.Root>
       <Dialog.Trigger asChild>
@@ -29,7 +35,7 @@ export function MobileNav({ userMenu }: { userMenu?: ReactNode }) {
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="nos-drawer-overlay" />
-        <Dialog.Content className="nos-drawer on-black" aria-describedby={undefined}>
+        <Dialog.Content className="nos-drawer" aria-describedby={undefined}>
           <VisuallyHidden>
             <Dialog.Title>Menu de navegação</Dialog.Title>
           </VisuallyHidden>
@@ -43,14 +49,28 @@ export function MobileNav({ userMenu }: { userMenu?: ReactNode }) {
               </Link>
             </Dialog.Close>
             <Dialog.Close asChild>
-              <IconButton icon={<X size={18} />} label="Fechar menu" className="nos-drawer__close" />
+              <IconButton
+                icon={<X size={18} />}
+                label="Fechar menu"
+                className="nos-drawer__close"
+              />
             </Dialog.Close>
           </div>
-          <SidebarNav onNavigate={() => {
-            // Radix Dialog closes on outside click; we also want to close on link click.
-            // Since SidebarNav uses Next Link, adding onClick to close.
-          }} />
+          {/* Clicar num link fecha o drawer: o Dialog.Close envolve a lista
+              inteira e o clique borbulha até ele. Antes o `onNavigate` era
+              vazio e o menu ficava aberto por cima da página nova. */}
+          <Dialog.Close asChild>
+            <div>
+              <SidebarNav />
+            </div>
+          </Dialog.Close>
           <div className="nos-drawer__foot">
+            {themeToggle ? (
+              <div className="nos-drawer__tema">
+                <span>Tema</span>
+                {themeToggle}
+              </div>
+            ) : null}
             {userMenu}
           </div>
         </Dialog.Content>

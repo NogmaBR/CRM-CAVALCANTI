@@ -1,17 +1,17 @@
-import { notFound } from 'next/navigation';
-import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
 import { TopBar } from '@/components/layout/topbar';
 import { Badge, type BadgeVariant } from '@/components/nogma/Badge';
 import {
+  AUDIT_ACAO_LABELS,
+  AUDIT_ENTIDADE_LABELS,
+  type AuditAcao,
+  type AuditEntidade,
+  type AuditListItem,
   getAuditLog,
   getEntidadeUrl,
-  AUDIT_ENTIDADE_LABELS,
-  AUDIT_ACAO_LABELS,
-  type AuditListItem,
-  type AuditEntidade,
-  type AuditAcao,
 } from '@/lib/data/auditoria';
+import { ArrowRight } from 'lucide-react';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import '../auditoria.css';
 
 // ── helpers ─────────────────────────────────────────────────────────────────
@@ -67,9 +67,7 @@ function InsertDiff({ after }: { after: Record<string, unknown> }) {
           {keys.map((k) => (
             <tr key={k} className="audit-diff-cell">
               <td className="audit-diff-table__key">{k}</td>
-              <td className="audit-diff-table__value audit-diff-cell">
-                {renderValue(after[k])}
-              </td>
+              <td className="audit-diff-table__value audit-diff-cell">{renderValue(after[k])}</td>
             </tr>
           ))}
         </tbody>
@@ -97,9 +95,7 @@ function DeleteDiff({ before }: { before: Record<string, unknown> }) {
           {keys.map((k) => (
             <tr key={k} className="audit-diff-cell">
               <td className="audit-diff-table__key">{k}</td>
-              <td className="audit-diff-table__value audit-diff-cell">
-                {renderValue(before[k])}
-              </td>
+              <td className="audit-diff-table__value audit-diff-cell">{renderValue(before[k])}</td>
             </tr>
           ))}
         </tbody>
@@ -130,7 +126,7 @@ function UpdateDiff({
           <tr>
             <th className="audit-diff-table__key">Campo</th>
             <th className="audit-diff-table__before">Antes</th>
-            <th className="audit-diff-arrow" aria-hidden="true"></th>
+            <th className="audit-diff-arrow" aria-hidden="true" />
             <th className="audit-diff-table__after">Depois</th>
           </tr>
         </thead>
@@ -141,17 +137,16 @@ function UpdateDiff({
             // Naive equality — adequate for compliance display
             const changed = JSON.stringify(bVal) !== JSON.stringify(aVal);
             return (
-              <tr key={k} className={changed ? 'audit-diff-cell audit-diff-cell--changed' : 'audit-diff-cell'}>
+              <tr
+                key={k}
+                className={changed ? 'audit-diff-cell audit-diff-cell--changed' : 'audit-diff-cell'}
+              >
                 <td className="audit-diff-table__key">{k}</td>
-                <td className="audit-diff-table__before audit-diff-cell">
-                  {renderValue(bVal)}
-                </td>
+                <td className="audit-diff-table__before audit-diff-cell">{renderValue(bVal)}</td>
                 <td className="audit-diff-arrow" aria-hidden="true">
                   <ArrowRight size={12} />
                 </td>
-                <td className="audit-diff-table__after audit-diff-cell">
-                  {renderValue(aVal)}
-                </td>
+                <td className="audit-diff-table__after audit-diff-cell">{renderValue(aVal)}</td>
               </tr>
             );
           })}
@@ -176,8 +171,10 @@ function DiffViewer({ item }: { item: AuditListItem }) {
   }
 
   const d = raw as Record<string, unknown>;
-  const before = d.before && typeof d.before === 'object' ? (d.before as Record<string, unknown>) : null;
-  const after = d.after && typeof d.after === 'object' ? (d.after as Record<string, unknown>) : null;
+  const before =
+    d.before && typeof d.before === 'object' ? (d.before as Record<string, unknown>) : null;
+  const after =
+    d.after && typeof d.after === 'object' ? (d.after as Record<string, unknown>) : null;
 
   if (acao === 'insert') {
     if (!after) return <div className="audit-diff-empty">Diff vazio</div>;
@@ -191,12 +188,7 @@ function DiffViewer({ item }: { item: AuditListItem }) {
 
   // update
   if (!before && !after) return <div className="audit-diff-empty">Diff vazio</div>;
-  return (
-    <UpdateDiff
-      before={before ?? {}}
-      after={after ?? {}}
-    />
-  );
+  return <UpdateDiff before={before ?? {}} after={after ?? {}} />;
 }
 
 // ── metadata card ────────────────────────────────────────────────────────────
@@ -205,12 +197,9 @@ function MetaCard({ item }: { item: AuditListItem }) {
   const acao = item.acao as AuditAcao;
   const acaoLabel = AUDIT_ACAO_LABELS[acao] ?? item.acao;
   const acaoVariant = ACAO_VARIANT[acao] ?? 'neutral';
-  const entidadeLabel =
-    AUDIT_ENTIDADE_LABELS[item.entidade as AuditEntidade] ?? item.entidade;
+  const entidadeLabel = AUDIT_ENTIDADE_LABELS[item.entidade as AuditEntidade] ?? item.entidade;
   const entidadeUrl =
-    item.entidade_id != null
-      ? getEntidadeUrl(item.entidade, String(item.entidade_id))
-      : null;
+    item.entidade_id != null ? getEntidadeUrl(item.entidade, String(item.entidade_id)) : null;
 
   const userName = item.user_nome ?? 'Sistema';
   const userPapel = item.user_papel ?? null;
@@ -233,7 +222,7 @@ function MetaCard({ item }: { item: AuditListItem }) {
       </div>
 
       <div className="audit-meta-card__row">
-        <span className="audit-meta-card__label">Usuario</span>
+        <span className="audit-meta-card__label">Usuário</span>
         <span className="audit-meta-card__value">
           {userName}
           {userPapel ? (
@@ -249,7 +238,11 @@ function MetaCard({ item }: { item: AuditListItem }) {
           <span className="audit-meta-card__label">Registro</span>
           <Link href={entidadeUrl} className="audit-meta-card__link">
             Abrir {entidadeLabel}
-            <ArrowRight size={12} aria-hidden="true" style={{ verticalAlign: 'middle', marginLeft: 3 }} />
+            <ArrowRight
+              size={12}
+              aria-hidden="true"
+              style={{ verticalAlign: 'middle', marginLeft: 3 }}
+            />
           </Link>
         </div>
       ) : null}
@@ -277,10 +270,7 @@ export default async function AuditLogDetailPage({
 
   return (
     <>
-      <TopBar
-        title={`Registro de auditoria #${id}`}
-        subtitle="Detalhes da alteracao"
-      />
+      <TopBar title={`Registro de auditoria #${id}`} subtitle="Detalhes da alteracao" />
       <div className="nos-page-body">
         <Link href="/auditoria" className="audit-back">
           ← Voltar

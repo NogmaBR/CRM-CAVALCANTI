@@ -1,11 +1,13 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
-import type { Database } from '@nogma/db';
-import { createClient } from '@/lib/supabase/server';
-import { PerfilUpdateSchema } from '@/lib/schemas/perfil';
 import { mapDbError } from '@/lib/schemas/errors';
+import { PerfilUpdateSchema } from '@/lib/schemas/perfil';
+import { createClient } from '@/lib/supabase/server';
+import { THEME_COOKIE } from '@/lib/theme';
+import type { Database } from '@nogma/db';
+import { revalidatePath } from 'next/cache';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 
 type ProfileUpdate = Database['public']['Tables']['profiles']['Update'];
 
@@ -47,14 +49,25 @@ export async function salvarPerfil(formData: FormData) {
   if (parsed.data.tema !== undefined) update.tema_preferido = parsed.data.tema;
   if (parsed.data.timezone !== undefined) update.timezone = parsed.data.timezone;
 
-  const { error } = await supabase
-    .from('profiles')
-    .update(update)
-    .eq('user_id', user.id);
+  const { error } = await supabase.from('profiles').update(update).eq('user_id', user.id);
 
   if (error) {
     const msg = mapDbError(error, 'Erro ao salvar preferências');
     redirect(`/config/perfil?error=${encodeURIComponent(msg)}`);
+  }
+
+  // O tema que vale na tela é o cookie (lido pelo RootLayout). Sem esta
+  // linha, o perfil dizia "Preto" e o app continuava claro — as duas fontes
+  // nunca conversavam. Mesmas opções do `/api/theme`.
+  if (parsed.data.tema !== undefined) {
+    const store = await cookies();
+    store.set(THEME_COOKIE, parsed.data.tema, {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365,
+      httpOnly: true,
+      sameSite: 'strict',
+      secure: process.env.NODE_ENV === 'production',
+    });
   }
 
   revalidatePath('/config/perfil');

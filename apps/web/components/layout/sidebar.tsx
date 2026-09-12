@@ -10,7 +10,7 @@ export function Sidebar() {
     // recolhe ao tirar o mouse. Em mobile o wrapper vira `display:contents`
     // e não interfere no comportamento existente do drawer (MobileNav).
     <div className="nos-sidebar-zone">
-      <aside className="nos-sidebar on-black" aria-label="Barra lateral">
+      <aside className="nos-sidebar" aria-label="Barra lateral">
         <Link href="/painel" className="nos-brand" aria-label="Ir para o painel">
           <span className="nos-brand__mark">
             <Image src="/logos/cavalcanti-mark-light.png" alt="" width={28} height={28} priority />

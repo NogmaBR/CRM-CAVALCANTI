@@ -1,11 +1,7 @@
 'use client';
 
-import Link from 'next/link';
-import { useMemo } from 'react';
-import type { ColumnDef } from '@tanstack/react-table';
-import { Pencil } from 'lucide-react';
-import { Badge } from '@/components/nogma/Badge';
 import { DataTable } from '@/components/data-table';
+import { Badge } from '@/components/nogma/Badge';
 import type { Categoria } from '@/lib/data/categorias';
 import type { Fornecedor } from '@/lib/data/fornecedores';
 import type { Obra } from '@/lib/data/obras';
@@ -15,6 +11,10 @@ import {
   PAGAMENTO_STATUS_LABEL as STATUS_LABEL,
   PAGAMENTO_STATUS_VARIANT as STATUS_VARIANT,
 } from '@/lib/status-labels';
+import type { ColumnDef } from '@tanstack/react-table';
+import { Pencil } from 'lucide-react';
+import Link from 'next/link';
+import { useMemo } from 'react';
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return '—';
@@ -107,6 +107,7 @@ export function PagamentosTable({
       {
         accessorKey: 'valor',
         header: () => <span style={{ textAlign: 'right', display: 'block' }}>Valor</span>,
+        meta: { label: 'Valor' },
         cell: ({ row }) => (
           <span
             className="obras-orcamento"
