@@ -1,7 +1,7 @@
 import 'server-only';
 import { createHash } from 'node:crypto';
-import { createClient as createSbClient } from '@supabase/supabase-js';
 import type { Database } from '@nogma/db';
+import { createClient as createSbClient } from '@supabase/supabase-js';
 
 const BUCKET = 'documents';
 
@@ -11,10 +11,11 @@ export function sha256Hex(buffer: ArrayBuffer): string {
 }
 
 /** Client Supabase com SERVICE ROLE (bypass RLS) — só server-side. Uso pra Storage ops. */
-function serviceClient() {
+export function serviceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error('SUPABASE_SERVICE_ROLE_KEY ou NEXT_PUBLIC_SUPABASE_URL ausente');
+  if (!url || !key)
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY ou NEXT_PUBLIC_SUPABASE_URL ausente');
   return createSbClient<Database>(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
@@ -57,6 +58,7 @@ export async function deleteDocumentFile(path: string): Promise<void> {
 export async function getSignedUrl(path: string, ttlSeconds = 60): Promise<string> {
   const supabase = serviceClient();
   const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, ttlSeconds);
-  if (error || !data?.signedUrl) throw new Error(`Falha ao gerar URL: ${error?.message ?? 'sem URL'}`);
+  if (error || !data?.signedUrl)
+    throw new Error(`Falha ao gerar URL: ${error?.message ?? 'sem URL'}`);
   return data.signedUrl;
 }

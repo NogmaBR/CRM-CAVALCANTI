@@ -1,5 +1,6 @@
 import 'server-only';
 import { createClient } from '@/lib/supabase/server';
+import { hojeBR } from '@/lib/util/datas';
 import type { Database } from '@nogma/db';
 
 export type ConfirmacaoPendente = Database['public']['Tables']['confirmacoes_pendentes']['Row'];
@@ -160,7 +161,15 @@ export async function listPagamentosSemDocumento(
 ): Promise<PagamentoSemDocumento[]> {
   const supabase = await createClient();
 
-  const corte = new Date(Date.now() - diasMinimos * 86_400_000).toISOString().slice(0, 10);
+  const corte = hojeBR(new Date(Date.now() - diasMinimos * 86_400_000));
+
+  // A RPC `pagamentos_sem_documento` faz o NOT EXISTS no banco. Antes o
+  // filtro era em JS sobre os 200 mais antigos: se todos já tivessem nota,
+  // a tela mostrava vazio mesmo havendo pendências mais novas.
+  const ids = await supabase.rpc('pagamentos_sem_documento', { p_corte: corte, p_limite: limite });
+  if (ids.error) throw new Error(`Falha ao listar pagamentos sem documento: ${ids.error.message}`);
+  const idsSemDoc = (ids.data ?? []).map((r) => r.id);
+  if (idsSemDoc.length === 0) return [];
 
   const { data, error } = await supabase
     .from('pagamentos')
@@ -173,12 +182,8 @@ export async function listPagamentosSemDocumento(
        fornecedores ( nome ),
        documentos ( id, deleted_at )`,
     )
-    .is('deleted_at', null)
-    .neq('status_pagto', 'recusado')
-    .neq('status_pagto', 'erro')
-    .lte('data_pagamento', corte)
-    .order('data_pagamento', { ascending: true })
-    .limit(limite * 4); // margem: o filtro "sem documento" é aplicado abaixo
+    .in('id', idsSemDoc)
+    .order('data_pagamento', { ascending: true });
 
   if (error) throw new Error(`Falha ao listar pagamentos sem documento: ${error.message}`);
 

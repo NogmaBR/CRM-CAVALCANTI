@@ -70,14 +70,23 @@ export async function alternarAutomacao(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.from('automation_rules').upsert(
-    {
+  // UPDATE primeiro: o upsert antigo gravava `config = configPadrao` por cima
+  // do que o gestor tinha salvo — desligar e religar zerava os parâmetros.
+  // Só insere (com o padrão) quando a regra ainda não tem linha.
+  const atualizada = await supabase
+    .from('automation_rules')
+    .update({ ativo: ativar })
+    .eq('chave', chave)
+    .select('chave');
+  let error = atualizada.error;
+  if (!error && (atualizada.data?.length ?? 0) === 0) {
+    const inserida = await supabase.from('automation_rules').insert({
       chave,
       ativo: ativar,
       config: (automacao.configPadrao ?? {}) as never,
-    },
-    { onConflict: 'chave', ignoreDuplicates: false },
-  );
+    });
+    error = inserida.error;
+  }
 
   if (error) {
     redirect(`${BASE_PATH}?error=${encodeURIComponent(mapDbErrorWithContext(error, {}))}`);

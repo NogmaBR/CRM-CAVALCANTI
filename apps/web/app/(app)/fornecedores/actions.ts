@@ -1,10 +1,10 @@
 'use server';
 
+import { mapDbError, mapDbErrorWithContext } from '@/lib/schemas/errors';
+import { FornecedorCreateSchema, FornecedorUpdateSchema } from '@/lib/schemas/fornecedor';
+import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
-import { FornecedorCreateSchema, FornecedorUpdateSchema } from '@/lib/schemas/fornecedor';
-import { mapDbError, mapDbErrorWithContext } from '@/lib/schemas/errors';
 
 function formToRecord(fd: FormData): Record<string, unknown> {
   const rec: Record<string, unknown> = {};
@@ -16,7 +16,10 @@ function formToRecord(fd: FormData): Record<string, unknown> {
 }
 
 /** Extrai documento + tipo do objeto validado (Zod transform devolve union) */
-function extractDoc(doc: unknown): { documento: string | null; documento_tipo: 'cpf' | 'cnpj' | null } {
+function extractDoc(doc: unknown): {
+  documento: string | null;
+  documento_tipo: 'cpf' | 'cnpj' | null;
+} {
   if (doc && typeof doc === 'object' && 'documento' in doc && 'documento_tipo' in doc) {
     const d = doc as { documento: string; documento_tipo: 'cpf' | 'cnpj' };
     return { documento: d.documento, documento_tipo: d.documento_tipo };
@@ -105,6 +108,7 @@ export async function updateFornecedor(formData: FormData) {
   }
 
   revalidatePath('/fornecedores');
+  revalidatePath('/fornecedores/duplicatas');
   revalidatePath(`/fornecedores/${id}`);
   redirect(`/fornecedores/${id}`);
 }
@@ -121,6 +125,7 @@ export async function archiveFornecedor(formData: FormData) {
 
   if (error) redirect(`/fornecedores/${id}?error=${encodeURIComponent(mapDbError(error))}`);
   revalidatePath('/fornecedores');
+  revalidatePath('/fornecedores/duplicatas');
   revalidatePath(`/fornecedores/${id}`);
   redirect(`/fornecedores/${id}`);
 }
@@ -137,6 +142,7 @@ export async function restoreFornecedor(formData: FormData) {
 
   if (error) redirect(`/fornecedores/${id}?error=${encodeURIComponent(mapDbError(error))}`);
   revalidatePath('/fornecedores');
+  revalidatePath('/fornecedores/duplicatas');
   revalidatePath(`/fornecedores/${id}`);
   redirect(`/fornecedores/${id}`);
 }

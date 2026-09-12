@@ -1,4 +1,7 @@
 import 'server-only';
+import { logger } from '@/lib/log';
+
+const log = logger('compartilhamentos');
 import { createClient } from '@/lib/supabase/server';
 
 /**
@@ -32,7 +35,7 @@ export async function listLinksDaObra(obraId: string): Promise<LinkCompartilhado
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('[compartilhamentos] falha ao listar:', error.message);
+    log.erro('compartilhamentos_listar_falhou', { erro: error.message });
     return [];
   }
 

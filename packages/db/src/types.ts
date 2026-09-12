@@ -304,12 +304,13 @@ export type Database = {
       };
       autorizados: {
         Row: {
-          ativo: boolean | null;
+          ativo: boolean;
           created_at: string | null;
           deleted_at: string | null;
           id: string;
           nome: string;
           papel_obra: string | null;
+          telefone_norm: string;
           telefone_whats: string;
           updated_at: string | null;
         };

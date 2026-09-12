@@ -336,7 +336,7 @@ export const pagamentosSemDocumento = ferramenta({
       if ('erro' in r) return { ok: false, ...r };
       obraId = r.obra.id;
     }
-    const corte = new Date(Date.now() - args.dias_minimos * 86_400_000).toISOString().slice(0, 10);
+    const corte = hojeBR(new Date(Date.now() - args.dias_minimos * 86_400_000));
 
     let q = supabase
       .from('pagamentos')

@@ -1,16 +1,15 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
-import { mapDbError, mapDbErrorWithContext } from '@/lib/schemas/errors';
+import { getDocumento } from '@/lib/data/documentos';
+import { logger } from '@/lib/log';
 import {
   DocumentoMetaCreateSchema,
   DocumentoUpdateSchema,
   validateFileMagicBytes,
   validateUploadedFile,
 } from '@/lib/schemas/documento';
-import { getDocumento } from '@/lib/data/documentos';
+import { mapDbError, mapDbErrorWithContext } from '@/lib/schemas/errors';
+import { serviceClient } from '@/lib/storage/documents';
 import {
   deleteDocumentFile,
   getSignedUrl,
@@ -18,6 +17,30 @@ import {
   sha256Hex,
   uploadDocumentBuffer,
 } from '@/lib/storage/documents';
+import { createClient } from '@/lib/supabase/server';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+
+const log = logger('documentos');
+
+/**
+ * Apaga a linha criada antes de um upload que falhou. Usa service role
+ * porque a RLS só deixa admin apagar `documentos`; com a sessão de um gestor
+ * o DELETE atingia zero linhas e a linha órfã (hash preenchido,
+ * storage_path='pending') bloqueava o reenvio do mesmo arquivo.
+ */
+async function desfazerDocumento(documentoId: string): Promise<void> {
+  try {
+    const admin = serviceClient();
+    const { error } = await admin.from('documentos').delete().eq('id', documentoId);
+    if (error) log.erro('rollback_documento_falhou', { documentoId, erro: error.message });
+  } catch (err) {
+    log.erro('rollback_documento_sem_service_role', {
+      documentoId,
+      erro: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
 
 function formToRecord(fd: FormData): Record<string, unknown> {
   const rec: Record<string, unknown> = {};
@@ -83,13 +106,14 @@ export async function createDocumento(formData: FormData) {
 
   if (insertRes.error) {
     // Detecta qual constraint disparou 23505 pra dar mensagem targeted
-    const dupMsg = insertRes.error.code === '23505'
-      ? insertRes.error.message?.includes('idx_documentos_hash')
-        ? 'Arquivo idêntico já existe (mesmo conteúdo). Verifique documentos anteriores.'
-        : insertRes.error.message?.includes('idx_documentos_chave_nf')
-          ? 'Já existe documento com esta chave de acesso de NF.'
-          : 'Já existe documento com esta chave de NF ou hash.'
-      : undefined;
+    const dupMsg =
+      insertRes.error.code === '23505'
+        ? insertRes.error.message?.includes('idx_documentos_hash')
+          ? 'Arquivo idêntico já existe (mesmo conteúdo). Verifique documentos anteriores.'
+          : insertRes.error.message?.includes('idx_documentos_chave_nf')
+            ? 'Já existe documento com esta chave de acesso de NF.'
+            : 'Já existe documento com esta chave de NF ou hash.'
+        : undefined;
     redirect(
       `/documentos/novo?error=${encodeURIComponent(
         mapDbErrorWithContext(insertRes.error, {
@@ -107,9 +131,17 @@ export async function createDocumento(formData: FormData) {
   try {
     await uploadDocumentBuffer(path, buffer, file.type);
   } catch (uploadErr) {
-    try { await supabase.from('documentos').delete().eq('id', documentoId); } catch { /* best effort */ }
-    const msg = uploadErr instanceof Error ? uploadErr.message : 'Falha no upload';
-    redirect(`/documentos/novo?error=${encodeURIComponent(msg)}`);
+    // O rollback usa service role: a RLS só deixa admin apagar, e o cliente
+    // de sessão de um gestor apagava zero linhas em silêncio — a linha órfã
+    // com o hash bloqueava o reenvio do mesmo arquivo até o sweep das 03h.
+    await desfazerDocumento(documentoId);
+    log.erro('upload_documento_falhou', {
+      documentoId,
+      erro: uploadErr instanceof Error ? uploadErr.message : String(uploadErr),
+    });
+    redirect(
+      `/documentos/novo?error=${encodeURIComponent('Falha ao enviar o arquivo. Tente de novo.')}`,
+    );
   }
 
   // 6) Update storage_path final
@@ -119,8 +151,12 @@ export async function createDocumento(formData: FormData) {
     .eq('id', documentoId);
   if (upd.error) {
     // path inconsistente — tenta cleanup e falha
-    try { await deleteDocumentFile(path); } catch { /* best effort */ }
-    try { await supabase.from('documentos').delete().eq('id', documentoId); } catch { /* best effort */ }
+    try {
+      await deleteDocumentFile(path);
+    } catch {
+      /* best effort */
+    }
+    await desfazerDocumento(documentoId);
     redirect(`/documentos/novo?error=${encodeURIComponent(mapDbError(upd.error))}`);
   }
 
@@ -144,6 +180,7 @@ export async function createDocumento(formData: FormData) {
 
   revalidatePath('/documentos');
   revalidatePath('/painel');
+  revalidatePath('/pendentes');
   revalidatePath(`/obras/${meta.data.obra_id}`);
   redirect(`/documentos/${documentoId}`);
 }
@@ -168,7 +205,9 @@ export async function updateDocumento(formData: FormData) {
       ...(rest.fornecedor_id !== undefined ? { fornecedor_id: rest.fornecedor_id ?? null } : {}),
       ...(rest.tipo !== undefined ? { tipo: rest.tipo } : {}),
       ...(rest.numero_nf !== undefined ? { numero_nf: rest.numero_nf ?? null } : {}),
-      ...(rest.chave_acesso_nf !== undefined ? { chave_acesso_nf: rest.chave_acesso_nf ?? null } : {}),
+      ...(rest.chave_acesso_nf !== undefined
+        ? { chave_acesso_nf: rest.chave_acesso_nf ?? null }
+        : {}),
     })
     .eq('id', id);
 
@@ -209,10 +248,7 @@ export async function restoreDocumento(formData: FormData) {
   if (!id) redirect('/documentos?error=ID%20inv%C3%A1lido');
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from('documentos')
-    .update({ deleted_at: null })
-    .eq('id', id);
+  const { error } = await supabase.from('documentos').update({ deleted_at: null }).eq('id', id);
 
   if (error) redirect(`/documentos/${id}?error=${encodeURIComponent(mapDbError(error))}`);
   revalidatePath('/documentos');
@@ -231,7 +267,9 @@ export async function downloadDocumento(formData: FormData) {
   const doc = await getDocumento(id);
   if (!doc) redirect('/documentos?error=Documento%20n%C3%A3o%20encontrado');
   if (doc.deleted_at != null) {
-    redirect(`/documentos/${id}?error=${encodeURIComponent('Documento arquivado. Restaure antes de baixar.')}`);
+    redirect(
+      `/documentos/${id}?error=${encodeURIComponent('Documento arquivado. Restaure antes de baixar.')}`,
+    );
   }
   if (!doc.storage_path || doc.storage_path === 'pending') {
     redirect(`/documentos/${id}?error=Arquivo%20n%C3%A3o%20dispon%C3%ADvel`);

@@ -1,6 +1,7 @@
 import 'server-only';
-import type { Database } from '@nogma/db';
+import { STATUS_QUE_CONTAM } from '@/lib/status-labels';
 import { createClient } from '@/lib/supabase/server';
+import type { Database } from '@nogma/db';
 
 export type Categoria = Database['public']['Tables']['categorias']['Row'];
 
@@ -47,6 +48,7 @@ export async function listCategoriasComContagem(
       .from('pagamentos')
       .select('categoria_id, valor')
       .not('categoria_id', 'is', null)
+      .in('status_pagto', [...STATUS_QUE_CONTAM])
       .is('deleted_at', null),
   ]);
 
