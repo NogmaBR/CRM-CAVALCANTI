@@ -4,7 +4,7 @@
 > **Mantenha-o atualizado**: ao terminar um trabalho relevante, atualize a §7 (estado)
 > e acrescente em §8 (armadilhas) qualquer erro novo que você cometeu.
 >
-> Última atualização: **2026-09-12**, após a revisão do banco (PR #20) e do front-end (PR #20).
+> Última atualização: **2026-09-12**, após a revisão do banco (PR #21) e do front-end (PR #20).
 
 ---
 
@@ -480,7 +480,7 @@ screenshot real de cada tela (1440px e 390px, três temas), plano em
   depois do `goto` — mova o mouse para longe e volte antes de fotografar a sidebar.
 
 **Revisão do banco de 2026-09-12 (migration `20260912150000_revisao_banco.sql`, já
-aplicada e conferida; PR #20).** Inventário real + dois revisores; plano e achados em
+aplicada e conferida; PR #21).** Inventário real + dois revisores; plano e achados em
 `docs/PLANO-BANCO-PREMIUM.md`. Regras novas:
 - **Policies usam `(select auth.uid())` e `(select has_role(...))`, `TO authenticated`.**
   Policy nova segue o mesmo formato — o advisor `auth_rls_initplan` está em zero.

@@ -4,7 +4,7 @@
 > índices, 3 crons, 4 filas, advisors da Supabase, `pg_stat_statements`) e dois
 > revisores independentes lendo as 37 migrations e todo o TypeScript que fala com o
 > banco. Cada item foi confirmado no catálogo ou no código antes de entrar aqui.
-> ✅ = feito nesta revisão (migration `20260912150000_revisao_banco.sql`, **já
+> ✅ = feito nesta revisão (migration `20260912150000_revisao_banco.sql`, PR #21, **já
 > aplicada e conferida em produção**, + código). ⏭ = próximo passo, com o porquê.
 
 ## O que o inventário mostrou (antes)
