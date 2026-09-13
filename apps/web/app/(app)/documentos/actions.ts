@@ -178,6 +178,21 @@ export async function createDocumento(formData: FormData) {
     // Silencioso
   }
 
+  // Evento de domínio para as automações (uma nota anexada encerra a cobrança
+  // daquele pagamento). Import dinâmico como o dispatch acima: fora do caminho
+  // quente de quem só renderiza esta rota.
+  const { emitir } = await import('@/lib/events/bus');
+  await emitir(
+    'documento.anexado',
+    {
+      documentoId,
+      pagamentoId: meta.data.pagamento_id ?? null,
+      obraId: meta.data.obra_id,
+      tipo: meta.data.tipo,
+    },
+    { userId: criadoPor },
+  );
+
   revalidatePath('/documentos');
   revalidatePath('/painel');
   revalidatePath('/pendentes');

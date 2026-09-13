@@ -259,6 +259,13 @@ export async function classifyAndPersist(mensagemId: string): Promise<
     // Silencioso — webhook é secundário ao fluxo principal
   }
 
+  // Evento de domínio. Fica FORA do try do webhook de propósito: se o dispatch
+  // externo falhar, as automações internas ainda devem reagir.
+  if (confirmacaoCriada?.id) {
+    const { emitir } = await import('@/lib/events/bus');
+    await emitir('confirmacao.aberta', { confirmacaoId: confirmacaoCriada.id, mensagemId });
+  }
+
   return {
     ok: true,
     status: 'classificada',
