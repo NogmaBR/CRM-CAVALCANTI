@@ -527,6 +527,18 @@ novas para quem for mexer:
   dinâmica 500); use `next build && next start -p <porta>` para testar até o usuário
   reiniciar. O classificador barra `kill`.
 
+**Preparação das automações e da fila (2026-09-13, PR #24).** Os quatro itens P1 do
+`TODOS.md` que travavam ligar automação/fila com segurança:
+- **Toda `Automacao` declara `configSchema` (Zod)**, aplicado como `.strict()` por
+  `lib/automations/config.ts`: chave desconhecida ou tipo errado é recusado na tela e
+  vira registro `falha` no engine. Regra nova sem `configSchema` não compila.
+- **`/api/queue/consume` drena em laço** (até esvaziar, `?rodadas=`, ou 45 s) e declara
+  `maxDuration = 60`; o webhook do UAZAPI também. Tem teste de rota
+  (`route.test.ts`) — é o padrão para as próximas rotas.
+- **`erroDeEscrita()`** (`lib/supabase/escrita.ts`) é obrigatório em todo
+  `.update()/.delete()` feito com sessão de usuário: `.select('id')` + helper. Zero
+  linhas é erro para o usuário, nunca "sucesso".
+
 ### O que falta — e é ação humana, não código
 
 1. **Repositório é público.** Vai virar privado quando a Vercel for paga
