@@ -1,5 +1,6 @@
 'use server';
 
+import { validarConfig } from '@/lib/automations/config';
 import { executarAgendadas } from '@/lib/automations/engine';
 import { buscarAutomacao } from '@/lib/automations/registry';
 import { mapDbErrorWithContext } from '@/lib/schemas/errors';
@@ -105,9 +106,9 @@ export async function alternarAutomacao(formData: FormData) {
 /**
  * Atualiza os parâmetros da regra.
  *
- * O `config` é JSON livre de propósito: cada automação tem o seu formato, e
- * quem valida o conteúdo é a própria definition, na hora de rodar. O que se
- * valida aqui é só que seja um objeto JSON — o resto seria adivinhação.
+ * Cada automação declara o formato em `configSchema`; aqui ele é aplicado
+ * como `.strict()` para um typo no nome do parâmetro não ser salvo em silêncio
+ * (era o que acontecia: a regra seguia com o padrão e ninguém via).
  */
 export async function salvarConfigAutomacao(formData: FormData) {
   await assertPodeConfigurar();
@@ -134,6 +135,12 @@ export async function salvarConfigAutomacao(formData: FormData) {
     redirect(
       `${BASE_PATH}?error=${encodeURIComponent('A configuração precisa ser um objeto JSON.')}`,
     );
+  }
+
+  const automacao = buscarAutomacao(chave);
+  const validada = automacao ? validarConfig(automacao, config) : null;
+  if (validada && !validada.ok) {
+    redirect(`${BASE_PATH}?error=${encodeURIComponent(`Configuração recusada: ${validada.erro}`)}`);
   }
 
   const supabase = await createClient();

@@ -3,6 +3,7 @@ import { comContexto, logger } from '@/lib/log';
 import { UazapiInboundSchema, normalizeTelefone } from '@/lib/schemas/uazapi';
 import { LIMITES, ipDaRequest, resposta429, verificarLimite } from '@/lib/security/rate-limit';
 import { processarInbound } from '@/lib/services/inbound-whatsapp';
+import { formaDoPayload } from '@/lib/webhooks/forma-payload';
 import { verifyHmacSignature } from '@/lib/webhooks/hmac';
 import type { Database } from '@nogma/db';
 import { createClient as createSbClient } from '@supabase/supabase-js';
@@ -10,6 +11,12 @@ import { type NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+/**
+ * Com o classificador real, o caminho síncrono baixa a mídia, transcreve e
+ * chama o modelo com a foto. Sem `maxDuration` a função morre em 10 s e a
+ * mensagem fica em `processando`. 60 s é o teto do plano Hobby.
+ */
+export const maxDuration = 60;
 
 const log = logger('webhook');
 
@@ -41,6 +48,15 @@ export async function POST(request: NextRequest) {
   const raw = await request.text();
   const signature = request.headers.get('x-signature');
   if (!verifyHmacSignature(raw, signature, secret)) {
+    // Sem conteúdo: a request é pré-autorizados. O que importa saber é SE o
+    // provider assina e COMO (header presente? tamanho?), para o primeiro
+    // contato não ser um 401 mudo (CEO review, G2).
+    log.aviso('assinatura_invalida', {
+      header_presente: signature != null,
+      tamanho_assinatura: signature?.length ?? 0,
+      tamanho_corpo: raw.length,
+      content_type: request.headers.get('content-type'),
+    });
     return NextResponse.json({ error: 'invalid signature' }, { status: 401 });
   }
 
@@ -48,12 +64,22 @@ export async function POST(request: NextRequest) {
   try {
     json = JSON.parse(raw);
   } catch {
+    log.aviso('payload_rejeitado', { motivo: 'json_invalido', tamanho_corpo: raw.length });
     return NextResponse.json({ error: 'invalid json' }, { status: 400 });
   }
 
   const parsed = UazapiInboundSchema.safeParse(json);
   if (!parsed.success) {
     const first = parsed.error.issues[0];
+    // Forma do payload (chaves e tipos), nunca valores: é o que permite
+    // escrever o adaptador se o formato real do provider divergir das
+    // fixtures (CEO review, G1/D5/D7).
+    log.aviso('payload_rejeitado', {
+      motivo: 'schema',
+      campo: first ? first.path.join('.') : null,
+      erro: first?.message,
+      forma: formaDoPayload(json),
+    });
     return NextResponse.json(
       {
         error: 'schema validation failed',

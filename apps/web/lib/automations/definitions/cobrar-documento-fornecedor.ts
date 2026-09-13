@@ -1,6 +1,7 @@
 import 'server-only';
 import type { Evento } from '@/lib/events/tipos';
 import { hojeBR } from '@/lib/util/datas';
+import { z } from 'zod';
 import { enviarWhatsapp } from '../actions/enviar-whatsapp';
 import type { AutomacaoAgendada, ContextoExecucao, ResultadoCondicao } from '../tipos';
 
@@ -39,6 +40,12 @@ export const cobrarDocumentoFornecedor: AutomacaoAgendada = {
     limite_por_rodada: LIMITE_POR_RODADA,
     dias_entre_cobrancas: DIAS_ENTRE_COBRANCAS,
   },
+  configSchema: z.object({
+    dias_sem_documento: z.number().int().min(1).max(365),
+    // Teto duro de 100: uma rodada não vira disparo em massa por engano.
+    limite_por_rodada: z.number().int().min(1).max(100),
+    dias_entre_cobrancas: z.number().int().min(1).max(90),
+  }),
 
   /**
    * Varre pagamentos sem documento e emite um evento sintético por

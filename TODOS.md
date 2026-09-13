@@ -25,24 +25,25 @@
   429/timeout a mensagem vira `erro` (visível no painel) mas o WhatsApp fica mudo e o
   retry do provider morre no dedupe. Enviar "não consegui processar, reenvie" no catch
   e/ou distinguir erro retentável. Fonte: revisão adversarial do PR #22. Depois de 16/09.
-- [ ] **G6 `maxDuration` no webhook síncrono** — sem ele a função pode morrer no meio da
-  classificação com foto. Fonte: ceo-review E3.
+- [x] **G6 `maxDuration` no webhook síncrono** — feito em `4e1b682` (60 s, teto do Hobby;
+  no Pro pode subir). Fonte: ceo-review E3.
 - [ ] **Risco de demo**: com `IA_PROVIDER=mock`, qualquer imagem vira `documento_apenas`
   sem valor. Sem `ANTHROPIC_API_KEY` a demo de 16/09 deve ser **texto puro**.
 
 ## P1 — antes de ligar WhatsApp/automações em produção
 
-- [ ] **T1 `configSchema` Zod `.strict()` por automação** — `lib/automations/tipos.ts:64`
+- [x] **T1 `configSchema` Zod `.strict()` por automação** — feito em `d693a45`. — `lib/automations/tipos.ts:64`
   aceita `Record<string, unknown>`; `numero()` cai no padrão em silêncio
   (`cobrar-documento-fornecedor.ts:201`). Um typo em `limite_por_rodada` mantém 25
   WhatsApps/dia. Validar em `salvarConfigAutomacao` e no engine; `registry.test.ts`.
   Fonte: eng-review C2/D6. CC ~30 min.
-- [ ] **T2 `exigirLinhas()` nas 12 actions de arquivar/restaurar** — `obras`, `pagamentos`,
+- [x] **T2 `erroDeEscrita()` nas 12 actions de arquivar/restaurar** — feito em `21dfea4`. — `obras`, `pagamentos`,
   `fornecedores`, `documentos`, `categorias`, `webhooks` (incl. `regenerarSecret`) fazem
   `.update().eq('id')` sem `.select('id')`: papel sem permissão vê "arquivado" e nada
   mudou. Mesmo padrão já aplicado em `confirmacoes.ts` (PR #21). Fonte: eng-review C1/D3.
   CC ~40 min.
-- [ ] **T3 Fila `whatsapp_inbound`: laço de drenagem + teste de rota** — `LOTE_POR_FILA=1`
+- [x] **T3 Fila `whatsapp_inbound`: laço de drenagem + teste de rota** — feito em `4e1b682`.
+  Falta só a chave `FILA_WHATSAPP=true` na Vercel (ação humana, depois de 16/09). — `LOTE_POR_FILA=1`
   + cron por minuto = 1 mensagem/min; `pg_net` desiste em 5 s ignorando a resposta.
   Antes de criar `FILA_WHATSAPP=true` na Vercel. Fonte: eng-review A2/D7. CC ~30 min.
 - [ ] **T4 PR #7 (`feat/emitir-eventos`)** — `merge-base` = `76fe5a9`, seis PRs atrás;

@@ -1,6 +1,7 @@
 import type { Evento } from '@/lib/events/tipos';
 import { entidadeDoEvento } from '@/lib/events/tipos';
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import { executarAutomacoes } from './engine';
 import { AUTOMACOES, listarAutomacoes } from './registry';
 import type { Automacao, Client } from './tipos';
@@ -91,6 +92,7 @@ function automacaoFake(over: Partial<Automacao> = {}): Automacao {
     chave: 'teste',
     descricao: 'automação de teste',
     gatilhos: ['pagamento.criado'],
+    configSchema: z.object({}),
     condicao: async () => ({ passa: true }),
     acao: async () => ({ resumo: 'agiu' }),
     ...over,

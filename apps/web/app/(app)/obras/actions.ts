@@ -4,6 +4,7 @@ import { pareceUuid } from '@/lib/util/uuid';
 
 import { mapDbError } from '@/lib/schemas/errors';
 import { ObraCreateSchema, ObraUpdateSchema } from '@/lib/schemas/obra';
+import { erroDeEscrita } from '@/lib/supabase/escrita';
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -107,12 +108,16 @@ export async function archiveObra(formData: FormData) {
   if (!id) redirect('/obras?error=ID%20inv%C3%A1lido');
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from('obras')
-    .update({ status: 'arquivada', deleted_at: new Date().toISOString() })
-    .eq('id', id);
+  const erro = erroDeEscrita(
+    await supabase
+      .from('obras')
+      .update({ status: 'arquivada', deleted_at: new Date().toISOString() })
+      .eq('id', id)
+      .is('deleted_at', null)
+      .select('id'),
+  );
 
-  if (error) redirect(`/obras/${id}?error=${encodeURIComponent(mapDbError(error))}`);
+  if (erro) redirect(`/obras/${id}?error=${encodeURIComponent(erro)}`);
   revalidatePath('/obras');
   revalidatePath(`/obras/${id}`);
   redirect(`/obras/${id}`);
@@ -153,12 +158,15 @@ export async function restoreObra(formData: FormData) {
   if (!id) redirect('/obras?error=ID%20inv%C3%A1lido');
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from('obras')
-    .update({ status: 'ativa', deleted_at: null })
-    .eq('id', id);
+  const erro = erroDeEscrita(
+    await supabase
+      .from('obras')
+      .update({ status: 'ativa', deleted_at: null })
+      .eq('id', id)
+      .select('id'),
+  );
 
-  if (error) redirect(`/obras/${id}?error=${encodeURIComponent(mapDbError(error))}`);
+  if (erro) redirect(`/obras/${id}?error=${encodeURIComponent(erro)}`);
   revalidatePath('/obras');
   revalidatePath(`/obras/${id}`);
   redirect(`/obras/${id}`);

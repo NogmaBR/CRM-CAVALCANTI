@@ -1,6 +1,7 @@
 import type { Evento, NomeEvento } from '@/lib/events/tipos';
 import type { Database } from '@nogma/db';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { z } from 'zod';
 
 /**
  * Contrato de uma automação.
@@ -62,6 +63,14 @@ export interface Automacao {
 
   /** Valores default quando `automation_rules.config` estiver vazio. */
   configPadrao?: Record<string, unknown>;
+
+  /**
+   * Formato aceito em `automation_rules.config`. É aplicado como `.strict()`:
+   * chave desconhecida ou tipo errado é erro, na tela ao salvar e no log ao
+   * rodar (`lib/automations/config.ts`). Sem isso um typo no nome do parâmetro
+   * era ignorado em silêncio e a regra seguia com o padrão.
+   */
+  configSchema: z.ZodObject<z.ZodRawShape>;
 
   /** Decide se age. Sem efeito colateral aqui — só leitura. */
   condicao(ctx: ContextoExecucao): Promise<ResultadoCondicao>;

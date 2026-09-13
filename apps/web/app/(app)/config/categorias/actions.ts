@@ -1,10 +1,11 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
 import { CategoriaCreateSchema, CategoriaUpdateSchema } from '@/lib/schemas/categoria';
 import { mapDbErrorWithContext } from '@/lib/schemas/errors';
+import { erroDeEscrita } from '@/lib/supabase/escrita';
+import { createClient } from '@/lib/supabase/server';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 
 const BASE_PATH = '/config/categorias';
 
@@ -108,16 +109,16 @@ export async function arquivarCategoria(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from('categorias')
-    .update({ deleted_at: new Date().toISOString() })
-    .eq('id', id)
-    .is('deleted_at', null); // idempotency guard: only archive if not already archived
+  const erro = erroDeEscrita(
+    await supabase
+      .from('categorias')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id)
+      .is('deleted_at', null) // idempotency guard: only archive if not already archived
+      .select('id'),
+  );
 
-  if (error) {
-    const msg = mapDbErrorWithContext(error, {});
-    redirect(`${BASE_PATH}?error=${encodeURIComponent(msg)}`);
-  }
+  if (erro) redirect(`${BASE_PATH}?error=${encodeURIComponent(erro)}`);
 
   revalidatePath(BASE_PATH);
   revalidatePath('/pagamentos');
@@ -133,15 +134,11 @@ export async function restaurarCategoria(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from('categorias')
-    .update({ deleted_at: null })
-    .eq('id', id);
+  const erro = erroDeEscrita(
+    await supabase.from('categorias').update({ deleted_at: null }).eq('id', id).select('id'),
+  );
 
-  if (error) {
-    const msg = mapDbErrorWithContext(error, {});
-    redirect(`${BASE_PATH}?error=${encodeURIComponent(msg)}`);
-  }
+  if (erro) redirect(`${BASE_PATH}?error=${encodeURIComponent(erro)}`);
 
   revalidatePath(BASE_PATH);
   revalidatePath('/pagamentos');

@@ -74,6 +74,9 @@ const RESPOSTAS = {
     'Recebi sua confirmação, mas faltaram dados pra lançar automaticamente. ' +
     'O gestor vai revisar no painel.',
   recusado: 'Ok, cancelei esse lançamento. Se quiser, é só mandar de novo com os dados corretos.',
+  falhaTemporaria:
+    'Não consegui processar sua mensagem agora. Ela ficou registrada; ' +
+    'o gestor pode lançar pelo painel, ou você pode reenviar daqui a alguns minutos.',
 } as const;
 
 export async function processarInbound(
@@ -247,6 +250,17 @@ export async function processarInbound(
     ok: false as const,
     error: err instanceof Error ? err.message : String(err),
   }));
+
+  // Classificador fora do ar (429, timeout, chave errada): a mensagem já está
+  // gravada como `erro` para o painel, mas o remetente ficaria no silêncio —
+  // e o retry do provider morre no dedupe. Uma resposta curta, uma vez só,
+  // fecha o ciclo do lado dele (revisão adversarial do PR #22, G7).
+  if (!classificacao.ok) {
+    if (!(await jaRespondida(supabase, payload.id, 'falha_temporaria'))) {
+      await enviarTexto(telefone, RESPOSTAS.falhaTemporaria);
+    }
+    return { acao: 'erro', detalhe: 'classificação falhou; remetente avisado', mensagemId };
+  }
 
   // ---------------------------------------------------------------------
   // 7. Se abriu pendência, faz a pergunta no WhatsApp.
@@ -484,24 +498,32 @@ async function buscarAutorizado(
   supabase: Client,
   telefone: string,
 ): Promise<{ id: string; nome: string } | null> {
+  // `telefone_norm` é gerada no banco (só dígitos) e única entre vivos
+  // (PR #21): a busca é um índice, não a lista inteira normalizada em JS.
   const { data, error } = await supabase
     .from('autorizados')
-    .select('id, nome, telefone_whats')
+    .select('id, nome')
+    .eq('telefone_norm', telefone)
     .eq('ativo', true)
-    .is('deleted_at', null);
+    .is('deleted_at', null)
+    .maybeSingle();
 
   if (error) {
     log.erro('consultar_autorizados_falhou', { erro: error.message });
     return null;
   }
+  if (data) return { id: data.id, nome: data.nome };
 
-  if (!data || data.length === 0) {
+  // Não achou: a lista está vazia (aviso operacional) ou o número não está nela.
+  const { count } = await supabase
+    .from('autorizados')
+    .select('id', { count: 'exact', head: true })
+    .eq('ativo', true)
+    .is('deleted_at', null);
+  if (!count) {
     log.aviso('autorizados_vazio', {
       dica: 'Nenhum número ativo em autorizados: toda mensagem será ignorada. Cadastre a equipe em /config/autorizados.',
     });
-    return null;
   }
-
-  const encontrado = data.find((a) => normalizeTelefone(a.telefone_whats) === telefone);
-  return encontrado ? { id: encontrado.id, nome: encontrado.nome } : null;
+  return null;
 }

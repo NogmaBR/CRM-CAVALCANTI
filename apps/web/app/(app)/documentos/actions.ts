@@ -17,6 +17,7 @@ import {
   sha256Hex,
   uploadDocumentBuffer,
 } from '@/lib/storage/documents';
+import { erroDeEscrita } from '@/lib/supabase/escrita';
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -247,12 +248,16 @@ export async function archiveDocumento(formData: FormData) {
   if (!id) redirect('/documentos?error=ID%20inv%C3%A1lido');
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from('documentos')
-    .update({ deleted_at: new Date().toISOString() })
-    .eq('id', id);
+  const erro = erroDeEscrita(
+    await supabase
+      .from('documentos')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id)
+      .is('deleted_at', null)
+      .select('id'),
+  );
 
-  if (error) redirect(`/documentos/${id}?error=${encodeURIComponent(mapDbError(error))}`);
+  if (erro) redirect(`/documentos/${id}?error=${encodeURIComponent(erro)}`);
   revalidatePath('/documentos');
   revalidatePath(`/documentos/${id}`);
   redirect(`/documentos/${id}`);
@@ -263,9 +268,11 @@ export async function restoreDocumento(formData: FormData) {
   if (!id) redirect('/documentos?error=ID%20inv%C3%A1lido');
 
   const supabase = await createClient();
-  const { error } = await supabase.from('documentos').update({ deleted_at: null }).eq('id', id);
+  const erro = erroDeEscrita(
+    await supabase.from('documentos').update({ deleted_at: null }).eq('id', id).select('id'),
+  );
 
-  if (error) redirect(`/documentos/${id}?error=${encodeURIComponent(mapDbError(error))}`);
+  if (erro) redirect(`/documentos/${id}?error=${encodeURIComponent(erro)}`);
   revalidatePath('/documentos');
   revalidatePath(`/documentos/${id}`);
   redirect(`/documentos/${id}`);

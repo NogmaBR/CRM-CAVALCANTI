@@ -1,5 +1,6 @@
 import 'server-only';
 import type { Evento } from '@/lib/events/tipos';
+import { z } from 'zod';
 import type { AutomacaoAgendada, ContextoExecucao, ResultadoCondicao } from '../tipos';
 
 /**
@@ -21,6 +22,7 @@ export const orcamentoEmRisco: AutomacaoAgendada = {
   descricao: 'Registra alerta quando o gasto de uma obra passa do limiar do orçamento.',
   gatilhos: ['obra.orcamento_em_risco', 'pagamento.criado'],
   configPadrao: { limiar_percentual: LIMIAR_PADRAO },
+  configSchema: z.object({ limiar_percentual: z.number().min(1).max(100) }),
 
   async varrer({ supabase, config }): Promise<Evento[]> {
     const limiar = numero(config.limiar_percentual, LIMIAR_PADRAO);

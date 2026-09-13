@@ -12,8 +12,22 @@ import { type NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+/**
+ * 60 s é o teto do plano Hobby da Vercel; sem declarar, a função morre em
+ * 10 s no meio de um lote e a mensagem só volta pelo visibility timeout.
+ */
+export const maxDuration = 60;
 
 const log = logger('fila');
+
+/**
+ * Orçamento de tempo da drenagem, abaixo do `maxDuration` com folga para as
+ * métricas e a resposta. Dentro dele a rota repete o lote enquanto a fila
+ * tiver mensagem: antes era um lote por invocação, e como `whatsapp_inbound`
+ * lê 1 por vez e o `pg_cron` chama uma vez por minuto, quatro fotos seguidas
+ * levavam quatro minutos (eng review gstack, A2).
+ */
+const ORCAMENTO_MS = 45_000;
 
 /**
  * Drena as filas.
@@ -28,6 +42,7 @@ const log = logger('fila');
  *
  *   ?fila=<nome>   drena só uma fila, para depurar sem mexer nas outras
  *   ?qtd=<n>       tamanho do lote (padrão 5, teto 25)
+ *   ?rodadas=<n>   teto de lotes por fila nesta invocação (padrão 50)
  *
  * ## Sobre o tamanho do lote
  *
@@ -55,6 +70,7 @@ export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const apenas = params.get('fila') as NomeFila | null;
   const qtd = Math.min(Math.max(Number(params.get('qtd') ?? 5) || 5, 1), 25);
+  const rodadasMax = Math.min(Math.max(Number(params.get('rodadas') ?? 50) || 50, 1), 200);
 
   const registradas = filasComHandler();
 
@@ -78,11 +94,20 @@ export async function GET(request: NextRequest) {
     if (!handler) continue;
 
     try {
-      // O cast existe porque `HANDLERS[fila]` perde a ligação entre a chave e
-      // o tipo do payload ao ser indexado por uma variável. A ligação é real —
-      // o registro é tipado por fila — só não sobrevive à indexação dinâmica.
-      lotes.push(
-        await comContexto({ invocacao }, () =>
+      // Drena em laço: lote, e de novo, enquanto vier mensagem e houver tempo.
+      // Cada lote lê no máximo `LOTE_POR_FILA` (1 para o inbound), mas a
+      // invocação não para no primeiro — para quando a fila esvazia, quando o
+      // orçamento acaba ou no teto de rodadas.
+      const acumulado = { fila, lidas: 0, concluidas: 0, arquivadas: 0, devolvidas: 0, rodadas: 0 };
+      for (let rodada = 0; rodada < rodadasMax; rodada++) {
+        if (Date.now() - inicio > ORCAMENTO_MS) {
+          log.aviso('drenagem_interrompida_por_tempo', { invocacao, fila, rodadas: rodada });
+          break;
+        }
+        // O cast existe porque `HANDLERS[fila]` perde a ligação entre a chave
+        // e o tipo do payload ao ser indexado por uma variável. A ligação é
+        // real — o registro é tipado por fila — só não sobrevive à indexação.
+        const lote = await comContexto({ invocacao, rodada }, () =>
           consumirFila(
             supabase,
             fila,
@@ -90,8 +115,15 @@ export async function GET(request: NextRequest) {
             // `?qtd=` só reduz; nunca passa do lote seguro da fila.
             Math.min(qtd, LOTE_POR_FILA[fila]),
           ),
-        ),
-      );
+        );
+        acumulado.lidas += lote.lidas;
+        acumulado.concluidas += lote.concluidas;
+        acumulado.arquivadas += lote.arquivadas;
+        acumulado.devolvidas += lote.devolvidas;
+        acumulado.rodadas += 1;
+        if (lote.lidas === 0) break;
+      }
+      lotes.push(acumulado);
     } catch (err) {
       // Falha aqui é da leitura da fila, não de uma mensagem — as de mensagem
       // são tratadas dentro do consumidor. Uma fila que não abre não pode
