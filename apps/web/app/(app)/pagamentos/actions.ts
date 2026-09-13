@@ -1,11 +1,12 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
 import { mapDbError, mapDbErrorWithContext } from '@/lib/schemas/errors';
 import { PagamentoCreateSchema, PagamentoUpdateSchema } from '@/lib/schemas/pagamento';
 import { dispatchEvento } from '@/lib/services/dispatch-webhook';
+import { erroDeEscrita } from '@/lib/supabase/escrita';
+import { createClient } from '@/lib/supabase/server';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 
 function formToRecord(fd: FormData): Record<string, unknown> {
   const rec: Record<string, unknown> = {};
@@ -127,12 +128,16 @@ export async function archivePagamento(formData: FormData) {
   if (!id) redirect('/pagamentos?error=ID%20inv%C3%A1lido');
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from('pagamentos')
-    .update({ deleted_at: new Date().toISOString() })
-    .eq('id', id);
+  const erro = erroDeEscrita(
+    await supabase
+      .from('pagamentos')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id)
+      .is('deleted_at', null)
+      .select('id'),
+  );
 
-  if (error) redirect(`/pagamentos/${id}?error=${encodeURIComponent(mapDbError(error))}`);
+  if (erro) redirect(`/pagamentos/${id}?error=${encodeURIComponent(erro)}`);
   revalidatePath('/pagamentos');
   revalidatePath(`/pagamentos/${id}`);
   revalidatePath('/painel');
@@ -144,12 +149,11 @@ export async function restorePagamento(formData: FormData) {
   if (!id) redirect('/pagamentos?error=ID%20inv%C3%A1lido');
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from('pagamentos')
-    .update({ deleted_at: null })
-    .eq('id', id);
+  const erro = erroDeEscrita(
+    await supabase.from('pagamentos').update({ deleted_at: null }).eq('id', id).select('id'),
+  );
 
-  if (error) redirect(`/pagamentos/${id}?error=${encodeURIComponent(mapDbError(error))}`);
+  if (erro) redirect(`/pagamentos/${id}?error=${encodeURIComponent(erro)}`);
   revalidatePath('/pagamentos');
   revalidatePath(`/pagamentos/${id}`);
   revalidatePath('/painel');

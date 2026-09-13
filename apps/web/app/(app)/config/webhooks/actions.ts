@@ -1,12 +1,13 @@
 'use server';
 
+import { guardarSecretFlash } from '@/lib/security/flash-secret';
+import { validarUrlWebhook } from '@/lib/security/ssrf';
+import { generateWebhookSecret, testWebhook } from '@/lib/services/dispatch-webhook';
+import { erroDeEscrita } from '@/lib/supabase/escrita';
+import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/server';
-import { testWebhook, generateWebhookSecret } from '@/lib/services/dispatch-webhook';
-import { validarUrlWebhook } from '@/lib/security/ssrf';
-import { guardarSecretFlash } from '@/lib/security/flash-secret';
 
 const BASE_PATH = '/config/webhooks';
 
@@ -45,9 +46,7 @@ const CriarWebhookSchema = z.object({
     .string()
     .url('URL inválida')
     .refine((v) => v.startsWith('http'), 'URL deve começar com http:// ou https://'),
-  eventos: z
-    .array(z.enum(EVENTOS_VALIDOS))
-    .min(1, 'Selecione ao menos um evento'),
+  eventos: z.array(z.enum(EVENTOS_VALIDOS)).min(1, 'Selecione ao menos um evento'),
 });
 
 const AtualizarWebhookSchema = z.object({
@@ -101,7 +100,9 @@ export async function criarWebhook(formData: FormData) {
     .single();
 
   if (error || !wh) {
-    redirect(`${BASE_PATH}/novo?error=${encodeURIComponent('Erro ao criar webhook. Tente novamente.')}`);
+    redirect(
+      `${BASE_PATH}/novo?error=${encodeURIComponent('Erro ao criar webhook. Tente novamente.')}`,
+    );
   }
 
   // Finding A-3: o secret vai por cookie httpOnly de 60s, não pela query
@@ -124,13 +125,16 @@ export async function atualizarWebhook(formData: FormData) {
     nome: String(formData.get('nome') ?? '').trim() || undefined,
     url: String(formData.get('url') ?? '').trim() || undefined,
     eventos: eventosRaw.length > 0 ? eventosRaw : undefined,
-    ativo: ativoRaw !== null ? ativoRaw === 'true' || ativoRaw === '1' || ativoRaw === 'on' : undefined,
+    ativo:
+      ativoRaw !== null ? ativoRaw === 'true' || ativoRaw === '1' || ativoRaw === 'on' : undefined,
   };
 
   const parsed = AtualizarWebhookSchema.safeParse(raw);
   if (!parsed.success) {
     const first = parsed.error.issues[0];
-    redirect(`${BASE_PATH}/${id}/editar?error=${encodeURIComponent(first?.message ?? 'Dados inválidos')}`);
+    redirect(
+      `${BASE_PATH}/${id}/editar?error=${encodeURIComponent(first?.message ?? 'Dados inválidos')}`,
+    );
   }
 
   if (parsed.data.url !== undefined) {
@@ -153,7 +157,9 @@ export async function atualizarWebhook(formData: FormData) {
     .is('deleted_at', null);
 
   if (error) {
-    redirect(`${BASE_PATH}/${parsed.data.id}/editar?error=${encodeURIComponent('Erro ao atualizar webhook.')}`);
+    redirect(
+      `${BASE_PATH}/${parsed.data.id}/editar?error=${encodeURIComponent('Erro ao atualizar webhook.')}`,
+    );
   }
 
   revalidatePath(BASE_PATH);
@@ -169,15 +175,16 @@ export async function arquivarWebhook(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from('webhooks_outbound')
-    .update({ deleted_at: new Date().toISOString(), ativo: false })
-    .eq('id', id)
-    .is('deleted_at', null);
+  const erro = erroDeEscrita(
+    await supabase
+      .from('webhooks_outbound')
+      .update({ deleted_at: new Date().toISOString(), ativo: false })
+      .eq('id', id)
+      .is('deleted_at', null)
+      .select('id'),
+  );
 
-  if (error) {
-    redirect(`${BASE_PATH}?error=${encodeURIComponent('Erro ao arquivar webhook.')}`);
-  }
+  if (erro) redirect(`${BASE_PATH}?error=${encodeURIComponent(erro)}`);
 
   revalidatePath(BASE_PATH);
   redirect(`${BASE_PATH}?success=${encodeURIComponent('Webhook arquivado')}`);
@@ -208,15 +215,18 @@ export async function regenerarSecret(formData: FormData) {
 
   const newSecret = generateWebhookSecret();
   const supabase = await createClient();
-  const { error } = await supabase
-    .from('webhooks_outbound')
-    .update({ secret: newSecret })
-    .eq('id', id)
-    .is('deleted_at', null);
+  // Sem a checagem de linhas, "Secret regenerado" aparecia e o secret antigo
+  // continuava valendo — o pior dos falsos sucessos desta tela.
+  const erro = erroDeEscrita(
+    await supabase
+      .from('webhooks_outbound')
+      .update({ secret: newSecret })
+      .eq('id', id)
+      .is('deleted_at', null)
+      .select('id'),
+  );
 
-  if (error) {
-    redirect(`${BASE_PATH}/${id}/editar?error=${encodeURIComponent('Erro ao regenerar secret.')}`);
-  }
+  if (erro) redirect(`${BASE_PATH}/${id}/editar?error=${encodeURIComponent(erro)}`);
 
   await guardarSecretFlash(newSecret);
 

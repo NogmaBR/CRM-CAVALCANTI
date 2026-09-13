@@ -2,6 +2,7 @@
 
 import { mapDbError, mapDbErrorWithContext } from '@/lib/schemas/errors';
 import { FornecedorCreateSchema, FornecedorUpdateSchema } from '@/lib/schemas/fornecedor';
+import { erroDeEscrita } from '@/lib/supabase/escrita';
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -118,12 +119,16 @@ export async function archiveFornecedor(formData: FormData) {
   if (!id) redirect('/fornecedores?error=ID%20inv%C3%A1lido');
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from('fornecedores')
-    .update({ ativo: false, deleted_at: new Date().toISOString() })
-    .eq('id', id);
+  const erro = erroDeEscrita(
+    await supabase
+      .from('fornecedores')
+      .update({ ativo: false, deleted_at: new Date().toISOString() })
+      .eq('id', id)
+      .is('deleted_at', null)
+      .select('id'),
+  );
 
-  if (error) redirect(`/fornecedores/${id}?error=${encodeURIComponent(mapDbError(error))}`);
+  if (erro) redirect(`/fornecedores/${id}?error=${encodeURIComponent(erro)}`);
   revalidatePath('/fornecedores');
   revalidatePath('/fornecedores/duplicatas');
   revalidatePath(`/fornecedores/${id}`);
@@ -135,12 +140,15 @@ export async function restoreFornecedor(formData: FormData) {
   if (!id) redirect('/fornecedores?error=ID%20inv%C3%A1lido');
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from('fornecedores')
-    .update({ ativo: true, deleted_at: null })
-    .eq('id', id);
+  const erro = erroDeEscrita(
+    await supabase
+      .from('fornecedores')
+      .update({ ativo: true, deleted_at: null })
+      .eq('id', id)
+      .select('id'),
+  );
 
-  if (error) redirect(`/fornecedores/${id}?error=${encodeURIComponent(mapDbError(error))}`);
+  if (erro) redirect(`/fornecedores/${id}?error=${encodeURIComponent(erro)}`);
   revalidatePath('/fornecedores');
   revalidatePath('/fornecedores/duplicatas');
   revalidatePath(`/fornecedores/${id}`);
