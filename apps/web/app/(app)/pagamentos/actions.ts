@@ -1,5 +1,6 @@
 'use server';
 
+import { emitir } from '@/lib/events/bus';
 import { mapDbError, mapDbErrorWithContext } from '@/lib/schemas/errors';
 import { PagamentoCreateSchema, PagamentoUpdateSchema } from '@/lib/schemas/pagamento';
 import { dispatchEvento } from '@/lib/services/dispatch-webhook';
@@ -73,6 +74,21 @@ export async function createPagamento(formData: FormData) {
   } catch {
     // Silencioso — webhook falhou mas pagamento tá OK
   }
+
+  // Evento de domínio: o webhook acima avisa sistemas de fora; este avisa as
+  // automações de dentro (ex.: orçamento em risco). `emitir` nunca lança e,
+  // sem regra ligada, custa uma consulta.
+  await emitir(
+    'pagamento.criado',
+    {
+      pagamentoId: data.id,
+      obraId: parsed.data.obra_id,
+      fornecedorId: parsed.data.fornecedor_id ?? null,
+      valor: parsed.data.valor,
+      origem: parsed.data.origem,
+    },
+    { userId: criadoPor },
+  );
 
   revalidatePath('/pagamentos');
   revalidatePath('/painel');

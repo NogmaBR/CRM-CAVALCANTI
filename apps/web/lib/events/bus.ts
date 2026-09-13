@@ -2,7 +2,7 @@ import 'server-only';
 import { executarAutomacoes } from '@/lib/automations/engine';
 import { logger } from '@/lib/log';
 import type { Database } from '@nogma/db';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { type SupabaseClient, createClient as createSbClient } from '@supabase/supabase-js';
 import type { Evento, NomeEvento, PayloadDe } from './tipos';
 
 const log = logger('eventos');
@@ -43,6 +43,8 @@ type Client = SupabaseClient<Database>;
 interface OpcoesEmissao {
   /** Quem causou. `null` em cron e webhook. */
   userId?: string | null;
+  /** Só para teste: substitui o cliente de serviço. */
+  cliente?: Client;
   /** Quando o fato aconteceu, se diferente de agora. */
   em?: string;
   /**
@@ -52,8 +54,25 @@ interface OpcoesEmissao {
   simular?: boolean;
 }
 
+/**
+ * Cliente de serviço, montado aqui dentro de propósito.
+ *
+ * O motor escreve em `automation_executions`, e essa tabela **não tem policy
+ * de INSERT para sessão de usuário** — quem escreve o log é o motor, nunca o
+ * browser. Se `emitir` aceitasse o cliente do chamador, toda emissão vinda de
+ * uma server action avaliaria as regras e perderia o registro em silêncio.
+ * Não há o que errar porque não há o que passar.
+ */
+function clienteDeServico(): Client | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return createSbClient<Database>(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
 export async function emitir<E extends NomeEvento>(
-  supabase: Client,
   nome: E,
   payload: PayloadDe<E>,
   opcoes: OpcoesEmissao = {},
@@ -65,7 +84,17 @@ export async function emitir<E extends NomeEvento>(
     userId: opcoes.userId ?? null,
   };
 
+  // O try cobre a montagem do cliente também: a garantia que os chamadores
+  // dependem é "emitir nunca lança". Uma URL malformada no ambiente não pode
+  // derrubar a criação do pagamento.
   try {
+    const supabase = opcoes.cliente ?? clienteDeServico();
+    if (!supabase) {
+      // Build, preview mal configurado: melhor não reagir do que reagir sem
+      // poder registrar.
+      log.aviso('evento_nao_despachado', { evento: nome, motivo: 'sem credencial de serviço' });
+      return;
+    }
     await executarAutomacoes(supabase, evento as Evento, { simular: opcoes.simular ?? false });
   } catch (err) {
     // Chegou aqui significa que o próprio engine quebrou, não uma regra — as
