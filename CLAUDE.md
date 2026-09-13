@@ -692,3 +692,29 @@ Regras para quem for usar:
   Os `.gstack/` locais e `~/.gstack/` são estado de máquina, fora do Git.
 - As revisões de plano **não escrevem código**. QA escreve só correções mínimas,
   um commit por bug. Ship nunca faz force push e nunca pula os três comandos da §5.
+
+## 11. graphify — o mapa do projeto (use antes de grep)
+
+Existe um grafo de conhecimento do repositório inteiro em `graphify-out/` (código por
+AST + docs por extração semântica, gerado em 2026-09-13): 3.666 nós, 7.396 arestas,
+229 comunidades rotuladas. Ele existe para **você se localizar gastando menos tokens**.
+
+Regras:
+- **Pergunta sobre o código ou sobre uma decisão do projeto → primeiro
+  `graphify query "<pergunta>"`** (ou `graphify path "<A>" "<B>"` para a relação entre
+  dois conceitos e `graphify explain "<conceito>"` para um só). Devolve um subgrafo
+  pequeno com `src=arquivo loc=Lnn` — vá direto à linha em vez de varrer pastas.
+  Use `--budget 800` para limitar; `--dfs` para seguir um caminho.
+- Leia `graphify-out/GRAPH_REPORT.md` só para visão de arquitetura ampla.
+- **Depois de mudar código, rode `graphify update .`** (só AST, sem custo de API)
+  para o grafo não ficar mentindo. Docs novas ou alteradas: `/graphify . --update`.
+- No Windows o CLI é `~/.local/bin/graphify` (Python em `C:\Python312`). Se o console
+  reclamar de encoding, prefixe `PYTHONIOENCODING=utf-8`. O AST usa multiprocessing:
+  script próprio precisa de `if __name__ == '__main__'`.
+- Versionado: `graph.json`, `GRAPH_REPORT.md`, `manifest.json`, `cost.json`,
+  `.graphify_labels.json`. Ignorado: `graph.html` (3,7 MB, regenerável com
+  `graphify export html`), `cache/`, `.graphify_python`, `.graphify_root`.
+- As 27 imagens (logos e assets do design system) ficaram fora do corpus de
+  propósito. O health check acusou 709 arestas "dangling": são `references` de docs
+  para ids de código que a extração chutou errado — não são erro do código.
+- O repositório é público: nunca escreva segredo em nó, rótulo ou relatório do grafo.
