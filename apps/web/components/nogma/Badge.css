@@ -1,17 +1,73 @@
-
-.ng-badge{
-  display:inline-flex; align-items:center; gap:5px; font-family:var(--font-sans);
-  font-weight:var(--fw-semibold); font-size:var(--text-xs); line-height:1;
-  padding:5px 10px; border-radius:var(--radius-pill); border:var(--border-hair) solid transparent;
-  white-space:nowrap; letter-spacing:.01em;
+.ng-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-sans);
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-xs);
+  line-height: 1;
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  border: var(--border-hair) solid transparent;
+  white-space: nowrap;
+  letter-spacing: .01em;
 }
-.ng-badge__dot{ width:6px; height:6px; border-radius:50%; background:currentColor; }
-.ng-badge--neutral{ background:var(--neutral-100); color:var(--neutral-700); }
-.ng-badge--petroleum{ background:var(--petroleum-050); color:var(--petroleum-800); }
-.ng-badge--lime{ background:var(--lime-050); color:var(--petroleum-800); border-color:var(--lime-300); }
-.ng-badge--solid-lime{ background:var(--lime-500); color:var(--petroleum-950); }
-.ng-badge--solid{ background:var(--petroleum-800); color:#fff; }
-.ng-badge--success{ background:var(--success-bg); color:var(--success); }
-.ng-badge--warning{ background:var(--warning-bg); color:#8a5d00; }
-.ng-badge--danger{ background:var(--danger-bg); color:var(--danger); }
-.ng-badge--outline{ background:transparent; border-color:var(--border-default); color:var(--text-secondary); }
+.ng-badge__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.ng-badge--neutral {
+  background: var(--neutral-100);
+  color: var(--neutral-700);
+}
+.ng-badge--petroleum {
+  background: var(--petroleum-050);
+  color: var(--petroleum-800);
+}
+.ng-badge--lime {
+  background: var(--lime-050);
+  color: var(--petroleum-800);
+  border-color: var(--lime-300);
+}
+.ng-badge--solid-lime {
+  background: var(--lime-500);
+  color: var(--petroleum-950);
+}
+.ng-badge--solid {
+  background: var(--petroleum-800);
+  color: #fff;
+}
+.ng-badge--success {
+  background: var(--success-bg);
+  color: #1f7a4d;
+} /* 5,2:1; --success dava 2,8:1 */
+[data-theme="black"] .ng-badge--success,
+[data-theme="dark"] .ng-badge--success {
+  background: color-mix(in srgb, var(--success) 18%, transparent);
+  color: #6fd39a;
+}
+[data-theme="black"] .ng-badge--warning,
+[data-theme="dark"] .ng-badge--warning {
+  background: color-mix(in srgb, var(--warning) 18%, transparent);
+  color: #f2c14e;
+}
+[data-theme="black"] .ng-badge--danger,
+[data-theme="dark"] .ng-badge--danger {
+  background: color-mix(in srgb, var(--danger) 18%, transparent);
+  color: #ff8a7a;
+}
+.ng-badge--warning {
+  background: var(--warning-bg);
+  color: #8a5d00;
+}
+.ng-badge--danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.ng-badge--outline {
+  background: transparent;
+  border-color: var(--border-default);
+  color: var(--text-secondary);
+}

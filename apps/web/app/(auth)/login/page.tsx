@@ -1,5 +1,5 @@
-import Image from 'next/image';
 import { AlertCircle } from 'lucide-react';
+import Image from 'next/image';
 import { LoginForm } from './login-form';
 
 type SearchParams = Promise<{ error?: string }>;
@@ -27,20 +27,6 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
             Sua obra <span className="nos-mark">controlada no WhatsApp</span>.
           </h2>
           <p>Pagamentos, comprovantes e notas fiscais organizados sozinhos.</p>
-        </div>
-        <div className="nos-login__stats">
-          <div>
-            <strong>10</strong>
-            <span>obras ativas</span>
-          </div>
-          <div>
-            <strong>R$ 453k</strong>
-            <span>investido</span>
-          </div>
-          <div>
-            <strong>124</strong>
-            <span>documentos</span>
-          </div>
         </div>
       </aside>
 

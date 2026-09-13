@@ -11,7 +11,7 @@ import {
   getSerieMensal,
   relativeTime,
 } from '@/lib/data/painel';
-import { listPagamentosSemDocumento } from '@/lib/data/pendentes';
+import { LIMITE_SEM_DOCUMENTO, listPagamentosSemDocumento } from '@/lib/data/pendentes';
 import { createClient } from '@/lib/supabase/server';
 import {
   ArrowRight,
@@ -146,6 +146,8 @@ export default async function PainelPage() {
   // permanente vira ruído e para de ser lido.
   const aguardandoConfirmacao = confirmacoesR.count ?? 0;
   const semDocCriticos = semDocumento.filter((p) => p.dias > 7).length;
+  // Lista no teto = há mais do que foi trazido; o número vira piso ("50+").
+  const semDocSufixo = semDocumento.length >= LIMITE_SEM_DOCUMENTO ? '+' : '';
 
   const alertas: Array<{ texto: string; href: string }> = [];
   if (aguardandoConfirmacao > 0) {
@@ -160,9 +162,9 @@ export default async function PainelPage() {
   if (semDocCriticos > 0) {
     alertas.push({
       texto:
-        semDocCriticos === 1
+        semDocCriticos === 1 && !semDocSufixo
           ? '1 pagamento sem nota há mais de 7 dias'
-          : `${semDocCriticos} pagamentos sem nota há mais de 7 dias`,
+          : `${semDocCriticos}${semDocSufixo} pagamentos sem nota há mais de 7 dias`,
       href: '/pendentes',
     });
   }

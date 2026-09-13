@@ -15,7 +15,7 @@ describe('classificador simulado — valores', () => {
     (
       await new MockClassifier().classify({
         texto,
-        midiaUrl: null,
+        midiaStoragePath: null,
         midiaMime: null,
         telefone: '5551',
         contexto: ctx,

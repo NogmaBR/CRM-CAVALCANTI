@@ -26,7 +26,7 @@ SÓ FALTA VOCÊ
   🔴 1. Telefones reais dos fornecedores        ← antes de qualquer automação
   🔴 2. Credenciais (UAZAPI, Anthropic, OpenAI) + redeploy
   🔴 3. Webhook da UAZAPI + cadastrar a equipe em /config/autorizados
-  🟠 4. Mergear os PRs #20 (front-end, mergeado) e #21 (banco) + 6 limpezas que só você faz
+  🟠 4. Mergear o PR #22 (time gstack; #20 e #21 já mergeados) + limpezas que só você faz
   🟠 5. Vercel Pro → um comando faz o resto (região + repo privado)
   🟠 6. Backup: restore de teste + guardar a frase + PITR
   🟡 7. Domínio próprio + Cloudflare
@@ -164,7 +164,36 @@ Os PRs #13 a #17 estão mergeados e **auditados**: deploy READY, CI verde na `ma
 para 5 (os 5 restantes são intencionais ou exigem plano Pro). Com o #17, o assistente
 funciona **sem** os embeddings do item 8: basta a `ANTHROPIC_API_KEY` do item 2.
 
-### 4.0 — PR #20: revisão de front-end (o que o cliente vê no dia 16)
+### 4.0a — PR #22: o time virtual gstack (CEO, designer, engenharia, QA, release)
+
+<https://github.com/NogmaBR/CRM-CAVALCANTI/pull/22> — o gstack do Garry Tan foi instalado
+em `~/.claude/skills/gstack` e cinco personas revisaram o projeto inteiro. Relatórios em
+`docs/gstack/`, backlog consolidado em `TODOS.md`. O que o PR muda para quem usa:
+
+- **A IA passa a enxergar a foto da nota** (`IA_PROVIDER=anthropic`). Era o achado mais
+  grave: o classificador real recebia só texto; uma foto sem legenda terminava em "o
+  gestor vai revisar". Só vale quando a `ANTHROPIC_API_KEY` do item 2 existir.
+- **Demo de 16/09 sem a chave: use texto, não foto.** Com o mock, qualquer imagem vira
+  "documento" sem valor.
+- 3 bugs corrigidos pelo QA (busca de pagamentos por obra/fornecedor/categoria,
+  contagem "50" que era o teto da consulta, contraste do tema claro) e 22 ajustes do
+  designer (login sem números inventados, "Pagamentos" no menu, badges legíveis, alvos
+  de toque, cartão mobile com o valor primeiro).
+
+Sem migration. 278 testes, typecheck, lint e build limpos. **Pode mergear.**
+
+Duas coisas que o classificador me barrou e só você faz, no terminal do Claude Code
+(prefixo `!`):
+
+```bash
+! cd ~/.claude/skills/gstack && ./setup            # registra as skills /qa, /ship, /review…
+! cd ~/.claude/skills/gstack && ./setup --team && ~/.claude/skills/gstack/bin/gstack-team-init optional
+```
+
+E reiniciar o servidor local, que está com o worker do PostCSS morto desde 12/09:
+`pnpm --filter web dev` (Ctrl+C no antigo antes).
+
+### 4.0 — PR #20: revisão de front-end (mergeado em 2026-09-12)
 
 <https://github.com/NogmaBR/CRM-CAVALCANTI/pull/20> — auditoria visual com screenshot
 de cada tela em 1440px e 390px, nos três temas, e correção de tudo o que apareceu. O
@@ -185,17 +214,17 @@ quem usa:
   login empilhado no celular, formulários com controles do mesmo tamanho.
 
 Sem migration, sem mudança de banco. 274 testes, typecheck, lint e build limpos; CI
-verde no PR. **Pode mergear.** Depois do merge, abra o app no celular e no desktop e
-troque o tema pelo botão do topo — é o que o cliente vai ver.
+verde no PR. **Mergeado.** Abra o app no celular e no desktop e troque o tema pelo
+botão do topo — é o que o cliente vai ver.
 
-### 4.0b — PR #21: revisão do banco (migration já em produção)
+### 4.0b — PR #21: revisão do banco (mergeado em 2026-09-12)
 
 <https://github.com/NogmaBR/CRM-CAVALCANTI/pull/21> — inventário real do banco + dois
 revisores. A migration **já está aplicada e conferida** (policies otimizadas, privilégios
 reduzidos, auditoria ampliada, manutenção agendada, áudio do WhatsApp aceito no bucket).
 O PR traz o código que acompanha: pendência sem "sucesso falso", automação que não perde
 a configuração ao ligar/desligar, painel em Brasília. Achados e próximos passos em
-`docs/PLANO-BANCO-PREMIUM.md`. **Pode mergear.**
+`docs/PLANO-BANCO-PREMIUM.md`. **Mergeado.**
 
 Três limpezas que só você faz, no SQL Editor da Supabase (o classificador me barra de
 apagar tabela):

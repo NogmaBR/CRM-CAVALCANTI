@@ -43,9 +43,9 @@
 }
 
 .categorias-banner--error {
-  background: color-mix(in srgb, #ef4444 12%, transparent);
-  color: #ef4444;
-  border: 1px solid color-mix(in srgb, #ef4444 30%, transparent);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
 }
 
 /* ── Empty state ── */
@@ -183,9 +183,10 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 10px;
+  padding: 10px 14px;
+  min-height: 40px;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--text-secondary);
   border: 1px solid var(--border-subtle);
@@ -252,7 +253,7 @@
 }
 
 /* Hide native radio visually but keep it accessible */
-.categoria-cor-radio input[type='radio'] {
+.categoria-cor-radio input[type="radio"] {
   position: absolute;
   opacity: 0;
   width: 0;
@@ -261,7 +262,7 @@
 }
 
 /* Checked state via :has() */
-.categoria-cor-radio:has(input[type='radio']:checked) {
+.categoria-cor-radio:has(input[type="radio"]:checked) {
   border-color: var(--brand, #a3e635);
   background: color-mix(in srgb, var(--brand, #a3e635) 8%, var(--surface-1));
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand, #a3e635) 20%, transparent);
@@ -281,7 +282,7 @@
   color: var(--text-secondary);
 }
 
-.categoria-cor-radio:has(input[type='radio']:checked) .categoria-cor-radio__label {
+.categoria-cor-radio:has(input[type="radio"]:checked) .categoria-cor-radio__label {
   color: var(--text-primary);
 }
 

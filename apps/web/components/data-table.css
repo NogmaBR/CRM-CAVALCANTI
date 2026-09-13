@@ -45,7 +45,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--text-muted);
+  color: var(--text-secondary); /* muted sobre bg-subtle dava 2,4:1 */
   background: var(--bg-subtle);
   border-bottom: 1px solid var(--border-subtle);
   user-select: none;
@@ -231,9 +231,28 @@
     grid-row: auto;
     grid-column: 2 / 3;
   }
+  /* No cartão o valor decide: vai primeiro e grande; a data vira apoio. */
+  .nos-dt__td[data-col="valor"] {
+    order: -1;
+    grid-column: 1 / 2;
+    font-size: 20px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+  .nos-dt__td[data-col="data_pagamento"] {
+    order: 10;
+    color: var(--text-secondary);
+  }
   /* Valores à direita voltam para a esquerda: no cartão não há coluna. */
   .nos-dt__td [style*="text-align: right"],
   .nos-dt__td [style*="text-align:right"] {
     text-align: left !important;
   }
+}
+
+/* Cifras alinham por dígito em toda coluna numérica. */
+.nos-dt__td[data-col="valor"],
+.nos-dt__td[data-col="orcamento"],
+.nos-dt__td[data-col="total"] {
+  font-variant-numeric: tabular-nums;
 }

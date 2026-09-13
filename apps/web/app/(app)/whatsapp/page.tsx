@@ -128,7 +128,12 @@ function MensagemRow({ m }: { m: MensagemFeedItem }) {
           {m.texto_bruto ?? <em style={{ color: 'var(--text-secondary)' }}>(sem texto)</em>}
         </div>
         {m.status === 'erro' && m.erro_msg ? (
-          <div className="wa-item__error">Erro: {m.erro_msg}</div>
+          <div className="wa-item__error" title={m.erro_msg}>
+            Não consegui entender esta mensagem.{' '}
+            <Link href="/pagamentos/novo" className="wa-item__link">
+              Lançar manualmente em Pagamentos →
+            </Link>
+          </div>
         ) : null}
       </div>
       <div className="wa-item__meta">

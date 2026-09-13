@@ -4,7 +4,7 @@
 > **Mantenha-o atualizado**: ao terminar um trabalho relevante, atualize a §7 (estado)
 > e acrescente em §8 (armadilhas) qualquer erro novo que você cometeu.
 >
-> Última atualização: **2026-09-12**, após a revisão do banco (PR #21) e do front-end (PR #20).
+> Última atualização: **2026-09-12**, após a rodada do time gstack (PR #22; #20 e #21 mergeados).
 
 ---
 
@@ -502,6 +502,31 @@ aplicada e conferida; PR #21).** Inventário real + dois revisores; plano e acha
 - Painel conta `STATUS_QUE_CONTAM` como o resto do sistema (decisão fechada).
 - Tela de pendentes usa a RPC `pagamentos_sem_documento` (EXECUTE para authenticated).
 
+**Rodada do time gstack de 2026-09-12 (PR #22, sem migration).** Cinco personas
+(`docs/gstack/2026-09-12-{ceo,eng,design,qa}-*.md`), backlog em `TODOS.md`. Regras
+novas para quem for mexer:
+- **`ClassifierInput.midiaStoragePath`** (não existe mais `midiaUrl`): o classificador
+  Anthropic relê a mídia do Storage e manda como bloco `image`/`document`; o download é
+  injetável (`deps.baixarMidia`) e `montarConteudo` é pura e testada. Falha de download
+  degrada para texto, com `log.aviso('midia_nao_lida')`.
+- **Exceção do classificador marca a mensagem como `erro`** com texto humano
+  (`classificador_falhou` no log). Isso cobre exceção, não kill da função — `maxDuration`
+  está em `TODOS.md` (G6). A API recusando o anexo refaz a chamada só com texto;
+  mídia passa por `validateFileMagicBytes` antes de ir para o modelo (só jpeg/png/webp/pdf).
+- Texto interno da IA não vai para a tela: `/pendentes` só mostra `raciocinio` com
+  `IA_PROVIDER=anthropic`; `/whatsapp` mostra frase humana com link para lançar em
+  Pagamentos (mensagem com erro **não** abre pendência) e o erro técnico só no `title`.
+- Contraste: `--text-muted` claro `#6b7070`, petróleo `petroleum-200`; badge de sucesso
+  `#1f7a4d`; `--danger #c73f33`; cabeçalho de tabela em `--text-secondary`. Não volte
+  ao `#a1a1a1` como texto (é cor de marca, não de leitura).
+- Sidebar: `Pagamentos` no grupo principal, `Auditoria` no secundário. Tabbar 12px.
+- Cartão mobile de pagamento: `valor` primeiro (`order:-1`), data por último.
+- **Nada do `TODOS.md` entra antes de 16/09.** Com `IA_PROVIDER=mock`, foto vira
+  `documento_apenas` sem valor — a demo sem `ANTHROPIC_API_KEY` é em texto.
+- O `next dev` em `:3000` está com o worker do PostCSS morto desde 12/09 (toda rota
+  dinâmica 500); use `next build && next start -p <porta>` para testar até o usuário
+  reiniciar. O classificador barra `kill`.
+
 ### O que falta — e é ação humana, não código
 
 1. **Repositório é público.** Vai virar privado quando a Vercel for paga
@@ -630,3 +655,40 @@ aplicada e conferida; PR #21).** Inventário real + dois revisores; plano e acha
 - Trata o contexto de sessões anteriores como perdido — por isso este arquivo existe.
 - **Não coloque secret em chat.** Se ele colar uma credencial, avise uma vez, sem
   sermão, e siga o trabalho.
+
+---
+
+## 10. gstack — o time virtual (Garry Tan)
+
+O projeto usa o [gstack](https://github.com/garrytan/gstack) (MIT, instalado em
+`~/.claude/skills/gstack`, v1.84.1.0 em 2026-09-12) como time de revisão:
+**CEO/fundador** (`/plan-ceo-review`), **designer sênior** (`/plan-design-review`,
+`/design-review`), **gerente de engenharia** (`/plan-eng-review`, `/review`), **QA**
+(`/qa`, `/qa-only`) e **engenheiro de release** (`/ship`, `/land-and-deploy`, `/canary`).
+Fluxo recomendado: pensar → planejar → construir → revisar → testar → entregar →
+refletir: `/office-hours` → `/plan-ceo-review` → `/plan-eng-review` →
+`/plan-design-review` → implementar → `/review` → `/qa` → `/ship` →
+`/land-and-deploy` → `/retro`. `/autoplan` encadeia as quatro revisões de plano.
+
+Regras para quem for usar:
+- **Navegação web é pelo `/browse` do gstack** (no Windows ele usa o Chromium
+  empacotado). Nunca use ferramentas `mcp__claude-in-chrome__*`.
+- Skills disponíveis: /office-hours, /plan-ceo-review, /plan-eng-review,
+  /plan-design-review, /plan-devex-review, /design-consultation, /design-shotgun,
+  /design-html, /design-review, /review, /investigate, /qa, /qa-only, /devex-review,
+  /browse, /connect-chrome, /scrape, /pair-agent, /cso, /ship, /land-and-deploy,
+  /canary, /benchmark, /document-release, /document-generate, /autoplan, /retro,
+  /codex, /setup-browser-cookies, /setup-deploy, /setup-gbrain, /sync-gbrain,
+  /careful, /freeze, /guard, /unfreeze, /gstack-upgrade, /learn, /make-pdf, /diagram.
+- **Windows sem Developer Mode:** o `./setup` copia arquivos em vez de symlink.
+  Depois de todo `git pull` em `~/.claude/skills/gstack`, rode `./setup` de novo
+  (ou `/gstack-upgrade`), senão as skills ficam desatualizadas.
+- **O classificador do Claude Code barra a execução dos binários do gstack**
+  (`./setup`, `bin/gstack-*`, e até o `Skill` router) em modo automático. As skills
+  têm "modo degradado" documentado: sem o preamble, trate a sessão como
+  interativa, pule telemetria e siga o SKILL.md. Instalação e `--team` são ação do
+  usuário (`! ...` no prompt).
+- Relatórios das revisões ficam em `docs/gstack/` (versionados, sem segredo).
+  Os `.gstack/` locais e `~/.gstack/` são estado de máquina, fora do Git.
+- As revisões de plano **não escrevem código**. QA escreve só correções mínimas,
+  um commit por bug. Ship nunca faz force push e nunca pula os três comandos da §5.

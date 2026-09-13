@@ -1,6 +1,10 @@
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
-import { listPagamentosSemDocumento, listPendentes } from '@/lib/data/pendentes';
+import {
+  LIMITE_SEM_DOCUMENTO,
+  listPagamentosSemDocumento,
+  listPendentes,
+} from '@/lib/data/pendentes';
 import { Check, Clock, FileWarning, Inbox, Paperclip, X } from 'lucide-react';
 import Link from 'next/link';
 import { confirmarPendencia, rejeitarPendencia } from './actions';
@@ -39,6 +43,9 @@ function formatDate(iso: string): string {
   if (!y || !m || !d) return iso;
   return `${d}/${m}/${y}`;
 }
+
+/** O raciocínio só ajuda quando vem do modelo real; o do mock é texto de teste. */
+const mostrarRaciocinio = process.env.IA_PROVIDER === 'anthropic';
 
 export default async function PendentesPage({
   searchParams,
@@ -173,7 +180,10 @@ export default async function PendentesPage({
                         </div>
                       ) : null}
 
-                      {de?.raciocinio ? (
+                      {/* O raciocínio cru do classificador é informação interna, como a
+                          métrica de confiança que o cliente pediu para esconder. Só o do
+                          modelo real ajuda o gestor; o do mock entrega o modo de teste. */}
+                      {de?.raciocinio && mostrarRaciocinio ? (
                         <div className="pendente-extracted__field pendente-extracted__value--wide">
                           <span className="pendente-extracted__label">Raciocínio da IA</span>
                           <span className="pendente-extracted__value">{de.raciocinio}</span>
@@ -225,7 +235,10 @@ export default async function PendentesPage({
             <h2 id="sem-doc-titulo" className="pendentes-sem-doc__titulo">
               <FileWarning size={16} aria-hidden="true" />
               Pagamentos sem nota fiscal ou comprovante
-              <span className="pendentes-sem-doc__contagem">{semDocumento.length}</span>
+              <span className="pendentes-sem-doc__contagem">
+                {semDocumento.length}
+                {semDocumento.length >= LIMITE_SEM_DOCUMENTO ? '+' : ''}
+              </span>
             </h2>
 
             <div className="pendentes-sem-doc__lista">

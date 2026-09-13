@@ -75,3 +75,6 @@ Cavalcanti enegenharia/
 
 # Dados iniciais do cliente (gerados do prototipo, contem nomes e contatos)
 dados-iniciais/
+
+# gstack: estado local das skills (relatorios de QA, evidencias) — fora do Git
+.gstack/
