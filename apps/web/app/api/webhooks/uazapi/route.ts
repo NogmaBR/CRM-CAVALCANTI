@@ -10,6 +10,12 @@ import { type NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+/**
+ * Com o classificador real, o caminho síncrono baixa a mídia, transcreve e
+ * chama o modelo com a foto. Sem `maxDuration` a função morre em 10 s e a
+ * mensagem fica em `processando`. 60 s é o teto do plano Hobby.
+ */
+export const maxDuration = 60;
 
 const log = logger('webhook');
 
