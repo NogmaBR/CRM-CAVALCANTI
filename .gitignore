@@ -78,3 +78,9 @@ dados-iniciais/
 
 # gstack: estado local das skills (relatorios de QA, evidencias) — fora do Git
 .gstack/
+
+# graphify: so o grafo e o relatorio sao versionados; html/cache sao regeneraveis
+graphify-out/graph.html
+graphify-out/cache/
+graphify-out/.graphify_python
+graphify-out/.graphify_root
