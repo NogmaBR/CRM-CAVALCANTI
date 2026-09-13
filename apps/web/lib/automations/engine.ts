@@ -1,6 +1,7 @@
 import 'server-only';
 import { type Evento, entidadeDoEvento } from '@/lib/events/tipos';
 import { comContexto, logger } from '@/lib/log';
+import { validarConfig } from './config';
 import { AUTOMACOES, buscarAutomacao } from './registry';
 import { type Automacao, type Client, type ContextoExecucao, ehAgendada } from './tipos';
 
@@ -87,10 +88,26 @@ async function rodarUmaComContexto(
 ): Promise<void> {
   const inicio = Date.now();
 
+  const validada = validarConfig(automacao, config);
+  if (!validada.ok) {
+    // Config inválida não pode virar "regra rodou com o padrão": é falha
+    // visível, com o campo errado no motivo, para o painel mostrar.
+    await registrar(supabase, {
+      regra_chave: automacao.chave,
+      evento: evento.nome,
+      status: 'falha',
+      motivo: `config inválida — ${validada.erro}`.slice(0, 500),
+      entidade_id: entidadeId,
+      payload: evento.payload,
+      duracao_ms: 0,
+    });
+    return;
+  }
+
   const ctx: ContextoExecucao = {
     supabase,
     evento,
-    config: { ...(automacao.configPadrao ?? {}), ...config },
+    config: validada.config,
     simular,
   };
 
@@ -199,7 +216,22 @@ export async function executarAgendadas(
     const estado = habilitadas.get(automacao.chave);
     if (!estado?.ativo) continue;
 
-    const config = { ...(automacao.configPadrao ?? {}), ...estado.config };
+    const validada = validarConfig(automacao, estado.config);
+    if (!validada.ok) {
+      log.erro('config_invalida', { regra: automacao.chave, erro: validada.erro });
+      await registrar(supabase, {
+        regra_chave: automacao.chave,
+        evento: 'varredura',
+        status: 'falha',
+        motivo: `config inválida — ${validada.erro}`.slice(0, 500),
+        entidade_id: null,
+        payload: null,
+        duracao_ms: 0,
+      });
+      relatorio.push({ regra: automacao.chave, avaliadas: 0 });
+      continue;
+    }
+    const config = validada.config;
 
     let eventos: Evento[] = [];
     try {
