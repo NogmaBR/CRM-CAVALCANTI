@@ -1,4 +1,5 @@
 import 'server-only';
+import { type DadosExtraidos, lerDadosExtraidos } from '@/lib/schemas/dados-extraidos';
 import { createClient } from '@/lib/supabase/server';
 import { hojeBR } from '@/lib/util/datas';
 import type { Database } from '@nogma/db';
@@ -7,17 +8,7 @@ export type ConfirmacaoPendente = Database['public']['Tables']['confirmacoes_pen
 export type MensagemWhats = Database['public']['Tables']['mensagens_whats']['Row'];
 
 /** Shape produzido pelo classifier e armazenado em dados_extraidos JSONB */
-export interface DadosExtraidos {
-  valor?: number;
-  data_pagamento?: string;
-  obra_id?: string;
-  fornecedor_id?: string;
-  fornecedor_nome_novo?: string;
-  tipo_documento?: 'nota_fiscal' | 'comprovante' | 'contrato' | 'outro';
-  numero_nf?: string;
-  descricao?: string;
-  raciocinio?: string;
-}
+export type { DadosExtraidos } from '@/lib/schemas/dados-extraidos';
 
 export interface PendenteItem {
   confirmacao_id: string;
@@ -72,7 +63,7 @@ export async function listPendentes(): Promise<PendenteItem[]> {
   for (const row of rows) {
     const msg = row.mensagens_whats as MensagemWhats | null;
     if (!msg) continue;
-    const de = msg.dados_extraidos as DadosExtraidos | null;
+    const de = lerDadosExtraidos(msg.dados_extraidos);
     if (de?.obra_id) obraIds.add(de.obra_id);
     if (de?.fornecedor_id) fornecedorIds.add(de.fornecedor_id);
   }
@@ -101,7 +92,7 @@ export async function listPendentes(): Promise<PendenteItem[]> {
     .map((row): PendenteItem | null => {
       const msg = row.mensagens_whats as MensagemWhats | null;
       if (!msg) return null;
-      const de = msg.dados_extraidos as DadosExtraidos | null;
+      const de = lerDadosExtraidos(msg.dados_extraidos);
 
       const obra_nome = de?.obra_id ? (obraMap.get(de.obra_id) ?? null) : null;
       const fornecedor_nome = de?.fornecedor_id

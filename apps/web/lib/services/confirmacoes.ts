@@ -1,6 +1,11 @@
 import 'server-only';
-import type { DadosExtraidos } from '@/lib/data/pendentes';
 import { logger } from '@/lib/log';
+import {
+  type DadosLancaveis,
+  lerDadosExtraidos,
+  temDadosParaLancar,
+} from '@/lib/schemas/dados-extraidos';
+import { anexarMidiaComoDocumento } from '@/lib/services/anexar-midia';
 import { hojeBR } from '@/lib/util/datas';
 import type { Database } from '@nogma/db';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -82,7 +87,7 @@ export async function aplicarConfirmacao(
 
   const { data: mensagem } = await supabase
     .from('mensagens_whats')
-    .select('id, status, dados_extraidos, pagamento_id')
+    .select('id, status, dados_extraidos, pagamento_id, midia_storage_path, midia_mime')
     .eq('id', confirmacao.mensagem_id)
     .maybeSingle();
 
@@ -100,8 +105,11 @@ export async function aplicarConfirmacao(
     return { ok: false, codigo: 'ja_resolvida', motivo: 'Esta pendência já foi resolvida.' };
   }
 
-  const dados = mensagem.dados_extraidos as DadosExtraidos | null;
-  if (!dados?.valor || !dados?.obra_id) {
+  // O JSONB passa pelo schema: campo inválido (valor como texto, obra que não
+  // é uuid) some antes de chegar ao INSERT, e a confirmação cai no caminho
+  // humano em vez de virar erro cru do Postgres.
+  const dados = lerDadosExtraidos(mensagem.dados_extraidos);
+  if (!temDadosParaLancar(dados)) {
     return {
       ok: false,
       codigo: 'dados_incompletos',
@@ -112,6 +120,22 @@ export async function aplicarConfirmacao(
 
   const pagamento = await obterOuCriarPagamento(supabase, mensagem.id, dados, ctx.userId ?? null);
   if (!pagamento.ok) return pagamento;
+
+  // A foto da nota que veio junto vira documento do pagamento. Sem isso o
+  // pagamento nascia "sem documento" e a cobrança automática pediria ao
+  // fornecedor a nota que ele acabou de mandar. Best-effort e idempotente.
+  const anexo = await anexarMidiaComoDocumento(supabase, {
+    storagePath: mensagem.midia_storage_path,
+    mime: mensagem.midia_mime,
+    pagamentoId: pagamento.id,
+    obraId: dados.obra_id,
+    fornecedorId: dados.fornecedor_id ?? null,
+    dados,
+    userId: ctx.userId ?? null,
+  });
+  if (!anexo.ok && anexo.motivo !== 'sem_midia') {
+    log.aviso('midia_nao_anexada', { pagamentoId: pagamento.id, motivo: anexo.motivo });
+  }
 
   // Cada escrita confere erro E linhas afetadas: com a RLS, um papel sem
   // permissão faz o UPDATE atingir zero linhas sem erro nenhum — e a
@@ -163,7 +187,7 @@ export async function aplicarConfirmacao(
 async function obterOuCriarPagamento(
   supabase: Client,
   mensagemId: string,
-  dados: DadosExtraidos,
+  dados: DadosLancaveis,
   userId: string | null,
 ): Promise<{ ok: true; id: string } | { ok: false; codigo: 'erro_insert'; motivo: string }> {
   const { data: existente } = await supabase
@@ -178,9 +202,9 @@ async function obterOuCriarPagamento(
   const { data: novo, error } = await supabase
     .from('pagamentos')
     .insert({
-      obra_id: dados.obra_id!,
+      obra_id: dados.obra_id,
       fornecedor_id: dados.fornecedor_id ?? null,
-      valor: dados.valor!,
+      valor: dados.valor,
       data_pagamento: dados.data_pagamento ?? hoje,
       origem: 'whatsapp',
       status_pagto: 'confirmado',
