@@ -1,5 +1,6 @@
 'use server';
 
+import { emitir } from '@/lib/events/bus';
 import { mapDbError, mapDbErrorWithContext } from '@/lib/schemas/errors';
 import { PagamentoCreateSchema, PagamentoUpdateSchema } from '@/lib/schemas/pagamento';
 import { dispatchEvento } from '@/lib/services/dispatch-webhook';
