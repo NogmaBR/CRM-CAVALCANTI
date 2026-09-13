@@ -7,7 +7,15 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "ignore": [".next", "node_modules", "dist", "Nogma Design System", "ESTRUTURA DO PROJETO", ".design-system", "graphify-out"]
+    "ignore": [
+      ".next",
+      "node_modules",
+      "dist",
+      "Nogma Design System",
+      "ESTRUTURA DO PROJETO",
+      ".design-system",
+      "graphify-out"
+    ]
   },
   "formatter": {
     "enabled": true,
