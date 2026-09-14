@@ -9,6 +9,8 @@ import { arquivarWebhook, testarWebhook } from './actions';
 import { SecretBanner } from './secret-banner';
 import './webhooks.css';
 
+export const metadata = { title: 'Webhooks' };
+
 type WebhookRow = {
   id: string;
   nome: string;

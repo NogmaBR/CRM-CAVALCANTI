@@ -5,6 +5,8 @@ import { listObras } from '@/lib/data/obras';
 import { createPagamento } from '../actions';
 import { PagamentoForm } from '../pagamento-form';
 
+export const metadata = { title: 'Novo Pagamento' };
+
 export default async function NovoPagamentoPage({
   searchParams,
 }: {

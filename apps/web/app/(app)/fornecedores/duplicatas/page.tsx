@@ -1,20 +1,18 @@
-import { notFound } from 'next/navigation';
-import Link from 'next/link';
-import { CheckCircle2, ArrowRight, Copy } from 'lucide-react';
 import { TopBar } from '@/components/layout/topbar';
 import { Badge } from '@/components/nogma/Badge';
-import { createClient } from '@/lib/supabase/server';
 import { detectDuplicateFornecedores } from '@/lib/services/detect-duplicates';
+import { createClient } from '@/lib/supabase/server';
+import { ArrowRight, CheckCircle2, Copy } from 'lucide-react';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { MergeButtons } from './merge-buttons';
+
+export const metadata = { title: 'Duplicatas de fornecedores' };
 
 function ScoreBadge({ score, motivo }: { score: number; motivo: string }) {
   const pct = Math.round(score * 100);
   const variant = pct >= 99 ? 'success' : 'warning';
-  return (
-    <Badge variant={variant}>
-      {pct}%
-    </Badge>
-  );
+  return <Badge variant={variant}>{pct}%</Badge>;
 }
 
 function MotivoBadge({ motivo }: { motivo: 'documento_igual' | 'nome_similar' }) {
@@ -179,7 +177,11 @@ export default async function DuplicatasPage({
                     ) : null}
                   </div>
 
-                  <ArrowRight size={16} aria-hidden="true" style={{ opacity: 0.4, flexShrink: 0 }} />
+                  <ArrowRight
+                    size={16}
+                    aria-hidden="true"
+                    style={{ opacity: 0.4, flexShrink: 0 }}
+                  />
 
                   {/* Fornecedor B */}
                   <div

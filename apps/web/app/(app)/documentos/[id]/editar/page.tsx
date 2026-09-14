@@ -1,11 +1,13 @@
-import { notFound } from 'next/navigation';
 import { TopBar } from '@/components/layout/topbar';
 import { getDocumento } from '@/lib/data/documentos';
 import { listFornecedores } from '@/lib/data/fornecedores';
 import { listObras } from '@/lib/data/obras';
 import { listPagamentos } from '@/lib/data/pagamentos';
+import { notFound } from 'next/navigation';
 import { updateDocumento } from '../../actions';
 import { DocumentoForm } from '../../documento-form';
+
+export const metadata = { title: 'Editar documento' };
 
 export default async function EditarDocumentoPage({
   params,

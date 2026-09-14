@@ -6,6 +6,8 @@ import { Upload } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { ImportarClient } from './importar-client';
 
+export const metadata = { title: 'Importar pagamentos' };
+
 async function getAdminOrNotFound() {
   const supabase = await createClient();
   const { data: userData } = await supabase.auth.getUser();

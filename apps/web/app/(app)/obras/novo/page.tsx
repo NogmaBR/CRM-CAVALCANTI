@@ -2,6 +2,8 @@ import { TopBar } from '@/components/layout/topbar';
 import { createObra } from '../actions';
 import { ObraForm } from '../obra-form';
 
+export const metadata = { title: 'Nova Obra' };
+
 export default async function NovaObraPage({
   searchParams,
 }: {

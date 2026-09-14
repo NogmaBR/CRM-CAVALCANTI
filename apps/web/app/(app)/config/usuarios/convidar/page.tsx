@@ -1,13 +1,15 @@
-import { notFound } from 'next/navigation';
-import Link from 'next/link';
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
 import { Input } from '@/components/nogma/Input';
+import { PAPEL_DESCRIPTIONS, PAPEL_LABELS } from '@/lib/data/usuarios';
 import { createClient } from '@/lib/supabase/server';
-import { PAPEL_LABELS, PAPEL_DESCRIPTIONS } from '@/lib/data/usuarios';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { convidarUsuario } from '../actions';
 import '../usuarios.css';
 import '../../../_shared/form-layout.css';
+
+export const metadata = { title: 'Convidar novo usuário' };
 
 export default async function ConvidarUsuarioPage({
   searchParams,
@@ -35,7 +37,7 @@ export default async function ConvidarUsuarioPage({
   return (
     <>
       <TopBar
-        title="Convidar novo usuario"
+        title="Convidar novo usuário"
         subtitle="Envia email de convite com link para definir senha"
       />
 
@@ -47,7 +49,10 @@ export default async function ConvidarUsuarioPage({
             </div>
           ) : null}
 
-          <fieldset className="form-layout__section" style={{ border: 'none', padding: 0, margin: 0 }}>
+          <fieldset
+            className="form-layout__section"
+            style={{ border: 'none', padding: 0, margin: 0 }}
+          >
             <div className="form-layout__grid">
               <div className="form-layout__field form-layout__field--wide">
                 <Input

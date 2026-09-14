@@ -11,6 +11,8 @@ import '../categorias/categorias.css';
 // `config-hub__section-title`, usado no título do histórico, mora aqui.
 import '../config.css';
 
+export const metadata = { title: 'Automações' };
+
 /**
  * Painel de automações.
  *

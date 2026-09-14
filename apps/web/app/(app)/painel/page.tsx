@@ -32,6 +32,8 @@ import { DonutCategoria } from './charts/donut-categoria';
 import { LineAcumulado } from './charts/line-acumulado';
 import './painel.css';
 
+export const metadata = { title: 'Painel' };
+
 /**
  * Cartão de KPI.
  *

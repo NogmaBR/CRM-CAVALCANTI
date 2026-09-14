@@ -9,6 +9,8 @@ import { ArrowRight, MessageSquare, Paperclip } from 'lucide-react';
 import Link from 'next/link';
 import './whatsapp.css';
 
+export const metadata = { title: 'WhatsApp' };
+
 const FILTER_OPTIONS: Array<{ value: string; label: string }> = [
   { value: '', label: 'Todas' },
   { value: 'classificada', label: 'Aguarda confirmação' },

@@ -8,6 +8,8 @@ import { alterarPapelUsuario } from '../../actions';
 import '../../usuarios.css';
 import '../../../../_shared/form-layout.css';
 
+export const metadata = { title: 'Editar usuário' };
+
 function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return 'Nunca';
   const d = new Date(iso);

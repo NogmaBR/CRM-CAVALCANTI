@@ -9,6 +9,8 @@ import { notFound } from 'next/navigation';
 import { atualizarAutorizado } from '../../actions';
 import '@/app/(app)/_shared/form-layout.css';
 
+export const metadata = { title: 'Editar autorizado' };
+
 export default async function EditarAutorizadoPage({
   params,
   searchParams,

@@ -8,6 +8,8 @@ import { notFound } from 'next/navigation';
 import { criarAutorizado } from '../actions';
 import '@/app/(app)/_shared/form-layout.css';
 
+export const metadata = { title: 'Autorizar número' };
+
 export default async function NovoAutorizadoPage({
   searchParams,
 }: {

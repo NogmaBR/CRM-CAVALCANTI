@@ -8,6 +8,8 @@ import { atualizarWebhook, regenerarSecret } from '../../actions';
 import '../../webhooks.css';
 import '@/app/(app)/_shared/form-layout.css';
 
+export const metadata = { title: 'Editar webhook' };
+
 const EVENTOS = [
   {
     value: 'pagamento_created',

@@ -12,6 +12,8 @@ import { alternarAtivoAutorizado } from './actions';
 // classes só criaria duas cópias pra manter em sincronia.
 import '../categorias/categorias.css';
 
+export const metadata = { title: 'Números autorizados' };
+
 export default async function AutorizadosPage({
   searchParams,
 }: {

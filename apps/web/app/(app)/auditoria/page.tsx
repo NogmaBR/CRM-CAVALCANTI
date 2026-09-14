@@ -15,6 +15,8 @@ import { ArrowRight, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import './auditoria.css';
 
+export const metadata = { title: 'Auditoria' };
+
 // ── helpers ────────────────────────────────────────────────────────────────
 
 function formatDateTime(iso: string | null | undefined): string {

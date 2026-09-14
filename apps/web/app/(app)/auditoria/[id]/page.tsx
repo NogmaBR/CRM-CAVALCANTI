@@ -14,6 +14,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import '../auditoria.css';
 
+export const metadata = { title: 'Registro de auditoria' };
+
 // ── helpers ─────────────────────────────────────────────────────────────────
 
 function formatDateTime(iso: string | null | undefined): string {

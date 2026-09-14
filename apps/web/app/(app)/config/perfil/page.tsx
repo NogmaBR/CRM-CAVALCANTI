@@ -13,6 +13,8 @@ import { salvarPerfil } from './actions';
 import './perfil.css';
 import '@/app/(app)/_shared/form-layout.css';
 
+export const metadata = { title: 'Meu perfil' };
+
 const TEMA_PREVIEW_CLASS: Record<Tema, string> = {
   light: 'perfil-tema-preview perfil-tema-preview--light',
   black: 'perfil-tema-preview perfil-tema-preview--black',

@@ -1,12 +1,14 @@
-import { notFound } from 'next/navigation';
 import { TopBar } from '@/components/layout/topbar';
 import { listCategorias } from '@/lib/data/categorias';
 import { listFornecedores } from '@/lib/data/fornecedores';
 import { listObras } from '@/lib/data/obras';
 import { getPagamento } from '@/lib/data/pagamentos';
 import { formatBRL } from '@/lib/schemas/pagamento';
+import { notFound } from 'next/navigation';
 import { updatePagamento } from '../../actions';
 import { PagamentoForm } from '../../pagamento-form';
+
+export const metadata = { title: 'Editar pagamento' };
 
 export default async function EditarPagamentoPage({
   params,

@@ -12,6 +12,8 @@ import Link from 'next/link';
 import { PagamentosFilters } from './pagamentos-filters';
 import { PagamentosTable } from './pagamentos-table';
 
+export const metadata = { title: 'Pagamentos' };
+
 // Vocabulário e lista vêm de um lugar só (`status-labels.ts`): antes esta
 // tela tinha a própria lista, sem `recusado` — o filtro que o gestor pediu.
 const STATUS_OPTIONS: Array<{ value: string; label: string }> = [

@@ -10,6 +10,8 @@ import { DocumentosFilters } from './documentos-filters';
 import { DocumentosTable } from './documentos-table';
 import './documentos.css';
 
+export const metadata = { title: 'Documentos' };
+
 const TIPO_OPTIONS: Array<{ value: string; label: string }> = [
   { value: '', label: 'Todos' },
   { value: 'nota_fiscal', label: 'Notas fiscais' },

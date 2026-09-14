@@ -10,6 +10,8 @@ import { criarCategoria } from '../actions';
 import '../categorias.css';
 import '@/app/(app)/_shared/form-layout.css';
 
+export const metadata = { title: 'Nova categoria' };
+
 export default async function NovaCategoriaPage({
   searchParams,
 }: {

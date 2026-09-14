@@ -10,6 +10,8 @@ import Link from 'next/link';
 import { confirmarPendencia, rejeitarPendencia } from './actions';
 import './pendentes.css';
 
+export const metadata = { title: 'Pendentes' };
+
 function formatTelefone(raw: string): string {
   // raw armazena somente digitos, ex: "5511987654321"
   const digits = raw.replace(/\D/g, '');

@@ -8,6 +8,8 @@ import { notFound } from 'next/navigation';
 import { arquivarCategoria, restaurarCategoria } from './actions';
 import './categorias.css';
 
+export const metadata = { title: 'Categorias' };
+
 type StatusFilter = 'active' | 'archived';
 
 const FILTER_OPTIONS: Array<{ value: StatusFilter; label: string }> = [

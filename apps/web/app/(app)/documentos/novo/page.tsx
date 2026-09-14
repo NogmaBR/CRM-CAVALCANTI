@@ -5,6 +5,8 @@ import { listPagamentos } from '@/lib/data/pagamentos';
 import { createDocumento } from '../actions';
 import { DocumentoForm } from '../documento-form';
 
+export const metadata = { title: 'Novo Documento' };
+
 export default async function NovoDocumentoPage({
   searchParams,
 }: {

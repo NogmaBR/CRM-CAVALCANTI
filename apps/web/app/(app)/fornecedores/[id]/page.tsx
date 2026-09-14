@@ -1,6 +1,6 @@
+import { Archive, ArrowLeft, Pencil, RotateCcw } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, Pencil, Archive, RotateCcw } from 'lucide-react';
 import '../../_shared/detail-layout.css';
 import { TopBar } from '@/components/layout/topbar';
 import { Badge } from '@/components/nogma/Badge';
@@ -8,9 +8,11 @@ import { Button } from '@/components/nogma/Button';
 import { listCategorias } from '@/lib/data/categorias';
 import { getFornecedor, listFornecedorApelidos } from '@/lib/data/fornecedores';
 import { formatDocumento } from '@/lib/schemas/fornecedor';
+import { Row, Section } from '../../_shared/detail-primitives';
 import { archiveFornecedor, restoreFornecedor } from '../actions';
-import { Section, Row } from '../../_shared/detail-primitives';
 import { ApelidosSection } from './apelidos-section';
+
+export const metadata = { title: 'Fornecedor' };
 
 function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return '—';
@@ -41,7 +43,7 @@ export default async function FornecedorDetailPage({
   const isArquivado = fornecedor.deleted_at != null;
   const isAtivo = fornecedor.ativo === true && !isArquivado;
   const categoria = fornecedor.categoria_id
-    ? categorias.find((c) => c.id === fornecedor.categoria_id) ?? null
+    ? (categorias.find((c) => c.id === fornecedor.categoria_id) ?? null)
     : null;
 
   return (
@@ -56,7 +58,9 @@ export default async function FornecedorDetailPage({
               Voltar
             </Link>
             <Link href={`/fornecedores/${fornecedor.id}/editar`} style={{ textDecoration: 'none' }}>
-              <Button variant="secondary" leadingIcon={<Pencil size={14} />}>Editar</Button>
+              <Button variant="secondary" leadingIcon={<Pencil size={14} />}>
+                Editar
+              </Button>
             </Link>
             {isArquivado ? (
               <form action={restoreFornecedor} style={{ display: 'inline' }}>
@@ -109,9 +113,7 @@ export default async function FornecedorDetailPage({
             <Badge variant="warning">Inativo</Badge>
           )}
           {fornecedor.documento_tipo ? (
-            <span className="detail-layout__tipo">
-              {fornecedor.documento_tipo.toUpperCase()}
-            </span>
+            <span className="detail-layout__tipo">{fornecedor.documento_tipo.toUpperCase()}</span>
           ) : null}
         </div>
 
@@ -123,7 +125,10 @@ export default async function FornecedorDetailPage({
               label="Documento"
               value={formatDocumento(fornecedor.documento, fornecedor.documento_tipo)}
             />
-            <Row label="Origem" value={fornecedor.origem === 'auto_detectado' ? 'Detectado por IA' : 'Manual'} />
+            <Row
+              label="Origem"
+              value={fornecedor.origem === 'auto_detectado' ? 'Detectado por IA' : 'Manual'}
+            />
           </Section>
 
           <Section title="Categorização">

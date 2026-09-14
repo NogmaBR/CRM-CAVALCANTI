@@ -11,6 +11,8 @@ import { atualizarCategoria } from '../../actions';
 import '../../categorias.css';
 import '@/app/(app)/_shared/form-layout.css';
 
+export const metadata = { title: 'Editar categoria' };
+
 export default async function EditarCategoriaPage({
   params,
   searchParams,

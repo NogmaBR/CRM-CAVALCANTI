@@ -1,10 +1,12 @@
-import Link from 'next/link';
-import { Plus } from 'lucide-react';
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
 import { listCategorias } from '@/lib/data/categorias';
-import { listFornecedores, type Fornecedor } from '@/lib/data/fornecedores';
+import { type Fornecedor, listFornecedores } from '@/lib/data/fornecedores';
+import { Plus } from 'lucide-react';
+import Link from 'next/link';
 import { FornecedoresTable } from './fornecedores-table';
+
+export const metadata = { title: 'Fornecedores' };
 
 const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
   { value: '', label: 'Todos' },
@@ -79,9 +81,7 @@ export default async function FornecedoresPage({
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
             <Link
               href={status ? `/fornecedores?status=${status}` : '/fornecedores'}
-              className={
-                categoriaId === '' ? 'obras-filter-tab is-active' : 'obras-filter-tab'
-              }
+              className={categoriaId === '' ? 'obras-filter-tab is-active' : 'obras-filter-tab'}
             >
               Todas
             </Link>

@@ -3,6 +3,8 @@ import { listCategorias } from '@/lib/data/categorias';
 import { createFornecedor } from '../actions';
 import { FornecedorForm } from '../fornecedor-form';
 
+export const metadata = { title: 'Novo Fornecedor' };
+
 export default async function NovoFornecedorPage({
   searchParams,
 }: {

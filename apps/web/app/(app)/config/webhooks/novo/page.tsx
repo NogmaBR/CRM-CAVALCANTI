@@ -1,12 +1,14 @@
-import { notFound } from 'next/navigation';
-import Link from 'next/link';
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
 import { Input } from '@/components/nogma/Input';
 import { createClient } from '@/lib/supabase/server';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { criarWebhook } from '../actions';
 import '../webhooks.css';
 import '@/app/(app)/_shared/form-layout.css';
+
+export const metadata = { title: 'Novo webhook' };
 
 const EVENTOS = [
   {
@@ -117,7 +119,14 @@ export default async function NovoWebhookPage({
 
           <fieldset className="form-layout__section">
             <legend className="form-layout__legend">Eventos</legend>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '8px 0 0 0', lineHeight: 1.5 }}>
+            <p
+              style={{
+                fontSize: 12,
+                color: 'var(--text-secondary)',
+                margin: '8px 0 0 0',
+                lineHeight: 1.5,
+              }}
+            >
               Selecione quais eventos devem disparar este webhook. Ao menos um obrigatorio.
             </p>
             <div className="wh-eventos-group" role="group" aria-label="Eventos do webhook">
