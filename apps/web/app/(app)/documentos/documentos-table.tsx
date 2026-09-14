@@ -34,10 +34,13 @@ export function DocumentosTable({
   documentos,
   obras,
   fornecedores,
+  filtrando = false,
 }: {
   documentos: Documento[];
   obras: Obra[];
   fornecedores: Fornecedor[];
+  /** Há busca ou filtro ativo na página: o vazio é "nada bateu", não "não há documentos". */
+  filtrando?: boolean;
 }) {
   const obraMap = useMemo(() => new Map(obras.map((o) => [o.id, o])), [obras]);
   const fornMap = useMemo(() => new Map(fornecedores.map((f) => [f.id, f])), [fornecedores]);
@@ -129,11 +132,17 @@ export function DocumentosTable({
   );
 
   return (
+    // A busca é a da página (cobre arquivo, NF, fornecedor e obra); a interna
+    // da tabela só repetia parte dela e confundia qual valia.
     <DataTable
       columns={columns}
       data={documentos}
-      searchPlaceholder="Buscar por nome ou número da NF..."
-      emptyMessage="Nenhum documento encontrado. Clique em 'Novo Documento' para começar."
+      semBusca
+      emptyMessage={
+        filtrando
+          ? 'Nenhum documento bate com a busca ou os filtros.'
+          : "Nenhum documento encontrado. Clique em 'Novo Documento' para começar."
+      }
     />
   );
 }

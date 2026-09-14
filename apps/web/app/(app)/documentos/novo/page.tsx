@@ -2,6 +2,7 @@ import { TopBar } from '@/components/layout/topbar';
 import { listFornecedores } from '@/lib/data/fornecedores';
 import { listObras } from '@/lib/data/obras';
 import { listPagamentos } from '@/lib/data/pagamentos';
+import { estadoDoFormulario } from '../../_shared/form-erros';
 import { createDocumento } from '../actions';
 import { DocumentoForm } from '../documento-form';
 
@@ -10,7 +11,13 @@ export const metadata = { title: 'Novo Documento' };
 export default async function NovoDocumentoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; obra_id?: string; pagamento_id?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    campo?: string;
+    v?: string;
+    obra_id?: string;
+    pagamento_id?: string;
+  }>;
 }) {
   const [params, obras, pagamentos, fornecedores] = await Promise.all([
     searchParams,
@@ -18,6 +25,7 @@ export default async function NovoDocumentoPage({
     listPagamentos({ includeArchived: false }),
     listFornecedores({ includeArchived: false }),
   ]);
+  const estado = estadoDoFormulario(params);
 
   return (
     <>
@@ -31,7 +39,9 @@ export default async function NovoDocumentoPage({
           pagamentos={pagamentos}
           fornecedores={fornecedores}
           action={createDocumento}
-          error={params.error}
+          error={estado.error}
+          campo={estado.campo}
+          valores={estado.valores}
         />
       </div>
     </>

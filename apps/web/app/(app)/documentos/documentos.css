@@ -1,48 +1,157 @@
-/* Busca ampla + visão agrupada de documentos. */
+/* Barra de ferramentas (busca + obra + agrupar) e visão agrupada de documentos. */
 
-.docs-busca {
+.docs-toolbar {
   display: flex;
-  gap: 8px;
-  align-items: center;
+  align-items: flex-end;
+  gap: 10px;
   flex-wrap: wrap;
   margin-top: 16px;
 }
 
-.docs-busca__input {
+.docs-toolbar__busca {
+  position: relative;
   flex: 1 1 320px;
   min-width: 0;
-  padding: 9px 12px;
-  border: 1px solid var(--border-subtle);
+}
+
+.docs-toolbar__busca-icone {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+/* Mesma métrica do `.ng-input`: 44px de alvo, borda e anel de foco iguais. */
+.docs-toolbar__input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 40px;
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   background: var(--surface-card);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: 14px;
+  font-family: inherit;
 }
 
-.docs-busca__input:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+.docs-toolbar__input::placeholder {
+  color: var(--text-muted);
 }
 
-.docs-busca__botao {
-  padding: 9px 14px;
-  border: 1px solid var(--border-subtle);
+.docs-toolbar__input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+/* O navegador já desenha um "x" no type=search; o nosso tem o mesmo papel,
+   mas leva de volta para a URL sem `q` — é a que a página entende. */
+.docs-toolbar__input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.docs-toolbar__limpar {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  color: var(--text-muted);
+}
+
+.docs-toolbar__limpar:hover {
+  color: var(--text-primary);
+  background: var(--bg-subtle);
+}
+
+.docs-toolbar__botao {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   background: var(--surface-card);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
+  font-family: inherit;
   cursor: pointer;
 }
 
-.docs-busca__botao:hover {
+.docs-toolbar__botao:hover {
   border-color: var(--accent);
   color: var(--accent);
 }
 
-.docs-busca__limpar {
-  font-size: 12px;
+.docs-toolbar__botao:focus-visible,
+.docs-toolbar__limpar:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.docs-toolbar__campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 0 1 220px;
+  min-width: 160px;
+}
+
+.docs-toolbar__rotulo {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--text-secondary);
+}
+
+.docs-toolbar__select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 36px 0 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23767B7B' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  cursor: pointer;
+}
+
+.docs-toolbar__select:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.docs-lista {
+  margin-top: 24px;
+}
+
+@media (max-width: 768px) {
+  .docs-toolbar__busca {
+    flex-basis: 100%;
+  }
+
+  .docs-toolbar__botao {
+    flex: 1 1 100%;
+  }
+
+  .docs-toolbar__campo {
+    flex: 1 1 calc(50% - 5px);
+    min-width: 0;
+  }
 }
 
 .docs-grupo-resumo {
@@ -82,7 +191,7 @@
 }
 
 .docs-grupo__cabecalho::before {
-  content: '▸';
+  content: "▸";
   flex: 0 0 auto;
   color: var(--text-muted);
   transition: transform 120ms ease;

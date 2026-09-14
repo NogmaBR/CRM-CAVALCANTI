@@ -1,3 +1,4 @@
+import { type CampoConfig, descreverCampos } from './config-campos';
 import { cobrarDocumentoFornecedor } from './definitions/cobrar-documento-fornecedor';
 import { orcamentoEmRisco } from './definitions/orcamento-em-risco';
 import type { Automacao } from './tipos';
@@ -27,6 +28,12 @@ export interface AutomacaoListada {
   /** A ação alcança alguém de fora (WhatsApp, e-mail). O painel avisa antes de ligar. */
   efeitoExterno: boolean;
   configPadrao: Record<string, unknown>;
+  /**
+   * `configSchema` traduzido em dados puros para o painel desenhar um campo
+   * por parâmetro. O schema em si não atravessa para o cliente (tem função
+   * dentro); esta descrição atravessa.
+   */
+  campos: CampoConfig[];
 }
 
 /** Usado pelo painel e pelo seed para listar o que existe. */
@@ -38,5 +45,6 @@ export function listarAutomacoes(): AutomacaoListada[] {
     agendada: typeof (a as { varrer?: unknown }).varrer === 'function',
     efeitoExterno: a.efeitoExterno === true,
     configPadrao: a.configPadrao ?? {},
+    campos: descreverCampos(a),
   }));
 }

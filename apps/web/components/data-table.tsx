@@ -7,6 +7,7 @@ import {
   type ColumnDef,
   type RowData,
   type SortingState,
+  type VisibilityState,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
@@ -45,6 +46,18 @@ interface DataTableProps<TData> {
   /** Ação do estado vazio (ex.: botão "Nova obra"). */
   emptyAction?: ReactNode;
   emptyIcon?: ReactNode;
+  /**
+   * Esconde a busca interna. Para telas que já têm a própria busca (mais
+   * ampla) acima da tabela — duas caixas para a mesma lista confundem qual
+   * vale. A contagem continua aparecendo.
+   */
+  semBusca?: boolean;
+  /**
+   * Colunas escondidas de início (`{ descricao: false }`). Uma coluna com
+   * `accessorFn` escondida continua entrando na busca global do TanStack —
+   * é como /pagamentos busca por descrição sem mostrar a coluna.
+   */
+  visibilidadeInicial?: Record<string, boolean>;
 }
 
 export function DataTable<TData>({
@@ -54,16 +67,22 @@ export function DataTable<TData>({
   emptyMessage = 'Nenhum resultado.',
   emptyAction,
   emptyIcon,
+  semBusca = false,
+  visibilidadeInicial,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
+    () => visibilidadeInicial ?? {},
+  );
 
   const table = useReactTable({
     data,
     columns,
-    state: { sorting, globalFilter },
+    state: { sorting, globalFilter, columnVisibility },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
+    onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -77,16 +96,18 @@ export function DataTable<TData>({
   return (
     <div className="nos-dt">
       <div className="nos-dt__toolbar">
-        <div className="nos-dt__search">
-          <Input
-            leading={<Search size={15} aria-hidden="true" />}
-            placeholder={searchPlaceholder}
-            value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            aria-label="Buscar"
-            type="search"
-          />
-        </div>
+        {semBusca ? null : (
+          <div className="nos-dt__search">
+            <Input
+              leading={<Search size={15} aria-hidden="true" />}
+              placeholder={searchPlaceholder}
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              aria-label="Buscar"
+              type="search"
+            />
+          </div>
+        )}
         <div className="nos-dt__count" aria-live="polite">
           {total} resultado{total === 1 ? '' : 's'}
         </div>
