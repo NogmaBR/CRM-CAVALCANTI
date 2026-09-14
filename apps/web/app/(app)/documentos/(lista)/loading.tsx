@@ -5,7 +5,12 @@ import { Skeleton } from '@/components/nogma/Skeleton';
  */
 export default function DocumentosLoading() {
   return (
-    <div role="status" aria-busy="true" aria-label="Carregando documentos">
+    <div
+      // biome-ignore lint/a11y/useSemanticElements: esqueleto de carregamento (padrão do projeto)
+      role="status"
+      aria-busy="true"
+      aria-label="Carregando documentos"
+    >
       <div className="nos-topbar" aria-hidden="true">
         <div className="nos-topbar__left">
           <div className="nos-topbar__heading">
@@ -18,6 +23,7 @@ export default function DocumentosLoading() {
       <div style={{ padding: 24, display: 'grid', gap: 16 }}>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {Array.from({ length: 3 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: esqueleto estático
             <Skeleton key={i} width={160} height={36} />
           ))}
         </div>
@@ -31,6 +37,7 @@ export default function DocumentosLoading() {
         >
           {Array.from({ length: 8 }).map((_, i) => (
             <div
+              // biome-ignore lint/suspicious/noArrayIndexKey: esqueleto estático
               key={i}
               style={{
                 background: 'var(--surface-card)',

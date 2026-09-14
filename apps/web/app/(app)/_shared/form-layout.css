@@ -84,6 +84,37 @@
   color: var(--danger);
 }
 
+/* Obrigatoriedade consistente (design review M6): o `Input` recebe `required`
+   e o rótulo ganha o asterisco sozinho — sem prop nova no componente. Para
+   `select`/`textarea` nativos, a classe `--required` acima faz o mesmo. */
+.form-layout .ng-field:has(> .ng-input > .ng-input__el:required) > .ng-field__label::after {
+  content: " *";
+  color: var(--danger);
+}
+
+/* Rodapé único por formulário. */
+.form-layout__obrigatorio {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* Campo apontado por `?campo=` (T-QA-6): `select`/`textarea` nativos ficam com
+   a mesma borda de erro do `.ng-input--error`; o `Input` cuida de si. */
+.form-layout__select[aria-invalid="true"],
+.form-layout__textarea[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+.form-layout__select[aria-invalid="true"]:focus,
+.form-layout__textarea[aria-invalid="true"]:focus {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 30%, transparent);
+}
+.form-layout__campo-erro {
+  font-size: var(--text-xs);
+  color: var(--danger);
+  font-weight: var(--fw-medium);
+}
+
 .form-layout__hint {
   font-size: var(--text-xs);
   color: var(--text-muted);

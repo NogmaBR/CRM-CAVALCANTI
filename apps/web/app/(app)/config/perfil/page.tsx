@@ -11,7 +11,10 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { salvarPerfil } from './actions';
 import './perfil.css';
+import { estadoDoFormulario } from '@/app/(app)/_shared/form-erros';
 import '@/app/(app)/_shared/form-layout.css';
+
+export const metadata = { title: 'Meu perfil' };
 
 const TEMA_PREVIEW_CLASS: Record<Tema, string> = {
   light: 'perfil-tema-preview perfil-tema-preview--light',
@@ -22,14 +25,19 @@ const TEMA_PREVIEW_CLASS: Record<Tema, string> = {
 export default async function PerfilPage({
   searchParams,
 }: {
-  searchParams: Promise<{ success?: string; error?: string }>;
+  searchParams: Promise<{ success?: string; error?: string; campo?: string; v?: string }>;
 }) {
   const [profile, temaAtual] = await Promise.all([getMyProfile(), getServerTheme()]);
   if (!profile) redirect('/login');
 
   const params = await searchParams;
   const successMsg = params.success ?? null;
-  const errorMsg = params.error ?? null;
+  const estado = estadoDoFormulario(params);
+  const v = estado.valores;
+  const campo = estado.campo;
+  const erroCurto = estado.error ? estado.error.replace(/^[^:]+:\s*/u, '') : undefined;
+  const erroDe = (name: string) => (campo === name ? erroCurto : undefined);
+  const errorMsg = estado.error ?? null;
 
   const temas = Object.entries(TEMA_LABELS) as [Tema, string][];
 
@@ -91,12 +99,14 @@ export default async function PerfilPage({
                   label="Nome completo"
                   name="nome"
                   type="text"
-                  defaultValue={profile.nome ?? ''}
+                  defaultValue={v.nome ?? profile.nome ?? ''}
                   required
                   minLength={2}
                   maxLength={100}
                   placeholder="Seu nome completo"
                   autoComplete="name"
+                  error={erroDe('nome')}
+                  autoFocus={campo === 'nome'}
                 />
               </div>
 
@@ -105,9 +115,11 @@ export default async function PerfilPage({
                   label="Telefone"
                   name="telefone"
                   type="tel"
-                  defaultValue={profile.telefone ?? ''}
+                  defaultValue={v.telefone ?? profile.telefone ?? ''}
                   placeholder="(11) 98765-4321"
                   autoComplete="tel"
+                  error={erroDe('telefone')}
+                  autoFocus={campo === 'telefone'}
                 />
               </div>
 
@@ -138,7 +150,7 @@ export default async function PerfilPage({
                     type="radio"
                     name="tema"
                     value={value}
-                    defaultChecked={temaAtual === value}
+                    defaultChecked={(v.tema ?? temaAtual) === value}
                   />
                   <span className={TEMA_PREVIEW_CLASS[value]} aria-hidden="true" />
                   <span className="perfil-tema-card__label">{label}</span>
@@ -165,8 +177,11 @@ export default async function PerfilPage({
                 id="perfil-timezone"
                 name="timezone"
                 className="perfil-select"
-                defaultValue={profile.timezone ?? 'America/Sao_Paulo'}
+                defaultValue={v.timezone ?? profile.timezone ?? 'America/Sao_Paulo'}
                 style={{ marginTop: 6 }}
+                aria-invalid={campo === 'timezone' ? true : undefined}
+                // biome-ignore lint/a11y/noAutofocus: foco no campo que a action recusou (T-QA-6)
+                autoFocus={campo === 'timezone'}
               >
                 {TIMEZONE_OPTIONS.map((tz) => (
                   <option key={tz.value} value={tz.value}>
@@ -182,6 +197,8 @@ export default async function PerfilPage({
               e-mail fora do escopo contratado (briefing de alinhamento 16/09). */}
 
           {/* ── Actions ── */}
+          <p className="form-layout__obrigatorio">* obrigatório</p>
+
           <div className="form-layout__actions">
             <Link href="/config/perfil" className="form-layout__cancel">
               Cancelar

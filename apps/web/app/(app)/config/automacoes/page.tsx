@@ -2,14 +2,17 @@ import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
 import { listarAutomacoes } from '@/lib/automations/registry';
 import { createClient } from '@/lib/supabase/server';
-import { Ban, FlaskConical, Play, TriangleAlert, Zap } from 'lucide-react';
+import { Ban, FlaskConical, Play, Save, TriangleAlert, Zap } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { alternarAutomacao, salvarConfigAutomacao, simularAutomacoes } from './actions';
+import { AutomacaoCampos } from './automacao-campos';
 // Mesma anatomia de tela das outras de configuração (banner + tabela +
 // ações em linha), então reaproveita o CSS em vez de manter uma segunda cópia.
 import '../categorias/categorias.css';
 // `config-hub__section-title`, usado no título do histórico, mora aqui.
 import '../config.css';
+
+export const metadata = { title: 'Automações' };
 
 /**
  * Painel de automações.
@@ -139,7 +142,7 @@ export default async function AutomacoesPage({
         ) : null}
 
         <div className="categorias-table-wrap">
-          <table className="categorias-table">
+          <table className="categorias-table categorias-table--cartoes">
             <thead>
               <tr>
                 <th>Automação</th>
@@ -152,15 +155,15 @@ export default async function AutomacoesPage({
             <tbody>
               {linhas.map((a) => (
                 <tr key={a.chave}>
-                  <td>
+                  <td data-label="Automação">
                     <span className="categorias-nome">{a.descricao}</span>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted, #666)', marginTop: 2 }}>
+                    <div className="automacao-meta">
                       <code>{a.chave}</code>
                       {a.efeitoExterno ? (
                         <>
                           {' · '}
-                          <span style={{ color: '#b45309' }}>
-                            <Zap size={10} aria-hidden="true" style={{ verticalAlign: 'middle' }} />{' '}
+                          <span className="automacao-meta--externo">
+                            <Zap size={10} aria-hidden="true" />
                             envia mensagem para fora
                           </span>
                         </>
@@ -170,14 +173,14 @@ export default async function AutomacoesPage({
                     </div>
                   </td>
 
-                  <td style={{ fontSize: 12 }}>
+                  <td data-label="Quando roda" className="automacao-quando">
                     {a.agendada ? 'Todo dia, 9h' : 'Ao acontecer o evento'}
-                    <div style={{ fontSize: 11, color: 'var(--text-muted, #666)', marginTop: 2 }}>
+                    <div className="automacao-meta">
                       {a.gatilhos.length > 0 ? a.gatilhos.join(', ') : 'só agendada'}
                     </div>
                   </td>
 
-                  <td>
+                  <td data-label="Situação">
                     {a.ativo ? (
                       <span className="categorias-contagem categorias-contagem--active">
                         Ligada
@@ -189,35 +192,37 @@ export default async function AutomacoesPage({
                     )}
                   </td>
 
-                  <td>
-                    <form action={salvarConfigAutomacao}>
+                  <td data-label="Parâmetros" className="automacao-parametros">
+                    {/*
+                      Um campo por parâmetro, gerado do `configSchema` da regra.
+                      O que volta é remontado em objeto e validado pelo mesmo
+                      schema `.strict()` de sempre (`salvarConfigAutomacao`).
+                    */}
+                    <form action={salvarConfigAutomacao} className="automacao-form">
                       <input type="hidden" name="chave" value={a.chave} />
-                      <textarea
-                        name="config"
-                        defaultValue={JSON.stringify(a.config)}
-                        rows={2}
-                        spellCheck={false}
-                        aria-label={`Parâmetros de ${a.descricao}`}
-                        style={{
-                          width: '100%',
-                          minWidth: 200,
-                          fontFamily: 'var(--font-mono, monospace)',
-                          fontSize: 11,
-                          padding: 4,
-                        }}
+                      <AutomacaoCampos
+                        chave={a.chave}
+                        campos={a.campos}
+                        valores={a.config}
+                        desabilitado={!a.configurada}
                       />
+                      {a.configurada ? null : (
+                        <p className="automacao-campos__aviso">
+                          Ligue a automação uma vez para poder ajustar os parâmetros.
+                        </p>
+                      )}
                       <button
                         type="submit"
-                        className="categorias-action-btn"
-                        style={{ marginTop: 4 }}
+                        className="categorias-action-btn automacao-salvar"
                         disabled={!a.configurada}
                       >
+                        <Save size={12} aria-hidden="true" />
                         Salvar
                       </button>
                     </form>
                   </td>
 
-                  <td>
+                  <td data-label="Ações">
                     <div className="categorias-actions">
                       <form action={alternarAutomacao} style={{ display: 'contents' }}>
                         <input type="hidden" name="chave" value={a.chave} />
@@ -249,24 +254,26 @@ export default async function AutomacoesPage({
               ))}
 
               {orfas.map((o) => (
-                <tr key={o.chave} style={{ opacity: 0.6 }}>
-                  <td>
+                <tr key={o.chave} className="automacao-orfa">
+                  <td data-label="Automação">
                     <span className="categorias-nome">
                       <code>{o.chave}</code>
                     </span>
-                    <div style={{ fontSize: 11, color: '#b45309', marginTop: 2 }}>
+                    <div className="automacao-meta automacao-meta--externo">
                       Existe no banco, mas não no código — o motor ignora. Sobra de uma regra
                       removida.
                     </div>
                   </td>
-                  <td style={{ fontSize: 12 }}>—</td>
-                  <td>
+                  <td data-label="Quando roda" className="automacao-quando">
+                    —
+                  </td>
+                  <td data-label="Situação">
                     <span className="categorias-archived-badge">Órfã</span>
                   </td>
-                  <td style={{ fontSize: 11 }}>
-                    <code>{JSON.stringify(o.config)}</code>
+                  <td data-label="Parâmetros" className="automacao-parametros">
+                    <code className="automacao-json">{JSON.stringify(o.config)}</code>
                   </td>
-                  <td>—</td>
+                  <td data-label="Ações">—</td>
                 </tr>
               ))}
             </tbody>
@@ -291,7 +298,7 @@ export default async function AutomacoesPage({
           </div>
         ) : (
           <div className="categorias-table-wrap">
-            <table className="categorias-table">
+            <table className="categorias-table categorias-table--cartoes">
               <thead>
                 <tr>
                   <th>Quando</th>
@@ -303,7 +310,7 @@ export default async function AutomacoesPage({
               <tbody>
                 {log.map((e, i) => (
                   <tr key={`${e.regra_chave}-${e.created_at}-${i}`}>
-                    <td style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+                    <td data-label="Quando" className="automacao-quando automacao-quando--data">
                       {e.created_at
                         ? new Date(e.created_at).toLocaleString('pt-BR', {
                             day: '2-digit',
@@ -313,13 +320,11 @@ export default async function AutomacoesPage({
                           })
                         : '—'}
                     </td>
-                    <td style={{ fontSize: 12 }}>
+                    <td data-label="Automação" className="automacao-quando">
                       <code>{e.regra_chave}</code>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted, #666)' }}>
-                        {e.evento}
-                      </div>
+                      <div className="automacao-meta">{e.evento}</div>
                     </td>
-                    <td>
+                    <td data-label="Resultado">
                       {e.status === 'falha' ? (
                         <span className="categorias-banner categorias-banner--error">
                           {STATUS_ROTULO[e.status] ?? e.status}
@@ -334,8 +339,8 @@ export default async function AutomacoesPage({
                         </span>
                       )}
                     </td>
-                    <td style={{ fontSize: 12 }}>
-                      {e.motivo ?? <span style={{ color: 'var(--text-muted, #666)' }}>—</span>}
+                    <td data-label="Motivo" className="automacao-quando">
+                      {e.motivo ?? <span className="automacao-meta">—</span>}
                     </td>
                   </tr>
                 ))}

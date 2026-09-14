@@ -1,6 +1,3 @@
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import { ArrowLeft, Pencil, Archive, RotateCcw } from 'lucide-react';
 import { TopBar } from '@/components/layout/topbar';
 import { Badge, type BadgeVariant } from '@/components/nogma/Badge';
 import { Button } from '@/components/nogma/Button';
@@ -9,13 +6,18 @@ import { listFornecedores } from '@/lib/data/fornecedores';
 import { listObras } from '@/lib/data/obras';
 import { getPagamento } from '@/lib/data/pagamentos';
 import { formatBRL } from '@/lib/schemas/pagamento';
+import { Archive, ArrowLeft, Pencil, RotateCcw } from 'lucide-react';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { archivePagamento, restorePagamento } from '../actions';
 import '../../_shared/detail-layout.css';
-import { Section, Row } from '../../_shared/detail-primitives';
 import {
   PAGAMENTO_STATUS_LABEL as STATUS_LABEL,
   PAGAMENTO_STATUS_VARIANT as STATUS_VARIANT,
 } from '@/lib/status-labels';
+import { Row, Section } from '../../_shared/detail-primitives';
+
+export const metadata = { title: 'Pagamento' };
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return '—';
@@ -50,22 +52,23 @@ export default async function PagamentoDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string }>;
 }) {
-  const [{ id }, sp] = await Promise.all([params, searchParams]);
-  const pagamento = await getPagamento(id);
-  if (!pagamento) notFound();
-
-  const [obras, fornecedores, categorias] = await Promise.all([
+  const { id } = await params;
+  // Pagamento e lookups numa ida só: em série o TTFB somava as duas.
+  const [sp, pagamento, obras, fornecedores, categorias] = await Promise.all([
+    searchParams,
+    getPagamento(id),
     listObras({ includeArchived: true }),
     listFornecedores({ includeArchived: true }),
     listCategorias(),
   ]);
+  if (!pagamento) notFound();
 
   const obra = obras.find((o) => o.id === pagamento.obra_id) ?? null;
   const fornecedor = pagamento.fornecedor_id
-    ? fornecedores.find((f) => f.id === pagamento.fornecedor_id) ?? null
+    ? (fornecedores.find((f) => f.id === pagamento.fornecedor_id) ?? null)
     : null;
   const categoria = pagamento.categoria_id
-    ? categorias.find((c) => c.id === pagamento.categoria_id) ?? null
+    ? (categorias.find((c) => c.id === pagamento.categoria_id) ?? null)
     : null;
 
   const isArquivado = pagamento.deleted_at != null;
@@ -84,7 +87,9 @@ export default async function PagamentoDetailPage({
               Voltar
             </Link>
             <Link href={`/pagamentos/${pagamento.id}/editar`} style={{ textDecoration: 'none' }}>
-              <Button variant="secondary" leadingIcon={<Pencil size={14} />}>Editar</Button>
+              <Button variant="secondary" leadingIcon={<Pencil size={14} />}>
+                Editar
+              </Button>
             </Link>
             {isArquivado ? (
               <form action={restorePagamento} style={{ display: 'inline' }}>

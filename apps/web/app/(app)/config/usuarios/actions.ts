@@ -1,20 +1,24 @@
 'use server';
 
+import {
+  archiveUsuarioAdmin,
+  getUsuario,
+  inviteUsuarioAdmin,
+  resendInviteAdmin,
+  restoreUsuarioAdmin,
+  updateUsuarioPapelAdmin,
+} from '@/lib/data/usuarios';
+import { sanitizarErroAdmin } from '@/lib/schemas/errors';
+import { createClient } from '@/lib/supabase/server';
+import { pareceUuid } from '@/lib/util/uuid';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/server';
-import { sanitizarErroAdmin } from '@/lib/schemas/errors';
-import {
-  inviteUsuarioAdmin,
-  resendInviteAdmin,
-  updateUsuarioPapelAdmin,
-  archiveUsuarioAdmin,
-  restoreUsuarioAdmin,
-  getUsuario,
-} from '@/lib/data/usuarios';
+import { type Rotulos, voltarComErro } from '../../_shared/form-erros';
 
 const PAPEIS = ['admin', 'gestor', 'financeiro', 'leitura'] as const;
+
+const ROTULOS_USUARIO: Rotulos = { email: 'Email', nome: 'Nome completo', papel: 'Papel' };
 
 /** Garante que o caller é admin. Redireciona com ?error= caso não seja. */
 async function assertAdmin(): Promise<string> {
@@ -22,7 +26,9 @@ async function assertAdmin(): Promise<string> {
   const { data: userData } = await supabase.auth.getUser();
   const user = userData.user;
   if (!user) {
-    redirect(`/config/usuarios?error=${encodeURIComponent('Sessao expirada. Faca login novamente.')}`);
+    redirect(
+      `/config/usuarios?error=${encodeURIComponent('Sessao expirada. Faca login novamente.')}`,
+    );
   }
   const { data: profile } = await supabase
     .from('profiles')
@@ -45,16 +51,19 @@ export async function convidarUsuario(formData: FormData) {
   await assertAdmin();
 
   const raw = {
-    email: String(formData.get('email') ?? '').trim().toLowerCase(),
+    email: String(formData.get('email') ?? '')
+      .trim()
+      .toLowerCase(),
     nome: String(formData.get('nome') ?? '').trim(),
     papel: String(formData.get('papel') ?? '').trim(),
   };
 
   const parsed = ConvidarSchema.safeParse(raw);
   if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    const msg = first?.message ?? 'Dados invalidos';
-    redirect(`/config/usuarios/convidar?error=${encodeURIComponent(msg)}`);
+    voltarComErro('/config/usuarios/convidar', parsed.error, {
+      rotulos: ROTULOS_USUARIO,
+      valores: formData,
+    });
   }
 
   const result = await inviteUsuarioAdmin(parsed.data);
@@ -62,7 +71,7 @@ export async function convidarUsuario(formData: FormData) {
   if (!result.ok) {
     // Finding M-4: erro cru da Admin API não vai mais pra URL.
     const msg = sanitizarErroAdmin('convidar o usuário', result.error);
-    redirect(`/config/usuarios/convidar?error=${encodeURIComponent(msg)}`);
+    voltarComErro('/config/usuarios/convidar', msg, { valores: formData });
   }
 
   revalidatePath('/config/usuarios');
@@ -90,7 +99,9 @@ export async function reenviarConvite(formData: FormData) {
 
   const result = await resendInviteAdmin({ email: usuario.email });
   if (!result.ok) {
-    redirect(`/config/usuarios?error=${encodeURIComponent(sanitizarErroAdmin('reenviar o convite', result.error))}`);
+    redirect(
+      `/config/usuarios?error=${encodeURIComponent(sanitizarErroAdmin('reenviar o convite', result.error))}`,
+    );
   }
 
   revalidatePath('/config/usuarios');
@@ -110,17 +121,23 @@ export async function alterarPapelUsuario(formData: FormData) {
     papel: String(formData.get('papel') ?? '').trim(),
   });
   if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    redirect(`/config/usuarios?error=${encodeURIComponent(first?.message ?? 'Dados invalidos')}`);
+    // O formulário mora em /[id]/editar; só volta para lá se o id for um uuid.
+    const userId = String(formData.get('user_id') ?? '').trim();
+    const destino = pareceUuid(userId) ? `/config/usuarios/${userId}/editar` : '/config/usuarios';
+    voltarComErro(destino, parsed.error, { rotulos: ROTULOS_USUARIO, valores: formData });
   }
 
   if (parsed.data.user_id === callerId) {
-    redirect(`/config/usuarios?error=${encodeURIComponent('Nao e possivel editar seu proprio papel')}`);
+    redirect(
+      `/config/usuarios?error=${encodeURIComponent('Nao e possivel editar seu proprio papel')}`,
+    );
   }
 
   const result = await updateUsuarioPapelAdmin(parsed.data.user_id, parsed.data.papel);
   if (!result.ok) {
-    redirect(`/config/usuarios?error=${encodeURIComponent(sanitizarErroAdmin('alterar o papel', result.error))}`);
+    redirect(
+      `/config/usuarios?error=${encodeURIComponent(sanitizarErroAdmin('alterar o papel', result.error))}`,
+    );
   }
 
   revalidatePath('/config/usuarios');
@@ -138,12 +155,16 @@ export async function arquivarUsuario(formData: FormData) {
   }
 
   if (parsed.data.user_id === callerId) {
-    redirect(`/config/usuarios?error=${encodeURIComponent('Nao e possivel arquivar sua propria conta')}`);
+    redirect(
+      `/config/usuarios?error=${encodeURIComponent('Nao e possivel arquivar sua propria conta')}`,
+    );
   }
 
   const result = await archiveUsuarioAdmin(parsed.data.user_id);
   if (!result.ok) {
-    redirect(`/config/usuarios?error=${encodeURIComponent(sanitizarErroAdmin('arquivar o usuário', result.error))}`);
+    redirect(
+      `/config/usuarios?error=${encodeURIComponent(sanitizarErroAdmin('arquivar o usuário', result.error))}`,
+    );
   }
 
   revalidatePath('/config/usuarios');
@@ -162,7 +183,9 @@ export async function restaurarUsuario(formData: FormData) {
 
   const result = await restoreUsuarioAdmin(parsed.data.user_id);
   if (!result.ok) {
-    redirect(`/config/usuarios?error=${encodeURIComponent(sanitizarErroAdmin('restaurar o usuário', result.error))}`);
+    redirect(
+      `/config/usuarios?error=${encodeURIComponent(sanitizarErroAdmin('restaurar o usuário', result.error))}`,
+    );
   }
 
   revalidatePath('/config/usuarios');

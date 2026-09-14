@@ -1,12 +1,15 @@
-import { notFound } from 'next/navigation';
-import Link from 'next/link';
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
 import { Input } from '@/components/nogma/Input';
 import { createClient } from '@/lib/supabase/server';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { criarWebhook } from '../actions';
 import '../webhooks.css';
+import { estadoDoFormulario } from '@/app/(app)/_shared/form-erros';
 import '@/app/(app)/_shared/form-layout.css';
+
+export const metadata = { title: 'Novo webhook' };
 
 const EVENTOS = [
   {
@@ -54,7 +57,7 @@ const EVENTOS = [
 export default async function NovoWebhookPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; campo?: string; v?: string }>;
 }) {
   const supabase = await createClient();
   const { data: userData } = await supabase.auth.getUser();
@@ -70,7 +73,16 @@ export default async function NovoWebhookPage({
   if (profile?.papel !== 'admin') notFound();
 
   const params = await searchParams;
-  const errorMsg = params.error ?? null;
+  const estado = estadoDoFormulario(params);
+  const v = estado.valores;
+  const campo = estado.campo;
+  const erroCurto = estado.error ? estado.error.replace(/^[^:]+:\s*/u, '') : undefined;
+  const erroDe = (name: string) => (campo === name ? erroCurto : undefined);
+  // `eventos` são checkboxes múltiplos; a action os junta por vírgula para
+  // sobreviverem à URL (o codificador guarda um valor por chave).
+  const eventosPreservados =
+    v.eventos !== undefined ? new Set(v.eventos.split(',').filter(Boolean)) : null;
+  const errorMsg = estado.error ?? null;
 
   return (
     <>
@@ -97,8 +109,11 @@ export default async function NovoWebhookPage({
                   required
                   minLength={3}
                   maxLength={80}
+                  defaultValue={v.nome ?? ''}
                   placeholder="Ex: Notificacoes n8n producao"
                   autoComplete="off"
+                  error={erroDe('nome')}
+                  autoFocus={campo === 'nome'}
                 />
               </div>
               <div className="form-layout__field form-layout__field--wide">
@@ -107,9 +122,12 @@ export default async function NovoWebhookPage({
                   name="url"
                   type="url"
                   required
+                  defaultValue={v.url ?? ''}
                   placeholder="https://seu-servidor.com/webhook"
                   autoComplete="off"
                   hint="Deve comecar com https:// (ou http:// para testes locais)"
+                  error={erroDe('url')}
+                  autoFocus={campo === 'url'}
                 />
               </div>
             </div>
@@ -117,13 +135,30 @@ export default async function NovoWebhookPage({
 
           <fieldset className="form-layout__section">
             <legend className="form-layout__legend">Eventos</legend>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '8px 0 0 0', lineHeight: 1.5 }}>
+            <p
+              style={{
+                fontSize: 12,
+                color: 'var(--text-secondary)',
+                margin: '8px 0 0 0',
+                lineHeight: 1.5,
+              }}
+            >
               Selecione quais eventos devem disparar este webhook. Ao menos um obrigatorio.
             </p>
-            <div className="wh-eventos-group" role="group" aria-label="Eventos do webhook">
+            <div
+              className="wh-eventos-group"
+              // biome-ignore lint/a11y/useSemanticElements: grupo de checkboxes com rótulo (fieldset quebraria o grid)
+              role="group"
+              aria-label="Eventos do webhook"
+            >
               {EVENTOS.map((ev) => (
                 <label key={ev.value} className="wh-evento-label">
-                  <input type="checkbox" name="eventos" value={ev.value} />
+                  <input
+                    type="checkbox"
+                    name="eventos"
+                    value={ev.value}
+                    defaultChecked={eventosPreservados?.has(ev.value) ?? false}
+                  />
                   <div className="wh-evento-info">
                     <span className="wh-evento-name">{ev.label}</span>
                     <span className="wh-evento-desc">{ev.desc}</span>
@@ -132,6 +167,8 @@ export default async function NovoWebhookPage({
               ))}
             </div>
           </fieldset>
+
+          <p className="form-layout__obrigatorio">* obrigatório</p>
 
           <div className="form-layout__actions">
             <Link href="/config/webhooks" className="form-layout__cancel">

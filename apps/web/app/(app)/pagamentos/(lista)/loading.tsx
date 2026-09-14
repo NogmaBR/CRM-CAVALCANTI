@@ -5,7 +5,12 @@ import { Skeleton } from '@/components/nogma/Skeleton';
  */
 export default function PagamentosLoading() {
   return (
-    <div role="status" aria-busy="true" aria-label="Carregando pagamentos">
+    <div
+      // biome-ignore lint/a11y/useSemanticElements: esqueleto de carregamento (padrão do projeto)
+      role="status"
+      aria-busy="true"
+      aria-label="Carregando pagamentos"
+    >
       <div className="nos-topbar" aria-hidden="true">
         <div className="nos-topbar__left">
           <div className="nos-topbar__heading">
@@ -19,14 +24,22 @@ export default function PagamentosLoading() {
         {/* Filters bar */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {Array.from({ length: 4 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: esqueleto estático
             <Skeleton key={i} width={140} height={36} />
           ))}
         </div>
 
         {/* KPI row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: 12,
+          }}
+        >
           {Array.from({ length: 3 }).map((_, i) => (
             <div
+              // biome-ignore lint/suspicious/noArrayIndexKey: esqueleto estático
               key={i}
               style={{
                 background: 'var(--surface-card)',
@@ -52,6 +65,7 @@ export default function PagamentosLoading() {
         >
           {Array.from({ length: 8 }).map((_, i) => (
             <div
+              // biome-ignore lint/suspicious/noArrayIndexKey: esqueleto estático
               key={i}
               style={{
                 display: 'grid',

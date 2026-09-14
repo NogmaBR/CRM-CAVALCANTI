@@ -5,7 +5,12 @@ import { Skeleton } from '@/components/nogma/Skeleton';
  */
 export default function ObrasLoading() {
   return (
-    <div role="status" aria-busy="true" aria-label="Carregando obras">
+    <div
+      // biome-ignore lint/a11y/useSemanticElements: esqueleto de carregamento (padrão do projeto)
+      role="status"
+      aria-busy="true"
+      aria-label="Carregando obras"
+    >
       <div className="nos-topbar" aria-hidden="true">
         <div className="nos-topbar__left">
           <div className="nos-topbar__heading">
@@ -18,6 +23,7 @@ export default function ObrasLoading() {
       <div style={{ padding: 24, display: 'grid', gap: 16 }}>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {Array.from({ length: 3 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: esqueleto estático
             <Skeleton key={i} width={140} height={36} />
           ))}
         </div>
@@ -32,6 +38,7 @@ export default function ObrasLoading() {
         >
           {Array.from({ length: 8 }).map((_, i) => (
             <div
+              // biome-ignore lint/suspicious/noArrayIndexKey: esqueleto estático
               key={i}
               style={{
                 display: 'grid',

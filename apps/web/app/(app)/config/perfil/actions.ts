@@ -8,8 +8,16 @@ import type { Database } from '@nogma/db';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { type Rotulos, voltarComErro } from '../../_shared/form-erros';
 
 type ProfileUpdate = Database['public']['Tables']['profiles']['Update'];
+
+const ROTULOS_PERFIL: Rotulos = {
+  nome: 'Nome completo',
+  telefone: 'Telefone',
+  tema: 'Tema',
+  timezone: 'Fuso horário',
+};
 
 export async function salvarPerfil(formData: FormData) {
   const supabase = await createClient();
@@ -34,9 +42,7 @@ export async function salvarPerfil(formData: FormData) {
 
   const parsed = PerfilUpdateSchema.safeParse(raw);
   if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    const msg = first?.message ?? 'Dados inválidos';
-    redirect(`/config/perfil?error=${encodeURIComponent(msg)}`);
+    voltarComErro('/config/perfil', parsed.error, { rotulos: ROTULOS_PERFIL, valores: formData });
   }
 
   // Build typed DB update payload — partial update pattern
@@ -53,7 +59,7 @@ export async function salvarPerfil(formData: FormData) {
 
   if (error) {
     const msg = mapDbError(error, 'Erro ao salvar preferências');
-    redirect(`/config/perfil?error=${encodeURIComponent(msg)}`);
+    voltarComErro('/config/perfil', msg, { valores: formData });
   }
 
   // O tema que vale na tela é o cookie (lido pelo RootLayout). Sem esta

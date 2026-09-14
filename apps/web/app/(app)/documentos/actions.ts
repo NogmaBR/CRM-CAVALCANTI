@@ -21,8 +21,30 @@ import { erroDeEscrita } from '@/lib/supabase/escrita';
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { type Rotulos, voltarComErro } from '../_shared/form-erros';
 
 const log = logger('documentos');
+
+const ROTULOS_DOCUMENTO: Rotulos = {
+  file: 'Arquivo',
+  tipo: 'Tipo',
+  numero_nf: 'Número da NF',
+  chave_acesso_nf: 'Chave de acesso NF',
+  obra_id: 'Obra',
+  pagamento_id: 'Pagamento',
+  fornecedor_id: 'Fornecedor',
+};
+
+/**
+ * O arquivo não sobrevive ao redirect (nunca vai para a URL), então todo
+ * erro do upload volta com os metadados preservados e o aviso de reanexar.
+ */
+function voltarAoNovo(erro: string, formData: FormData, campo?: string): never {
+  voltarComErro('/documentos/novo', `${erro} Selecione o arquivo de novo.`, {
+    valores: formData,
+    campo,
+  });
+}
 
 /**
  * Apaga a linha criada antes de um upload que falhou. Usa service role
@@ -56,16 +78,17 @@ export async function createDocumento(formData: FormData) {
   // 1) Valida metadata
   const meta = DocumentoMetaCreateSchema.safeParse(formToRecord(formData));
   if (!meta.success) {
-    const first = meta.error.issues[0];
-    const msg = first ? `${first.path.join('.')}: ${first.message}` : 'Dados inválidos';
-    redirect(`/documentos/novo?error=${encodeURIComponent(msg)}`);
+    voltarComErro('/documentos/novo', meta.error, {
+      rotulos: ROTULOS_DOCUMENTO,
+      valores: formData,
+    });
   }
 
   // 2) Valida file
   const fileField = formData.get('file');
   const fileCheck = validateUploadedFile(fileField);
   if (!fileCheck.ok) {
-    redirect(`/documentos/novo?error=${encodeURIComponent(fileCheck.error)}`);
+    voltarAoNovo(fileCheck.error, formData, 'file');
   }
   const file = fileCheck.file;
 
@@ -76,7 +99,7 @@ export async function createDocumento(formData: FormData) {
   // com o MIME declarado. Sem isso, atacante pode renomear .exe → .pdf.
   const magicCheck = validateFileMagicBytes(buffer, file.type);
   if (!magicCheck.ok) {
-    redirect(`/documentos/novo?error=${encodeURIComponent(magicCheck.error)}`);
+    voltarAoNovo(magicCheck.error, formData, 'file');
   }
 
   const hash = sha256Hex(buffer);
@@ -115,13 +138,12 @@ export async function createDocumento(formData: FormData) {
             ? 'Já existe documento com esta chave de acesso de NF.'
             : 'Já existe documento com esta chave de NF ou hash.'
         : undefined;
-    redirect(
-      `/documentos/novo?error=${encodeURIComponent(
-        mapDbErrorWithContext(insertRes.error, {
-          '23503': 'Obra, pagamento ou fornecedor referenciado não existe',
-          ...(dupMsg ? { '23505': dupMsg } : {}),
-        }),
-      )}`,
+    voltarAoNovo(
+      mapDbErrorWithContext(insertRes.error, {
+        '23503': 'Obra, pagamento ou fornecedor referenciado não existe',
+        ...(dupMsg ? { '23505': dupMsg } : {}),
+      }),
+      formData,
     );
   }
 
@@ -140,9 +162,7 @@ export async function createDocumento(formData: FormData) {
       documentoId,
       erro: uploadErr instanceof Error ? uploadErr.message : String(uploadErr),
     });
-    redirect(
-      `/documentos/novo?error=${encodeURIComponent('Falha ao enviar o arquivo. Tente de novo.')}`,
-    );
+    voltarAoNovo('Falha ao enviar o arquivo. Tente de novo.', formData, 'file');
   }
 
   // 6) Update storage_path final
@@ -158,7 +178,7 @@ export async function createDocumento(formData: FormData) {
       /* best effort */
     }
     await desfazerDocumento(documentoId);
-    redirect(`/documentos/novo?error=${encodeURIComponent(mapDbError(upd.error))}`);
+    voltarAoNovo(mapDbError(upd.error), formData);
   }
 
   // Dispatch outbound webhook (fase n8n) — best-effort
@@ -205,10 +225,11 @@ export async function updateDocumento(formData: FormData) {
   const raw = formToRecord(formData);
   const parsed = DocumentoUpdateSchema.safeParse(raw);
   if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    const msg = first ? `${first.path.join('.')}: ${first.message}` : 'Dados inválidos';
     const id = typeof raw.id === 'string' ? raw.id : '';
-    redirect(`/documentos/${id}/editar?error=${encodeURIComponent(msg)}`);
+    voltarComErro(`/documentos/${id}/editar`, parsed.error, {
+      rotulos: ROTULOS_DOCUMENTO,
+      valores: formData,
+    });
   }
 
   const { id, ...rest } = parsed.data;
@@ -228,13 +249,13 @@ export async function updateDocumento(formData: FormData) {
     .eq('id', id);
 
   if (error) {
-    redirect(
-      `/documentos/${id}/editar?error=${encodeURIComponent(
-        mapDbErrorWithContext(error, {
-          '23503': 'Obra, pagamento ou fornecedor referenciado não existe',
-          '23505': 'Já existe documento com esta chave de NF',
-        }),
-      )}`,
+    voltarComErro(
+      `/documentos/${id}/editar`,
+      mapDbErrorWithContext(error, {
+        '23503': 'Obra, pagamento ou fornecedor referenciado não existe',
+        '23505': 'Já existe documento com esta chave de NF',
+      }),
+      { valores: formData, campo: error.code === '23505' ? 'chave_acesso_nf' : undefined },
     );
   }
 

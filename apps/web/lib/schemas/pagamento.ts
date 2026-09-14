@@ -1,3 +1,4 @@
+import { parseValorBR } from '@/lib/util/moeda';
 import { z } from 'zod';
 
 export const pagamentoOrigemEnum = z.enum(['whatsapp', 'manual', 'importado']);
@@ -8,27 +9,25 @@ const isoDateRequired = z
   .trim()
   .regex(/^\d{4}-\d{2}-\d{2}$/u, 'Data inválida (use AAAA-MM-DD)');
 
-const valorRequired = z
-  .string()
-  .trim()
-  .min(1, 'Valor é obrigatório')
-  .transform((v, ctx) => {
-    // Aceita "1.234,56" (pt-BR), "1.250" (milhar pt-BR) e "1234.56" (padrão)
-    const normalized = v.includes(',')
-      ? v.replace(/\./gu, '').replace(',', '.')
-      : /^\d{1,3}(\.\d{3})+$/u.test(v)
-        ? v.replace(/\./gu, '')
-        : v;
-    const n = Number(normalized);
-    if (!Number.isFinite(n) || n < 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Valor inválido (deve ser ≥ 0)',
-      });
-      return z.NEVER;
-    }
-    return n;
-  });
+/**
+ * Valor como o brasileiro digita: "1.250,00", "1250,00", "1250.00",
+ * "R$ 1.250,00" ou "1250" (`parseValorBR`, com teste). Vazio é "obrigatório";
+ * texto que não é número vira uma frase com o formato esperado — as duas
+ * mensagens já saem em português, então `form-erros.ts` não precisa traduzir.
+ */
+const valorBR = z.preprocess(
+  (v) => {
+    if (typeof v !== 'string') return v;
+    if (v.trim() === '') return undefined;
+    return parseValorBR(v);
+  },
+  z
+    .number({
+      required_error: 'obrigatório',
+      invalid_type_error: 'informe um valor como 1.250,00',
+    })
+    .min(0, 'não pode ser negativo'),
+);
 
 const uuidRequired = z
   .string()
@@ -50,7 +49,7 @@ export const PagamentoCreateSchema = z.object({
   obra_id: uuidRequired,
   fornecedor_id: uuidOptional,
   categoria_id: uuidOptional,
-  valor: valorRequired,
+  valor: valorBR,
   data_pagamento: isoDateRequired,
   origem: pagamentoOrigemEnum.default('manual'),
   status_pagto: pagamentoStatusEnum.default('confirmado'),

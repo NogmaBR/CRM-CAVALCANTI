@@ -8,6 +8,8 @@ import { notFound } from 'next/navigation';
 import '../categorias/categorias.css';
 import '../config.css';
 
+export const metadata = { title: 'Filas' };
+
 /**
  * Observação das filas.
  *

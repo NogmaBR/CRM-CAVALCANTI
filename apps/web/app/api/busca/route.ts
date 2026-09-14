@@ -5,71 +5,49 @@ import { NextResponse } from 'next/server';
  * Busca rápida para a paleta ⌘K.
  *
  * Usa a sessão do usuário (cookies) — a RLS decide o que ele vê. Sem sessão,
- * o middleware já redirecionou para /login antes de chegar aqui. O termo é
- * limitado a 60 caracteres e os caracteres especiais do `ilike` (`%`, `_`)
- * são escapados para que "50%" procure o texto "50%" e não vire curinga.
+ * o middleware já redirecionou para /login antes de chegar aqui.
+ *
+ * Uma viagem só: a RPC `busca_global` (SECURITY INVOKER, migration
+ * 20260914100000) consulta obras, fornecedores e pagamentos de uma vez. Antes
+ * eram três consultas em paralelo e, com a função em iad1 e o banco em
+ * sa-east-1, a paleta ficava mais de um segundo em "Buscando…" (design review
+ * gstack, M12). O escape dos curingas do ILIKE mora na função.
  */
 
 export const dynamic = 'force-dynamic';
 
 const LIMITE = 5;
+const VAZIO = { obras: [], fornecedores: [], pagamentos: [] };
 
-function escaparIlike(s: string): string {
-  return s.replace(/[\\%_]/gu, (c) => `\\${c}`);
+interface Resultado {
+  obras: Array<{ id: string; nome: string; cliente: string | null }>;
+  fornecedores: Array<{ id: string; nome: string; categoria: string | null }>;
+  pagamentos: Array<{
+    id: string;
+    descricao: string | null;
+    valor: number;
+    data: string;
+    obra: string | null;
+  }>;
 }
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const termo = (url.searchParams.get('q') ?? '').trim().slice(0, 60);
-  if (termo.length < 2) {
-    return NextResponse.json({ obras: [], fornecedores: [], pagamentos: [] });
-  }
-  const padrao = `%${escaparIlike(termo)}%`;
+  if (termo.length < 2) return NextResponse.json(VAZIO);
+
   const supabase = await createClient();
+  const { data, error } = await supabase.rpc('busca_global', { p_termo: termo, p_limite: LIMITE });
+  if (error || !data || typeof data !== 'object') {
+    return NextResponse.json(VAZIO, { headers: { 'Cache-Control': 'private, no-store' } });
+  }
 
-  const [obrasR, fornR, pagR] = await Promise.all([
-    supabase
-      .from('obras')
-      .select('id, nome, cliente')
-      .is('deleted_at', null)
-      .or(`nome.ilike.${padrao},cliente.ilike.${padrao}`)
-      .order('nome')
-      .limit(LIMITE),
-    supabase
-      .from('fornecedores')
-      .select('id, nome, categorias(nome)')
-      .is('deleted_at', null)
-      .or(`nome.ilike.${padrao},razao_social.ilike.${padrao}`)
-      .order('nome')
-      .limit(LIMITE),
-    supabase
-      .from('pagamentos')
-      .select('id, descricao, valor, data_pagamento, obras(nome)')
-      .is('deleted_at', null)
-      .or(`descricao.ilike.${padrao},observacoes.ilike.${padrao}`)
-      .order('data_pagamento', { ascending: false })
-      .limit(LIMITE),
-  ]);
-
-  type Cat = { nome: string } | { nome: string }[] | null;
-  const nomeDe = (c: Cat): string | null =>
-    c == null ? null : Array.isArray(c) ? (c[0]?.nome ?? null) : c.nome;
-
+  const r = data as unknown as Partial<Resultado>;
   return NextResponse.json(
     {
-      obras: (obrasR.data ?? []).map((o) => ({ id: o.id, nome: o.nome, cliente: o.cliente })),
-      fornecedores: (fornR.data ?? []).map((f) => ({
-        id: f.id,
-        nome: f.nome,
-        categoria: nomeDe(f.categorias as Cat),
-      })),
-      pagamentos: (pagR.data ?? []).map((p) => ({
-        id: p.id,
-        descricao: p.descricao,
-        valor: Number(p.valor),
-        data: p.data_pagamento,
-        obra: nomeDe(p.obras as Cat),
-      })),
+      obras: r.obras ?? [],
+      fornecedores: r.fornecedores ?? [],
+      pagamentos: (r.pagamentos ?? []).map((p) => ({ ...p, valor: Number(p.valor) })),
     },
     { headers: { 'Cache-Control': 'private, no-store' } },
   );

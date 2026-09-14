@@ -8,6 +8,8 @@ import { notFound } from 'next/navigation';
 import { arquivarUsuario, reenviarConvite, restaurarUsuario } from './actions';
 import './usuarios.css';
 
+export const metadata = { title: 'Usuários' };
+
 type StatusFilter = 'ativos' | 'pendentes' | 'arquivados';
 
 const FILTER_OPTIONS: Array<{ value: StatusFilter; label: string }> = [

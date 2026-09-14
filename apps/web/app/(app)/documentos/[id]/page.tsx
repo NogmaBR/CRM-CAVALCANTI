@@ -1,17 +1,19 @@
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import { ArrowLeft, Pencil, Archive, RotateCcw, Download } from 'lucide-react';
 import { TopBar } from '@/components/layout/topbar';
 import { Badge, type BadgeVariant } from '@/components/nogma/Badge';
 import { Button } from '@/components/nogma/Button';
-import { Section, Row } from '../../_shared/detail-primitives';
 import { getDocumento } from '@/lib/data/documentos';
 import { listFornecedores } from '@/lib/data/fornecedores';
 import { listObras } from '@/lib/data/obras';
 import { listPagamentos } from '@/lib/data/pagamentos';
-import { ANEXO_TIPO_LABELS, formatBytes, type AnexoTipo } from '@/lib/schemas/documento';
+import { ANEXO_TIPO_LABELS, type AnexoTipo, formatBytes } from '@/lib/schemas/documento';
+import { Archive, ArrowLeft, Download, Pencil, RotateCcw } from 'lucide-react';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { Row, Section } from '../../_shared/detail-primitives';
 import { archiveDocumento, downloadDocumento, restoreDocumento } from '../actions';
 import '../../_shared/detail-layout.css';
+
+export const metadata = { title: 'Documento' };
 
 const TIPO_VARIANT: Record<AnexoTipo, BadgeVariant> = {
   nota_fiscal: 'success',
@@ -25,7 +27,11 @@ function formatDateTime(iso: string | null | undefined): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleString('pt-BR', {
-    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
 }
 
@@ -46,12 +52,12 @@ export default async function DocumentoDetailPage({
     listFornecedores({ includeArchived: true }),
   ]);
 
-  const obra = documento.obra_id ? obras.find((o) => o.id === documento.obra_id) ?? null : null;
+  const obra = documento.obra_id ? (obras.find((o) => o.id === documento.obra_id) ?? null) : null;
   const pagamento = documento.pagamento_id
-    ? pagamentos.find((p) => p.id === documento.pagamento_id) ?? null
+    ? (pagamentos.find((p) => p.id === documento.pagamento_id) ?? null)
     : null;
   const fornecedor = documento.fornecedor_id
-    ? fornecedores.find((f) => f.id === documento.fornecedor_id) ?? null
+    ? (fornecedores.find((f) => f.id === documento.fornecedor_id) ?? null)
     : null;
 
   const isArquivado = documento.deleted_at != null;
@@ -75,17 +81,23 @@ export default async function DocumentoDetailPage({
               </Button>
             </form>
             <Link href={`/documentos/${documento.id}/editar`} style={{ textDecoration: 'none' }}>
-              <Button variant="secondary" leadingIcon={<Pencil size={14} />}>Editar</Button>
+              <Button variant="secondary" leadingIcon={<Pencil size={14} />}>
+                Editar
+              </Button>
             </Link>
             {isArquivado ? (
               <form action={restoreDocumento} style={{ display: 'inline' }}>
                 <input type="hidden" name="id" value={documento.id} />
-                <Button type="submit" variant="secondary" leadingIcon={<RotateCcw size={14} />}>Restaurar</Button>
+                <Button type="submit" variant="secondary" leadingIcon={<RotateCcw size={14} />}>
+                  Restaurar
+                </Button>
               </form>
             ) : (
               <form action={archiveDocumento} style={{ display: 'inline' }}>
                 <input type="hidden" name="id" value={documento.id} />
-                <Button type="submit" variant="secondary" leadingIcon={<Archive size={14} />}>Arquivar</Button>
+                <Button type="submit" variant="secondary" leadingIcon={<Archive size={14} />}>
+                  Arquivar
+                </Button>
               </form>
             )}
           </div>

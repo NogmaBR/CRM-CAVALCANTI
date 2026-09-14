@@ -300,3 +300,213 @@
     display: none;
   }
 }
+
+/* ═══════════════════════════════════════════════
+   /config/automacoes — campos de parâmetro e cartões no celular
+   (compartilha esta folha porque a anatomia da tela é a mesma)
+   ═══════════════════════════════════════════════ */
+
+.automacao-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.automacao-meta--externo {
+  color: var(--warning);
+}
+
+/* Ícone e texto ficam juntos: o raio sozinho numa linha não diz nada. */
+.automacao-meta span.automacao-meta--externo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.automacao-quando {
+  font-size: 12px;
+}
+
+.automacao-quando--data {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.automacao-orfa {
+  opacity: 0.6;
+}
+
+.automacao-parametros {
+  min-width: 260px;
+}
+
+.automacao-json {
+  font-size: 11px;
+  word-break: break-all;
+}
+
+.automacao-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.automacao-campos {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.automacao-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.automacao-campo__rotulo {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.automacao-campo__ajuda,
+.automacao-campos__vazio,
+.automacao-campos__aviso {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* Mesma métrica do `.ng-input`: 44px de alvo. */
+.automacao-campo__input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.automacao-campo__input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.automacao-campo__input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.automacao-campo__select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 36px;
+  cursor: pointer;
+}
+
+.automacao-campo__check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.automacao-campo__check input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+.automacao-salvar {
+  align-self: flex-start;
+}
+
+.automacao-salvar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Cartão por linha abaixo de 768px: a tabela estourava para a direita e
+   "Parâmetros" sumia da tela. Mesmo truque do `DataTable`: cada célula
+   leva o rótulo em `data-label`. */
+@media (max-width: 768px) {
+  .categorias-table--cartoes thead {
+    display: none;
+  }
+
+  .categorias-table--cartoes,
+  .categorias-table--cartoes tbody,
+  .categorias-table--cartoes tr,
+  .categorias-table--cartoes td {
+    display: block;
+    width: 100%;
+  }
+
+  .categorias-table--cartoes tr {
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border-subtle);
+    background: transparent;
+  }
+
+  .categorias-table--cartoes tbody tr:nth-child(even),
+  .categorias-table--cartoes tbody tr:hover {
+    background: transparent;
+  }
+
+  .categorias-table--cartoes tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  .categorias-table--cartoes td {
+    padding: 8px 14px;
+    border-bottom: none;
+  }
+
+  .categorias-table--cartoes td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+
+  .categorias-table--cartoes td[data-label=""]::before {
+    display: none;
+  }
+
+  .categorias-table--cartoes .automacao-parametros {
+    min-width: 0;
+  }
+
+  .categorias-table--cartoes .automacao-quando--data {
+    white-space: normal;
+  }
+
+  .categorias-table--cartoes .categorias-actions {
+    flex-wrap: wrap;
+  }
+
+  .categorias-table--cartoes .categorias-action-btn {
+    min-height: 44px;
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* A regra de 720px acima esconde a 3ª coluna (Categorias); no modo cartão
+   ela é "Situação" e precisa aparecer. */
+@media (max-width: 720px) {
+  .categorias-table--cartoes td:nth-child(3) {
+    display: block;
+  }
+}

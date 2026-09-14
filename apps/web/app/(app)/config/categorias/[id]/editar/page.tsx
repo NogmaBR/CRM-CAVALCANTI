@@ -9,14 +9,17 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { atualizarCategoria } from '../../actions';
 import '../../categorias.css';
+import { estadoDoFormulario } from '@/app/(app)/_shared/form-erros';
 import '@/app/(app)/_shared/form-layout.css';
+
+export const metadata = { title: 'Editar categoria' };
 
 export default async function EditarCategoriaPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; campo?: string; v?: string }>;
 }) {
   const supabase = await createClient();
   const { data: userData } = await supabase.auth.getUser();
@@ -38,7 +41,12 @@ export default async function EditarCategoriaPage({
   if (!categoria || categoria.deleted_at != null) notFound();
 
   const sp = await searchParams;
-  const errorMsg = sp.error ?? null;
+  const estado = estadoDoFormulario(sp);
+  const v = estado.valores;
+  const campo = estado.campo;
+  const erroCurto = estado.error ? estado.error.replace(/^[^:]+:\s*/u, '') : undefined;
+  const erroDe = (name: string) => (campo === name ? erroCurto : undefined);
+  const errorMsg = estado.error ?? null;
 
   return (
     <>
@@ -64,8 +72,10 @@ export default async function EditarCategoriaPage({
                   required
                   minLength={2}
                   maxLength={80}
-                  defaultValue={categoria.nome}
+                  defaultValue={v.nome ?? categoria.nome}
                   autoComplete="off"
+                  error={erroDe('nome')}
+                  autoFocus={campo === 'nome'}
                 />
               </div>
 
@@ -74,7 +84,9 @@ export default async function EditarCategoriaPage({
                   label="Ícone (opcional)"
                   name="icone"
                   maxLength={50}
-                  defaultValue={categoria.icone ?? ''}
+                  defaultValue={v.icone ?? categoria.icone ?? ''}
+                  error={erroDe('icone')}
+                  autoFocus={campo === 'icone'}
                   placeholder="Ex: wrench, hard-hat, package"
                   autoComplete="off"
                   hint="Nome do icone Lucide (ex: 'wrench', 'hard-hat'). Deixe vazio para sem icone."
@@ -106,7 +118,7 @@ export default async function EditarCategoriaPage({
                     type="radio"
                     name="cor"
                     value={cor.value}
-                    defaultChecked={categoria.cor === cor.value}
+                    defaultChecked={(v.cor ?? categoria.cor) === cor.value}
                   />
                   <span
                     className="categoria-cor-radio__swatch"
@@ -118,6 +130,8 @@ export default async function EditarCategoriaPage({
               ))}
             </div>
           </fieldset>
+
+          <p className="form-layout__obrigatorio">* obrigatório</p>
 
           <div className="form-layout__actions">
             <Link href="/config/categorias" className="form-layout__cancel">

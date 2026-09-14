@@ -32,6 +32,8 @@ import { DonutCategoria } from './charts/donut-categoria';
 import { LineAcumulado } from './charts/line-acumulado';
 import './painel.css';
 
+export const metadata = { title: 'Painel' };
+
 /**
  * Cartão de KPI.
  *
@@ -171,7 +173,7 @@ export default async function PainelPage() {
 
   const email = userR.data.user?.email ?? 'voce';
   const primeiroNomeRaw = email.split('@')[0]?.split('.')[0] ?? 'voce';
-  const primeiroNome = primeiroNomeRaw[0]!.toUpperCase() + primeiroNomeRaw.slice(1);
+  const primeiroNome = (primeiroNomeRaw[0] ?? '').toUpperCase() + primeiroNomeRaw.slice(1);
 
   // Data e saudação em hora de Brasília: o runtime da Vercel é UTC, e às
   // 22h o painel dizia "Bom dia" com a data de amanhã.

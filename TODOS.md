@@ -13,15 +13,15 @@
   tempo do passo 3 do webhook (E3, `maxDuration`).
 - [x] **G3 Erro do classificador visível** — feito em `920a7cf`: exceção marca a mensagem
   como `erro` com texto humano; antes ficava `processando` para sempre.
-- [ ] **G5 Mídia confirmada vira `documentos`** — `midia_storage_path` só é escrito; a
+- [x] **G5 Mídia confirmada vira `documentos`** — feito em `0ea5eb7`. — `midia_storage_path` só é escrito; a
   automação de cobrança cobraria o fornecedor pela nota que ele acabou de mandar.
   Copiar para `documentos/<pagamento_id>/` fora de `obterOuCriarPagamento`, com
   idempotência por `idx_documentos_hash`. Fonte: ceo-review D6/E5. Depois de 16/09.
-- [ ] **G1/G2 Primeiro contato com o provider é mudo** — 400 do Zod sem log
+- [x] **G1/G2 Primeiro contato com o provider é mudo** — feito em `0ea5eb7`. — 400 do Zod sem log
   (`webhooks/uazapi/route.ts:54-64`) e HMAC nunca provado com payload real. Gravar o
   *shape* do payload rejeitado (nunca o corpo: é pré-autorizados) numa tabela ou log
   estruturado; adaptador se o formato divergir. Fonte: ceo-review D5/D7/E6/E7.
-- [ ] **G7 Falha transitória do classificador deixa o remetente sem resposta** — com
+- [x] **G7 Falha transitória do classificador deixa o remetente sem resposta** — feito em `0ea5eb7`. — com
   429/timeout a mensagem vira `erro` (visível no painel) mas o WhatsApp fica mudo e o
   retry do provider morre no dedupe. Enviar "não consegui processar, reenvie" no catch
   e/ou distinguir erro retentável. Fonte: revisão adversarial do PR #22. Depois de 16/09.
@@ -46,14 +46,14 @@
   Falta só a chave `FILA_WHATSAPP=true` na Vercel (ação humana, depois de 16/09). — `LOTE_POR_FILA=1`
   + cron por minuto = 1 mensagem/min; `pg_net` desiste em 5 s ignorando a resposta.
   Antes de criar `FILA_WHATSAPP=true` na Vercel. Fonte: eng-review A2/D7. CC ~30 min.
-- [ ] **T4 PR #7 (`feat/emitir-eventos`)** — `merge-base` = `76fe5a9`, seis PRs atrás;
+- [x] **T4 PR #7 (`feat/emitir-eventos`)** — feito em `2eefd80`. — `merge-base` = `76fe5a9`, seis PRs atrás;
   `bus.ts:97` usa `console.error` (proibido desde o PR #13); rollback de documentos
   colide com o service role do PR #21. Remerge + `log.erro` + `bus.test.ts`. Só depois
   de 16/09. Fonte: eng-review A1/D8.
 
 ## P2 — qualidade e segurança
 
-- [ ] **T5 Zod em `dados_extraidos`** — `confirmacoes.ts:103-113`, `classify-and-persist.ts:
+- [x] **T5 Zod em `dados_extraidos`** — feito em `0ea5eb7`. — `confirmacoes.ts:103-113`, `classify-and-persist.ts:
   132-134`, `pendentes.ts:75,104` fazem cast sem validar; `valor:"1.200"` vira erro cru
   do Postgres. Antes de `IA_PROVIDER=anthropic`. Fonte: eng-review C3/D9.
 - [ ] **T6 Token da planilha como hash** — `planilha.ts:93-98` compara token em claro;
@@ -78,9 +78,9 @@
 - [ ] **T11 `search_path=''` nas 21 SECURITY DEFINER** — por família (auth/audit, fila,
   rag, saúde), cada uma com `--ensaio`; `fila_*` dependem de `pgmq`/`net`/`vault`.
   Por último, depois de T7 e T10. Fonte: eng-review A4, PLANO-BANCO item 5.
-- [ ] **T12 `buscarAutorizado` por `telefone_norm`** e `getUsuario` sem listar todos.
+- [x] **T12 `buscarAutorizado` por `telefone_norm`** — feito em `0ea5eb7`. e `getUsuario` sem listar todos.
   Fonte: eng-review C8/C5.
-- [ ] **T13 Resposta best-effort quando `acao:'erro'`** — `webhooks/uazapi/route.ts:
+- [x] **T13 Resposta best-effort quando `acao:'erro'`** — feito em `0ea5eb7`. — `webhooks/uazapi/route.ts:
   122-127` responde 200 e o remetente recebe silêncio. Fonte: eng-review 6.3 #3.
 - [ ] **Fase 6 M0: HTTPS obrigatório** — IP fixo de saída não existe na Vercel; tráfego
   de 2.955 CPFs em HTTP é problema LGPD. `erp_sync` entra na whitelist `fila_valida`.
@@ -88,40 +88,40 @@
 
 ## QA ao vivo (2026-09-12) — adiados com contexto
 
-- [ ] **T-QA-3 Rótulos de status no formulário de pagamento** — `pagamento-form.tsx`:
+- [x] **T-QA-3 Rótulos de status no formulário de pagamento** — feito em `d52d3e7`. — `pagamento-form.tsx`:
   `<select name="status_pagto">` lista "Confirmado/Aguardando/Recusado/Erro"; usar
   `PAGAMENTO_STATUS_LABEL` de `lib/status-labels.ts`. CC ~10 min.
 - [x] **T-QA-5 Contraste dos tokens de status** — feito em `97ba3d6` (badge sucesso,
   `--danger`, literal `#ef4444`). Falta só o `--warning` sobre creme.
-- [ ] **T-QA-6 Erro de Zod preserva o formulário** — actions fazem `redirect('?error=…')`
+- [x] **T-QA-6 Erro de Zod preserva o formulário** — feito em `e210db9`. — actions fazem `redirect('?error=…')`
   e o usuário perde o que digitou. `useActionState` devolvendo `{ erro, valores }`.
   CC ~1 h (todas as actions).
-- [ ] **T-QA-7 `notFound()` com HTTP 200** em `/pagamentos/[id]` e `/documentos/[id]`
+- [x] **T-QA-7 `notFound()` com HTTP 200** — feito em `e210db9`. em `/pagamentos/[id]` e `/documentos/[id]`
   (`/obras/[id]` devolve 404). Afeta cache/monitoramento. CC ~30 min.
-- [ ] **T-QA-8 `<title>` por página** (só `/login` tem) + acento em "Convidar novo usuário".
-- [ ] **T-QA-9 TTFB de `/pagamentos` ~1 s** (4 consultas sequenciais) — `Promise.all` ou
+- [x] **T-QA-8 `<title>` por página** — feito em `e351931`. (só `/login` tem) + acento em "Convidar novo usuário".
+- [x] **T-QA-9 TTFB de `/pagamentos` ~1 s** — feito em `d52d3e7`. (4 consultas sequenciais) — `Promise.all` ou
   RPC; reforça a região `gru1`.
-- [ ] **T-QA-10 Tabela de automações no celular** — virar cartão como o `DataTable`.
-- [ ] **T-QA-11 Busca de pagamentos por descrição/observações** — `columnVisibility` no
+- [x] **T-QA-10 Tabela de automações no celular** — feito em `991e170`. — virar cartão como o `DataTable`.
+- [x] **T-QA-11 Busca de pagamentos por descrição/observações** — feito em `d52d3e7`. — `columnVisibility` no
   `DataTable` + colunas ocultas com `accessorFn`.
 - [ ] **T-QA-12 Testes de regressão de UI** — Vitest roda em `node`; opções: jsdom +
   testing-library para `DataTable`, ou axe-core no E2E do Playwright.
 
 ## Design review (2026-09-12) — adiados [DEPOIS DE 16/09]
 
-- [ ] **A4 Confirmar em Pendentes com obra/valor faltando** — desabilitar até completar e
+- [x] **A4 Confirmar em Pendentes com obra/valor faltando** — feito em `15e44f4`. — desabilitar até completar e
   trocar por "Completar e confirmar" abrindo `/pagamentos/novo` pré-preenchido. É o
   falso-sim pelo painel.
-- [ ] **A7 Documentos com duas buscas e três modos** — uma busca só + "Agrupar por".
-- [ ] **A8 Automações: um campo por parâmetro** gerado do `configSchema` (T1) em vez de
+- [x] **A7 Documentos com duas buscas e três modos** — feito em `991e170`. — uma busca só + "Agrupar por".
+- [x] **A8 Automações: um campo por parâmetro** — feito em `991e170`. gerado do `configSchema` (T1) em vez de
   JSON em textarea; cartão por regra no celular.
-- [ ] **M4 Pendentes: agrupar sem-nota por fornecedor** com contagem e soma; vermelho só
+- [x] **M4 Pendentes: agrupar sem-nota por fornecedor** — feito em `15e44f4`. com contagem e soma; vermelho só
   acima de 30 dias.
-- [ ] **M5 Valor em R$ com `inputMode="decimal"` e máscara pt-BR** (`type=number` recusa
+- [x] **M5 Valor em R$ com `inputMode="decimal"` e máscara pt-BR** — feito em `d52d3e7`. (`type=number` recusa
   "1.250,00" no Android).
-- [ ] **M6 Obrigatoriedade consistente** (asterisco no `Nome` da obra; rodapé único).
-- [ ] **M9 Auditoria legível**: agrupar por dia, frase humana, paginar por 50.
-- [ ] **M12 Busca ⌘K numa RPC `busca_global`** (uma viagem em vez de três).
+- [x] **M6 Obrigatoriedade consistente** — feito em `e210db9`. (asterisco no `Nome` da obra; rodapé único).
+- [x] **M9 Auditoria legível** — feito em `15e44f4`.: agrupar por dia, frase humana, paginar por 50.
+- [x] **M12 Busca ⌘K numa RPC `busca_global`** — feito em `0971f4d`. (uma viagem em vez de três).
 - [ ] **A1 Números reais no login** (contagens por service_role), se quiser números.
 
 ## Decisões humanas em aberto (não são código)

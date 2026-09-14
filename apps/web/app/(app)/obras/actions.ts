@@ -8,6 +8,26 @@ import { erroDeEscrita } from '@/lib/supabase/escrita';
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { type Rotulos, voltarComErro } from '../_shared/form-erros';
+
+/** `name` dos inputs → rótulo visível (o banner diz "Nome: obrigatório", não "nome: Required"). */
+const ROTULOS_OBRA: Rotulos = {
+  nome: 'Nome',
+  cliente: 'Cliente',
+  tipo: 'Tipo',
+  status: 'Status',
+  orcamento: 'Orçamento',
+  data_inicio: 'Data início',
+  data_prevista_fim: 'Data prevista fim',
+  'endereco.cep': 'CEP',
+  'endereco.rua': 'Rua',
+  'endereco.numero': 'Número',
+  'endereco.bairro': 'Bairro',
+  'endereco.cidade': 'Cidade',
+  'endereco.uf': 'UF',
+  apelidos: 'Apelidos',
+  observacoes: 'Observações',
+};
 
 function formToRecord(fd: FormData): Record<string, unknown> {
   // Extrai endereco.<field> em objeto aninhado; resto raso.
@@ -29,9 +49,7 @@ function formToRecord(fd: FormData): Record<string, unknown> {
 export async function createObra(formData: FormData) {
   const parsed = ObraCreateSchema.safeParse(formToRecord(formData));
   if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    const msg = first ? `${first.path.join('.')}: ${first.message}` : 'Dados inválidos';
-    redirect(`/obras/novo?error=${encodeURIComponent(msg)}`);
+    voltarComErro('/obras/novo', parsed.error, { rotulos: ROTULOS_OBRA, valores: formData });
   }
 
   const supabase = await createClient();
@@ -54,7 +72,7 @@ export async function createObra(formData: FormData) {
     .single();
 
   if (error) {
-    redirect(`/obras/novo?error=${encodeURIComponent(mapDbError(error))}`);
+    voltarComErro('/obras/novo', mapDbError(error), { valores: formData });
   }
 
   revalidatePath('/obras');
@@ -66,10 +84,11 @@ export async function updateObra(formData: FormData) {
   const raw = formToRecord(formData);
   const parsed = ObraUpdateSchema.safeParse(raw);
   if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    const msg = first ? `${first.path.join('.')}: ${first.message}` : 'Dados inválidos';
     const id = typeof raw.id === 'string' ? raw.id : '';
-    redirect(`/obras/${id}/editar?error=${encodeURIComponent(msg)}`);
+    voltarComErro(`/obras/${id}/editar`, parsed.error, {
+      rotulos: ROTULOS_OBRA,
+      valores: formData,
+    });
   }
 
   const { id, ...rest } = parsed.data;
@@ -95,7 +114,7 @@ export async function updateObra(formData: FormData) {
     .eq('id', id);
 
   if (error) {
-    redirect(`/obras/${id}/editar?error=${encodeURIComponent(mapDbError(error))}`);
+    voltarComErro(`/obras/${id}/editar`, mapDbError(error), { valores: formData });
   }
 
   revalidatePath('/obras');

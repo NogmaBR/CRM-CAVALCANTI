@@ -1,7 +1,9 @@
 import { TopBar } from '@/components/layout/topbar';
-import { listObras } from '@/lib/data/obras';
 import { listFornecedores } from '@/lib/data/fornecedores';
+import { listObras } from '@/lib/data/obras';
 import { RelatoriosForms } from './relatorios-forms';
+
+export const metadata = { title: 'Relatórios' };
 
 export default async function RelatoriosPage() {
   const [obras, fornecedores] = await Promise.all([

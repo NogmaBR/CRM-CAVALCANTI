@@ -1,5 +1,7 @@
 import { redirect } from 'next/navigation';
 
+export const metadata = { title: 'Notificação' };
+
 /**
  * Rota de notificações por email removida do escopo do projeto
  * (automação de email não faz parte do contratado — alinhamento 16/09).

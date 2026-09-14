@@ -1,6 +1,7 @@
 'use server';
 
 import { validarConfig } from '@/lib/automations/config';
+import { descreverCampos, montarConfigDosCampos } from '@/lib/automations/config-campos';
 import { executarAgendadas } from '@/lib/automations/engine';
 import { buscarAutomacao } from '@/lib/automations/registry';
 import { mapDbErrorWithContext } from '@/lib/schemas/errors';
@@ -114,39 +115,46 @@ export async function salvarConfigAutomacao(formData: FormData) {
   await assertPodeConfigurar();
 
   const chave = String(formData.get('chave') ?? '').trim();
-  const bruto = String(formData.get('config') ?? '').trim();
 
-  if (!buscarAutomacao(chave)) {
+  const automacao = buscarAutomacao(chave);
+  if (!automacao) {
     redirect(`${BASE_PATH}?error=${encodeURIComponent(`"${chave}" não existe no código.`)}`);
   }
 
+  // Dois formatos de entrada, um contrato: o painel manda um input por
+  // parâmetro (`campo__<chave>`), e quem ainda manda `config` em JSON
+  // (script, formulário antigo) continua funcionando. Os dois desembocam no
+  // mesmo `validarConfig`.
+  const brutoJson = formData.get('config');
   let config: unknown;
-  try {
-    config = JSON.parse(bruto || '{}');
-  } catch {
-    redirect(
-      `${BASE_PATH}?error=${encodeURIComponent(
-        'JSON inválido. Exemplo do formato esperado: {"dias_sem_documento": 7}',
-      )}`,
-    );
+  if (brutoJson !== null) {
+    try {
+      config = JSON.parse(String(brutoJson).trim() || '{}');
+    } catch {
+      redirect(
+        `${BASE_PATH}?error=${encodeURIComponent(
+          'JSON inválido. Exemplo do formato esperado: {"dias_sem_documento": 7}',
+        )}`,
+      );
+    }
+    if (typeof config !== 'object' || config === null || Array.isArray(config)) {
+      redirect(
+        `${BASE_PATH}?error=${encodeURIComponent('A configuração precisa ser um objeto JSON.')}`,
+      );
+    }
+  } else {
+    config = montarConfigDosCampos(formData, descreverCampos(automacao));
   }
 
-  if (typeof config !== 'object' || config === null || Array.isArray(config)) {
-    redirect(
-      `${BASE_PATH}?error=${encodeURIComponent('A configuração precisa ser um objeto JSON.')}`,
-    );
-  }
-
-  const automacao = buscarAutomacao(chave);
-  const validada = automacao ? validarConfig(automacao, config) : null;
-  if (validada && !validada.ok) {
+  const validada = validarConfig(automacao, config);
+  if (!validada.ok) {
     redirect(`${BASE_PATH}?error=${encodeURIComponent(`Configuração recusada: ${validada.erro}`)}`);
   }
 
   const supabase = await createClient();
   const { error } = await supabase
     .from('automation_rules')
-    .update({ config: config as never })
+    .update({ config: validada.config as never })
     .eq('chave', chave);
 
   if (error) {

@@ -1,9 +1,11 @@
-import Link from 'next/link';
-import { Plus } from 'lucide-react';
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
-import { listObras, type Obra } from '@/lib/data/obras';
-import { ObrasTable } from './obras-table';
+import { type Obra, listObras } from '@/lib/data/obras';
+import { Plus } from 'lucide-react';
+import Link from 'next/link';
+import { ObrasTable } from '../obras-table';
+
+export const metadata = { title: 'Obras' };
 
 const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
   { value: '', label: 'Todas' },

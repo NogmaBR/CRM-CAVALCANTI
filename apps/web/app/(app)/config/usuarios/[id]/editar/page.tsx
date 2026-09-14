@@ -6,7 +6,10 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { alterarPapelUsuario } from '../../actions';
 import '../../usuarios.css';
+import { estadoDoFormulario } from '../../../../_shared/form-erros';
 import '../../../../_shared/form-layout.css';
+
+export const metadata = { title: 'Editar usuário' };
 
 function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return 'Nunca';
@@ -40,7 +43,7 @@ export default async function EditarPapelPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; campo?: string; v?: string }>;
 }) {
   const supabase = await createClient();
   const { data: userData } = await supabase.auth.getUser();
@@ -68,7 +71,10 @@ export default async function EditarPapelPage({
   }
 
   const sp = await searchParams;
-  const errorMsg = sp.error ?? null;
+  const estado = estadoDoFormulario(sp);
+  const v = estado.valores;
+  const campo = estado.campo;
+  const errorMsg = estado.error ?? null;
 
   const papeis = Object.entries(PAPEL_LABELS) as Array<[keyof typeof PAPEL_LABELS, string]>;
 
@@ -116,15 +122,21 @@ export default async function EditarPapelPage({
 
             <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <label className="form-layout__label" htmlFor="papel-select">
+                <label
+                  className="form-layout__label form-layout__label--required"
+                  htmlFor="papel-select"
+                >
                   Novo papel
                 </label>
                 <select
                   id="papel-select"
                   name="papel"
                   className="form-layout__select"
-                  defaultValue={usuario.papel}
+                  defaultValue={v.papel ?? usuario.papel}
                   required
+                  aria-invalid={campo === 'papel' ? true : undefined}
+                  // biome-ignore lint/a11y/noAutofocus: foco no campo que a action recusou (T-QA-6)
+                  autoFocus={campo === 'papel'}
                 >
                   {papeis.map(([value, label]) => (
                     <option key={value} value={value}>
@@ -143,6 +155,8 @@ export default async function EditarPapelPage({
                 </div>
               </div>
             </fieldset>
+
+            <p className="form-layout__obrigatorio">* obrigatório</p>
 
             <div className="form-layout__actions">
               <Link href="/config/usuarios" className="form-layout__cancel">

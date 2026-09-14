@@ -16,6 +16,8 @@ import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import './config.css';
 
+export const metadata = { title: 'Configurações' };
+
 /**
  * Hub de configurações.
  *

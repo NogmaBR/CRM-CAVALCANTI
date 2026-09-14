@@ -5,10 +5,12 @@ import { listFornecedores } from '@/lib/data/fornecedores';
 import { listObras } from '@/lib/data/obras';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
-import { DocumentosAgrupados } from './documentos-agrupados';
-import { DocumentosFilters } from './documentos-filters';
-import { DocumentosTable } from './documentos-table';
-import './documentos.css';
+import { DocumentosAgrupados } from '../documentos-agrupados';
+import { DocumentosTable } from '../documentos-table';
+import { DocumentosToolbar } from '../documentos-toolbar';
+import '../documentos.css';
+
+export const metadata = { title: 'Documentos' };
 
 const TIPO_OPTIONS: Array<{ value: string; label: string }> = [
   { value: '', label: 'Todos' },
@@ -93,12 +95,6 @@ export default async function DocumentosPage({
             .some((v) => normalizar(v).includes(alvo)),
         );
 
-  const VISOES = [
-    { value: '', label: 'Lista' },
-    { value: 'fornecedor', label: 'Por fornecedor' },
-    { value: 'obra', label: 'Por obra' },
-  ] as const;
-
   return (
     <>
       <TopBar
@@ -131,55 +127,24 @@ export default async function DocumentosPage({
           })}
         </nav>
 
-        <DocumentosFilters
+        <DocumentosToolbar
           obras={obras.map((o) => ({ value: o.id, label: o.nome }))}
-          selectedObraId={obraId}
+          tipo={tipo}
+          obraId={obraId}
+          agrupar={agrupar}
+          busca={busca}
         />
 
-        {/* Form GET simples: busca sem client component nenhum. */}
-        <form method="get" className="docs-busca" role="search">
-          {tipo ? <input type="hidden" name="tipo" value={tipo} /> : null}
-          {obraId ? <input type="hidden" name="obra_id" value={obraId} /> : null}
-          {agrupar ? <input type="hidden" name="agrupar" value={agrupar} /> : null}
-          <input
-            className="docs-busca__input"
-            type="search"
-            name="q"
-            defaultValue={busca}
-            placeholder="Buscar por arquivo, nº da NF, fornecedor ou obra"
-            aria-label="Buscar documentos"
-          />
-          <button type="submit" className="docs-busca__botao">
-            Buscar
-          </button>
-          {busca ? (
-            <Link href={buildHref({ q: '' })} className="docs-busca__limpar">
-              Limpar
-            </Link>
-          ) : null}
-        </form>
-
-        <nav className="obras-filter-tabs" aria-label="Modo de visualização">
-          {VISOES.map((v) => {
-            const active = v.value === agrupar;
-            return (
-              <Link
-                key={v.value || 'lista'}
-                href={buildHref({ agrupar: v.value })}
-                className={active ? 'obras-filter-tab is-active' : 'obras-filter-tab'}
-                aria-current={active ? 'page' : undefined}
-              >
-                {v.label}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div style={{ marginTop: 24 }}>
+        <div className="docs-lista">
           {agrupar ? (
             <DocumentosAgrupados documentos={filtrados} por={agrupar} />
           ) : (
-            <DocumentosTable documentos={filtrados} obras={obras} fornecedores={fornecedores} />
+            <DocumentosTable
+              documentos={filtrados}
+              obras={obras}
+              fornecedores={fornecedores}
+              filtrando={busca !== '' || obraId !== ''}
+            />
           )}
         </div>
       </div>

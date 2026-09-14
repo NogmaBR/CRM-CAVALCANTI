@@ -4,6 +4,8 @@ import type { Categoria } from '@/lib/data/categorias';
 import type { Fornecedor } from '@/lib/data/fornecedores';
 import type { Obra } from '@/lib/data/obras';
 import type { Pagamento } from '@/lib/data/pagamentos';
+import { PAGAMENTO_STATUS_LABEL } from '@/lib/status-labels';
+import { formatarValorBR } from '@/lib/util/moeda';
 import Link from 'next/link';
 import '../_shared/form-layout.css';
 
@@ -12,6 +14,14 @@ function todayISO(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+/**
+ * Formulário de pagamento (criar e editar).
+ *
+ * `valores` é o que a pessoa digitou na tentativa anterior (ou o que veio
+ * pré-preenchido de /pendentes) e vence `initial`; `campo` é o input que o
+ * servidor apontou como errado — ele recebe a borda vermelha, a mensagem
+ * curta e o foco. Ver `_shared/form-erros.ts`.
+ */
 export function PagamentoForm({
   mode,
   initial,
@@ -21,6 +31,8 @@ export function PagamentoForm({
   categorias,
   action,
   error,
+  campo,
+  valores = {},
 }: {
   mode: 'create' | 'edit';
   initial?: Pagamento;
@@ -30,15 +42,26 @@ export function PagamentoForm({
   categorias: Categoria[];
   action: (formData: FormData) => Promise<void>;
   error?: string;
+  campo?: string;
+  valores?: Record<string, string>;
 }) {
   const submitLabel = mode === 'create' ? 'Registrar pagamento' : 'Salvar alterações';
   const cancelHref = mode === 'create' ? '/pagamentos' : `/pagamentos/${initial?.id ?? ''}`;
 
-  const valorDefault = initial?.valor != null ? String(initial.valor) : '';
-  const dataDefault = initial?.data_pagamento ?? todayISO();
-  const origemDefault = initial?.origem ?? 'manual';
-  const statusDefault = initial?.status_pagto ?? 'confirmado';
-  const obraDefault = initial?.obra_id ?? defaultObraId ?? '';
+  // O banner mostra "Rótulo: mensagem"; junto ao campo basta a mensagem.
+  const mensagemCurta = error ? error.replace(/^[^:]+:\s*/u, '') : undefined;
+  const erroDe = (name: string) => (campo === name ? mensagemCurta : undefined);
+
+  const valorDefault =
+    valores.valor ?? (initial?.valor != null ? formatarValorBR(initial.valor) : '');
+  const dataDefault = valores.data_pagamento ?? initial?.data_pagamento ?? todayISO();
+  const origemDefault = valores.origem ?? initial?.origem ?? 'manual';
+  const statusDefault = valores.status_pagto ?? initial?.status_pagto ?? 'confirmado';
+  const obraDefault = valores.obra_id ?? initial?.obra_id ?? defaultObraId ?? '';
+  const fornecedorDefault = valores.fornecedor_id ?? initial?.fornecedor_id ?? '';
+  const categoriaDefault = valores.categoria_id ?? initial?.categoria_id ?? '';
+  const descricaoDefault = valores.descricao ?? initial?.descricao ?? '';
+  const observacoesDefault = valores.observacoes ?? initial?.observacoes ?? '';
 
   // Filtro: obras ativas + a obra atual do initial (mesmo se arquivada)
   const obrasVisiveis = obras.filter(
@@ -72,6 +95,10 @@ export function PagamentoForm({
               required
               defaultValue={obraDefault}
               className="form-layout__select"
+              aria-invalid={campo === 'obra_id' || undefined}
+              aria-describedby={campo === 'obra_id' ? 'pag-obra-erro' : undefined}
+              // biome-ignore lint/a11y/noAutofocus: foco vai para o campo que o servidor recusou
+              autoFocus={campo === 'obra_id'}
             >
               <option value="" disabled>
                 — selecione uma obra —
@@ -83,6 +110,11 @@ export function PagamentoForm({
                 </option>
               ))}
             </select>
+            {erroDe('obra_id') ? (
+              <span id="pag-obra-erro" className="form-layout__campo-erro">
+                {erroDe('obra_id')}
+              </span>
+            ) : null}
           </div>
           <div className="form-layout__field">
             <label className="form-layout__label" htmlFor="pag-fornecedor">
@@ -91,8 +123,11 @@ export function PagamentoForm({
             <select
               id="pag-fornecedor"
               name="fornecedor_id"
-              defaultValue={initial?.fornecedor_id ?? ''}
+              defaultValue={fornecedorDefault}
               className="form-layout__select"
+              aria-invalid={campo === 'fornecedor_id' || undefined}
+              // biome-ignore lint/a11y/noAutofocus: foco vai para o campo que o servidor recusou
+              autoFocus={campo === 'fornecedor_id'}
             >
               <option value="">— sem fornecedor —</option>
               {fornecedoresVisiveis.map((f) => (
@@ -102,6 +137,9 @@ export function PagamentoForm({
                 </option>
               ))}
             </select>
+            {erroDe('fornecedor_id') ? (
+              <span className="form-layout__campo-erro">{erroDe('fornecedor_id')}</span>
+            ) : null}
           </div>
           <div className="form-layout__field">
             <label className="form-layout__label" htmlFor="pag-categoria">
@@ -110,8 +148,11 @@ export function PagamentoForm({
             <select
               id="pag-categoria"
               name="categoria_id"
-              defaultValue={initial?.categoria_id ?? ''}
+              defaultValue={categoriaDefault}
               className="form-layout__select"
+              aria-invalid={campo === 'categoria_id' || undefined}
+              // biome-ignore lint/a11y/noAutofocus: foco vai para o campo que o servidor recusou
+              autoFocus={campo === 'categoria_id'}
             >
               <option value="">— sem categoria —</option>
               {categorias.map((c) => (
@@ -120,6 +161,9 @@ export function PagamentoForm({
                 </option>
               ))}
             </select>
+            {erroDe('categoria_id') ? (
+              <span className="form-layout__campo-erro">{erroDe('categoria_id')}</span>
+            ) : null}
           </div>
         </div>
       </fieldset>
@@ -128,16 +172,23 @@ export function PagamentoForm({
         <legend className="form-layout__legend">Valores & data</legend>
         <div className="form-layout__grid">
           <div className="form-layout__field">
+            {/*
+              Texto livre, não `type="number"`: no Android o campo numérico
+              recusa "1.250,00" e a vírgula depende do teclado (design review,
+              M5). `parseValorBR` lê o que vier no servidor.
+            */}
             <Input
               label="Valor (R$)"
               name="valor"
-              type="number"
-              min="0"
-              step="0.01"
+              type="text"
+              inputMode="decimal"
               required
               defaultValue={valorDefault}
-              placeholder="0,00"
-              inputMode="decimal"
+              placeholder="1.250,00"
+              hint="Use vírgula para centavos"
+              error={erroDe('valor')}
+              autoComplete="off"
+              autoFocus={campo === 'valor'}
             />
           </div>
           <div className="form-layout__field">
@@ -147,23 +198,33 @@ export function PagamentoForm({
               type="date"
               required
               defaultValue={dataDefault}
+              error={erroDe('data_pagamento')}
+              autoFocus={campo === 'data_pagamento'}
             />
           </div>
           <div className="form-layout__field">
             <label className="form-layout__label" htmlFor="pag-status">
               Status
             </label>
+            {/* Mesmo vocabulário dos filtros e badges (`status-labels.ts`, QA ISSUE-003). */}
             <select
               id="pag-status"
               name="status_pagto"
               defaultValue={statusDefault}
               className="form-layout__select"
+              aria-invalid={campo === 'status_pagto' || undefined}
+              // biome-ignore lint/a11y/noAutofocus: foco vai para o campo que o servidor recusou
+              autoFocus={campo === 'status_pagto'}
             >
-              <option value="confirmado">Confirmado</option>
-              <option value="aguardando">Aguardando</option>
-              <option value="recusado">Recusado</option>
-              <option value="erro">Erro</option>
+              {Object.entries(PAGAMENTO_STATUS_LABEL).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
             </select>
+            {erroDe('status_pagto') ? (
+              <span className="form-layout__campo-erro">{erroDe('status_pagto')}</span>
+            ) : null}
           </div>
         </div>
       </fieldset>
@@ -175,9 +236,11 @@ export function PagamentoForm({
             <Input
               label="Descrição"
               name="descricao"
-              defaultValue={initial?.descricao ?? ''}
+              defaultValue={descricaoDefault}
               placeholder="Ex: NF 4592 - Cimento portland CP-II"
               maxLength={500}
+              error={erroDe('descricao')}
+              autoFocus={campo === 'descricao'}
             />
           </div>
           <div className="form-layout__field form-layout__field--full">
@@ -187,12 +250,18 @@ export function PagamentoForm({
             <textarea
               id="pag-obs"
               name="observacoes"
-              defaultValue={initial?.observacoes ?? ''}
+              defaultValue={observacoesDefault}
               rows={4}
               maxLength={2000}
               className="form-layout__textarea"
               placeholder="Notas internas sobre este pagamento..."
+              aria-invalid={campo === 'observacoes' || undefined}
+              // biome-ignore lint/a11y/noAutofocus: foco vai para o campo que o servidor recusou
+              autoFocus={campo === 'observacoes'}
             />
+            {erroDe('observacoes') ? (
+              <span className="form-layout__campo-erro">{erroDe('observacoes')}</span>
+            ) : null}
           </div>
         </div>
       </fieldset>

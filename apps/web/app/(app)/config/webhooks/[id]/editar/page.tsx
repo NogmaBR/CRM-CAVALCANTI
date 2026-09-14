@@ -6,7 +6,10 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { atualizarWebhook, regenerarSecret } from '../../actions';
 import '../../webhooks.css';
+import { estadoDoFormulario } from '@/app/(app)/_shared/form-erros';
 import '@/app/(app)/_shared/form-layout.css';
+
+export const metadata = { title: 'Editar webhook' };
 
 const EVENTOS = [
   {
@@ -56,7 +59,7 @@ export default async function EditarWebhookPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; campo?: string; v?: string }>;
 }) {
   const supabase = await createClient();
   const { data: userData } = await supabase.auth.getUser();
@@ -73,7 +76,16 @@ export default async function EditarWebhookPage({
 
   const { id } = await params;
   const sp = await searchParams;
-  const errorMsg = sp.error ?? null;
+  const estado = estadoDoFormulario(sp);
+  const v = estado.valores;
+  const campo = estado.campo;
+  const erroCurto = estado.error ? estado.error.replace(/^[^:]+:\s*/u, '') : undefined;
+  const erroDe = (name: string) => (campo === name ? erroCurto : undefined);
+  // `eventos` são checkboxes múltiplos; a action os junta por vírgula para
+  // sobreviverem à URL (o codificador guarda um valor por chave).
+  const eventosPreservados =
+    v.eventos !== undefined ? new Set(v.eventos.split(',').filter(Boolean)) : null;
+  const errorMsg = estado.error ?? null;
 
   const { data: wh } = await supabase
     .from('webhooks_outbound')
@@ -110,8 +122,10 @@ export default async function EditarWebhookPage({
                   required
                   minLength={3}
                   maxLength={80}
-                  defaultValue={wh.nome}
+                  defaultValue={v.nome ?? wh.nome}
                   autoComplete="off"
+                  error={erroDe('nome')}
+                  autoFocus={campo === 'nome'}
                 />
               </div>
               <div className="form-layout__field form-layout__field--wide">
@@ -120,9 +134,11 @@ export default async function EditarWebhookPage({
                   name="url"
                   type="url"
                   required
-                  defaultValue={wh.url}
+                  defaultValue={v.url ?? wh.url}
                   autoComplete="off"
                   hint="Deve comecar com https:// (ou http:// para testes locais)"
+                  error={erroDe('url')}
+                  autoFocus={campo === 'url'}
                 />
               </div>
             </div>
@@ -148,7 +164,7 @@ export default async function EditarWebhookPage({
                     type="checkbox"
                     name="eventos"
                     value={ev.value}
-                    defaultChecked={eventosAtivos.has(ev.value)}
+                    defaultChecked={(eventosPreservados ?? eventosAtivos).has(ev.value)}
                   />
                   <div className="wh-evento-info">
                     <span className="wh-evento-name">{ev.label}</span>
@@ -162,7 +178,12 @@ export default async function EditarWebhookPage({
           <fieldset className="form-layout__section">
             <legend className="form-layout__legend">Disponibilidade</legend>
             <label className="wh-ativo-row">
-              <input type="checkbox" name="ativo" value="on" defaultChecked={wh.ativo} />
+              <input
+                type="checkbox"
+                name="ativo"
+                value="on"
+                defaultChecked={eventosPreservados ? v.ativo != null : wh.ativo}
+              />
               <div>
                 <div className="wh-ativo-row__label">Webhook ativo</div>
                 <div className="wh-ativo-row__desc">
@@ -171,6 +192,8 @@ export default async function EditarWebhookPage({
               </div>
             </label>
           </fieldset>
+
+          <p className="form-layout__obrigatorio">* obrigatório</p>
 
           <div className="form-layout__actions">
             <Link href="/config/webhooks" className="form-layout__cancel">
