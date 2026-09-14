@@ -4,13 +4,13 @@ import { Card } from '@/components/nogma/Card';
 import { listCategorias } from '@/lib/data/categorias';
 import { listFornecedores } from '@/lib/data/fornecedores';
 import { listObras } from '@/lib/data/obras';
-import { type Pagamento, listPagamentos, sumPagamentosBy } from '@/lib/data/pagamentos';
+import { listPagamentos, sumPagamentosBy } from '@/lib/data/pagamentos';
 import { formatBRL } from '@/lib/schemas/pagamento';
 import { PAGAMENTO_STATUS_FILTROS, type PagamentoStatus } from '@/lib/status-labels';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
-import { PagamentosFilters } from './pagamentos-filters';
-import { PagamentosTable } from './pagamentos-table';
+import { PagamentosFilters } from '../pagamentos-filters';
+import { PagamentosTable } from '../pagamentos-table';
 
 export const metadata = { title: 'Pagamentos' };
 
@@ -24,6 +24,12 @@ const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
 const STATUS_VALIDOS: readonly PagamentoStatus[] = ['confirmado', 'aguardando', 'recusado', 'erro'];
 type Status = PagamentoStatus;
 
+/**
+ * A página só lê a URL e devolve o cabeçalho e o conteúdo como irmãos: o
+ * `TopBar` (que conta pendências e lê o tema) e `PagamentosConteudo` (cinco
+ * consultas em paralelo) rendem ao mesmo tempo. Antes o `TopBar` só começava
+ * depois das cinco consultas — duas idas ao banco em série (QA, ISSUE-009).
+ */
 export default async function PagamentosPage({
   searchParams,
 }: {
@@ -35,6 +41,29 @@ export default async function PagamentosPage({
   }>;
 }) {
   const params = await searchParams;
+  return (
+    <>
+      <TopBar
+        title="Pagamentos"
+        subtitle="Lançamentos financeiros por obra"
+        actions={
+          <Link href="/pagamentos/novo" style={{ textDecoration: 'none' }}>
+            <Button variant="primary" leadingIcon={<Plus size={16} />}>
+              Novo Pagamento
+            </Button>
+          </Link>
+        }
+      />
+      <PagamentosConteudo params={params} />
+    </>
+  );
+}
+
+async function PagamentosConteudo({
+  params,
+}: {
+  params: { status?: string; obra_id?: string; fornecedor_id?: string; categoria_id?: string };
+}) {
   const status = params.status ?? '';
   const obraId = params.obra_id ?? '';
   const fornecedorId = params.fornecedor_id ?? '';
@@ -55,13 +84,7 @@ export default async function PagamentosPage({
     onlyArchived: isArquivado,
   };
 
-  const [pagamentos, obras, fornecedores, categorias, sumResult]: [
-    Pagamento[],
-    Awaited<ReturnType<typeof listObras>>,
-    Awaited<ReturnType<typeof listFornecedores>>,
-    Awaited<ReturnType<typeof listCategorias>>,
-    { total: number; count: number },
-  ] = await Promise.all([
+  const [pagamentos, obras, fornecedores, categorias, sumResult] = await Promise.all([
     listPagamentos(commonFilters),
     listObras({ includeArchived: true }),
     listFornecedores({ includeArchived: true }),
@@ -91,96 +114,82 @@ export default async function PagamentosPage({
   };
 
   return (
-    <>
-      <TopBar
-        title="Pagamentos"
-        subtitle="Lançamentos financeiros por obra"
-        actions={
-          <Link href="/pagamentos/novo" style={{ textDecoration: 'none' }}>
-            <Button variant="primary" leadingIcon={<Plus size={16} />}>
-              Novo Pagamento
-            </Button>
-          </Link>
-        }
-      />
-
-      <div className="nos-page-body">
-        {!isArquivado ? (
-          <Card style={{ padding: '18px 22px', marginBottom: 20 }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'baseline',
-                justifyContent: 'space-between',
-                gap: 16,
-                flexWrap: 'wrap',
-              }}
-            >
-              <div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: 'var(--text-secondary)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
-                    marginBottom: 4,
-                  }}
-                >
-                  Total filtrado
-                </div>
-                <div
-                  style={{
-                    fontSize: 28,
-                    fontWeight: 700,
-                    color: 'var(--text-primary)',
-                    fontVariantNumeric: 'tabular-nums',
-                  }}
-                >
-                  {formatBRL(sumResult.total)}
-                </div>
+    <div className="nos-page-body">
+      {!isArquivado ? (
+        <Card style={{ padding: '18px 22px', marginBottom: 20 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'baseline',
+              justifyContent: 'space-between',
+              gap: 16,
+              flexWrap: 'wrap',
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: 'var(--text-secondary)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                  marginBottom: 4,
+                }}
+              >
+                Total filtrado
               </div>
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                {sumResult.count} pagamento{sumResult.count === 1 ? '' : 's'}
+              <div
+                style={{
+                  fontSize: 28,
+                  fontWeight: 700,
+                  color: 'var(--text-primary)',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {formatBRL(sumResult.total)}
               </div>
             </div>
-          </Card>
-        ) : null}
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+              {sumResult.count} pagamento{sumResult.count === 1 ? '' : 's'}
+            </div>
+          </div>
+        </Card>
+      ) : null}
 
-        <nav className="obras-filter-tabs" aria-label="Filtrar por status">
-          {STATUS_OPTIONS.map((opt) => {
-            const href = buildHref({ status: opt.value });
-            const active = opt.value === status;
-            return (
-              <Link
-                key={opt.value || 'todos'}
-                href={href}
-                className={active ? 'obras-filter-tab is-active' : 'obras-filter-tab'}
-                aria-current={active ? 'page' : undefined}
-              >
-                {opt.label}
-              </Link>
-            );
-          })}
-        </nav>
+      <nav className="obras-filter-tabs" aria-label="Filtrar por status">
+        {STATUS_OPTIONS.map((opt) => {
+          const href = buildHref({ status: opt.value });
+          const active = opt.value === status;
+          return (
+            <Link
+              key={opt.value || 'todos'}
+              href={href}
+              className={active ? 'obras-filter-tab is-active' : 'obras-filter-tab'}
+              aria-current={active ? 'page' : undefined}
+            >
+              {opt.label}
+            </Link>
+          );
+        })}
+      </nav>
 
-        <PagamentosFilters
-          obras={obras.map((o) => ({ value: o.id, label: o.nome }))}
-          fornecedores={fornecedores.map((f) => ({ value: f.id, label: f.nome }))}
-          categorias={categorias.map((c) => ({ value: c.id, label: c.nome }))}
-          selectedObraId={obraId}
-          selectedFornecedorId={fornecedorId}
-          selectedCategoriaId={categoriaId}
+      <PagamentosFilters
+        obras={obras.map((o) => ({ value: o.id, label: o.nome }))}
+        fornecedores={fornecedores.map((f) => ({ value: f.id, label: f.nome }))}
+        categorias={categorias.map((c) => ({ value: c.id, label: c.nome }))}
+        selectedObraId={obraId}
+        selectedFornecedorId={fornecedorId}
+        selectedCategoriaId={categoriaId}
+      />
+
+      <div style={{ marginTop: 24 }}>
+        <PagamentosTable
+          pagamentos={pagamentos}
+          obras={obras}
+          fornecedores={fornecedores}
+          categorias={categorias}
         />
-
-        <div style={{ marginTop: 24 }}>
-          <PagamentosTable
-            pagamentos={pagamentos}
-            obras={obras}
-            fornecedores={fornecedores}
-            categorias={categorias}
-          />
-        </div>
       </div>
-    </>
+    </div>
   );
 }

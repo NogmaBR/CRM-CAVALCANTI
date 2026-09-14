@@ -52,15 +52,16 @@ export default async function PagamentoDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string }>;
 }) {
-  const [{ id }, sp] = await Promise.all([params, searchParams]);
-  const pagamento = await getPagamento(id);
-  if (!pagamento) notFound();
-
-  const [obras, fornecedores, categorias] = await Promise.all([
+  const { id } = await params;
+  // Pagamento e lookups numa ida só: em série o TTFB somava as duas.
+  const [sp, pagamento, obras, fornecedores, categorias] = await Promise.all([
+    searchParams,
+    getPagamento(id),
     listObras({ includeArchived: true }),
     listFornecedores({ includeArchived: true }),
     listCategorias(),
   ]);
+  if (!pagamento) notFound();
 
   const obra = obras.find((o) => o.id === pagamento.obra_id) ?? null;
   const fornecedor = pagamento.fornecedor_id

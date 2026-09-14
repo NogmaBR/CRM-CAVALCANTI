@@ -133,6 +133,22 @@ export function PagamentosTable({
           return <Badge variant={STATUS_VARIANT[s]}>{STATUS_LABEL[s]}</Badge>;
         },
       },
+      // Escondidas de início (`visibilidadeInicial` abaixo): existem só para
+      // a busca global cobrir descrição e observações (QA, ISSUE-011). O
+      // `?? ''` importa — com `null` na primeira linha o TanStack decide que
+      // a coluna não é pesquisável.
+      {
+        id: 'descricao',
+        accessorFn: (p) => p.descricao ?? '',
+        header: 'Descrição',
+        enableSorting: false,
+      },
+      {
+        id: 'observacoes',
+        accessorFn: (p) => p.observacoes ?? '',
+        header: 'Observações',
+        enableSorting: false,
+      },
       {
         id: 'actions',
         header: '',
@@ -159,7 +175,8 @@ export function PagamentosTable({
     <DataTable
       columns={columns}
       data={pagamentos}
-      searchPlaceholder="Buscar por obra, fornecedor, categoria ou valor..."
+      searchPlaceholder="Buscar por obra, fornecedor, categoria, descrição ou valor..."
+      visibilidadeInicial={{ descricao: false, observacoes: false }}
       emptyMessage="Nenhum pagamento encontrado. Clique em 'Novo Pagamento' para começar."
     />
   );

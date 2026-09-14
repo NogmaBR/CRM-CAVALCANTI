@@ -1,13 +1,29 @@
 'use server';
 
 import { emitir } from '@/lib/events/bus';
-import { mapDbError, mapDbErrorWithContext } from '@/lib/schemas/errors';
+import { mapDbErrorWithContext } from '@/lib/schemas/errors';
 import { PagamentoCreateSchema, PagamentoUpdateSchema } from '@/lib/schemas/pagamento';
 import { dispatchEvento } from '@/lib/services/dispatch-webhook';
 import { erroDeEscrita } from '@/lib/supabase/escrita';
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { type Rotulos, voltarComErro } from '../_shared/form-erros';
+
+/** `name` do input → como o campo se chama para quem lê o erro. */
+const ROTULOS: Rotulos = {
+  obra_id: 'Obra',
+  fornecedor_id: 'Fornecedor',
+  categoria_id: 'Categoria',
+  valor: 'Valor',
+  data_pagamento: 'Data do pagamento',
+  origem: 'Origem',
+  status_pagto: 'Status',
+  descricao: 'Descrição',
+  observacoes: 'Observações',
+};
+
+const CONTEXTO_FK = { '23503': 'Obra, fornecedor ou categoria referenciada não existe' };
 
 function formToRecord(fd: FormData): Record<string, unknown> {
   const rec: Record<string, unknown> = {};
@@ -20,10 +36,10 @@ function formToRecord(fd: FormData): Record<string, unknown> {
 
 export async function createPagamento(formData: FormData) {
   const parsed = PagamentoCreateSchema.safeParse(formToRecord(formData));
+  // Erro de validação volta com o campo apontado e tudo que foi digitado
+  // (QA gstack, ISSUE-006): antes a tela reabria vazia com "valor: Required".
   if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    const msg = first ? `${first.path.join('.')}: ${first.message}` : 'Dados inválidos';
-    redirect(`/pagamentos/novo?error=${encodeURIComponent(msg)}`);
+    voltarComErro('/pagamentos/novo', parsed.error, { rotulos: ROTULOS, valores: formData });
   }
 
   const supabase = await createClient();
@@ -48,13 +64,9 @@ export async function createPagamento(formData: FormData) {
     .single();
 
   if (error) {
-    redirect(
-      `/pagamentos/novo?error=${encodeURIComponent(
-        mapDbErrorWithContext(error, {
-          '23503': 'Obra, fornecedor ou categoria referenciada não existe',
-        }),
-      )}`,
-    );
+    voltarComErro('/pagamentos/novo', mapDbErrorWithContext(error, CONTEXTO_FK), {
+      valores: formData,
+    });
   }
 
   // Nota: automação de e-mail "pagamento aguardando" removida — fora do
@@ -100,15 +112,17 @@ export async function updatePagamento(formData: FormData) {
   const raw = formToRecord(formData);
   const parsed = PagamentoUpdateSchema.safeParse(raw);
   if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    const msg = first ? `${first.path.join('.')}: ${first.message}` : 'Dados inválidos';
     const id = typeof raw.id === 'string' ? raw.id : '';
-    redirect(`/pagamentos/${id}/editar?error=${encodeURIComponent(msg)}`);
+    voltarComErro(`/pagamentos/${id}/editar`, parsed.error, {
+      rotulos: ROTULOS,
+      valores: formData,
+    });
   }
 
   const { id, ...rest } = parsed.data;
   const supabase = await createClient();
-  const { error } = await supabase
+  // `erroDeEscrita`: com RLS, papel sem permissão faz zero linhas sem erro.
+  const resultado = await supabase
     .from('pagamentos')
     .update({
       ...(rest.obra_id !== undefined ? { obra_id: rest.obra_id } : {}),
@@ -121,16 +135,14 @@ export async function updatePagamento(formData: FormData) {
       ...(rest.descricao !== undefined ? { descricao: rest.descricao ?? null } : {}),
       ...(rest.observacoes !== undefined ? { observacoes: rest.observacoes ?? null } : {}),
     })
-    .eq('id', id);
+    .eq('id', id)
+    .select('id');
+  const erro = resultado.error
+    ? mapDbErrorWithContext(resultado.error, CONTEXTO_FK)
+    : erroDeEscrita(resultado);
 
-  if (error) {
-    redirect(
-      `/pagamentos/${id}/editar?error=${encodeURIComponent(
-        mapDbErrorWithContext(error, {
-          '23503': 'Obra, fornecedor ou categoria referenciada não existe',
-        }),
-      )}`,
-    );
+  if (erro) {
+    voltarComErro(`/pagamentos/${id}/editar`, erro, { valores: formData });
   }
 
   revalidatePath('/pagamentos');
