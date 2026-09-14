@@ -84,6 +84,7 @@ export default async function FornecedorDetailPage({
       <div className="nos-page-body">
         {sp.success ? (
           <div
+            // biome-ignore lint/a11y/useSemanticElements: banner de status (padrão do projeto)
             role="status"
             style={{
               marginBottom: 16,

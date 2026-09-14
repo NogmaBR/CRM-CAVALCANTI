@@ -173,7 +173,11 @@ export default async function ObraDetailPage({
         ) : null}
 
         {sp.success ? (
-          <div className="detail-layout__success" role="status">
+          <div
+            className="detail-layout__success"
+            // biome-ignore lint/a11y/useSemanticElements: banner de status (padrão do projeto)
+            role="status"
+          >
             {sp.success}
           </div>
         ) : null}

@@ -59,6 +59,7 @@ export default async function DuplicatasPage({
       <div className="nos-page-body">
         {successMsg ? (
           <div
+            // biome-ignore lint/a11y/useSemanticElements: banner de status (padrão do projeto)
             role="status"
             style={{
               marginBottom: 16,
