@@ -1104,6 +1104,10 @@ export type Database = {
         Args: { p_idade_horas?: number };
         Returns: number;
       };
+      busca_global: {
+        Args: { p_termo: string; p_limite?: number };
+        Returns: Json;
+      };
       pagamentos_sem_documento: {
         Args: { p_corte: string; p_limite: number };
         Returns: {
