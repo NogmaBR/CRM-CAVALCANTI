@@ -539,6 +539,24 @@ novas para quem for mexer:
   `.update()/.delete()` feito com sessão de usuário: `.select('id')` + helper. Zero
   linhas é erro para o usuário, nunca "sucesso".
 
+**Polimento de UI de 2026-09-14 (PR #27).** Os 22 itens adiados pelo designer e pelo QA.
+Regras novas:
+- **Erro de validação nunca perde o formulário**: action chama `voltarComErro(path,
+  zodError, { rotulos, valores: formData })` (`app/(app)/_shared/form-erros.ts`); a página
+  lê `estadoDoFormulario(searchParams)` e o formulário usa `valores.x ?? initial?.x`,
+  `error` + `autoFocus` no campo apontado. Senha/secret/token nunca vão para a URL.
+- **Toda página tem `export const metadata = { title }`** (template `%s · Nogma` no raiz).
+- **Lista com `loading.tsx` fica num route group `(lista)/`**: skeleton no segmento pai
+  faz `notFound()` de `[id]` responder 200. Obras, pagamentos e documentos já estão assim.
+- Valor em R$ entra como texto pt-BR (`parseValorBR`/`formatarValorBR` em
+  `lib/util/moeda.ts`); o schema de pagamento faz o `preprocess`. Import CSV e mock têm
+  parsing próprio, de propósito.
+- Parâmetros de automação vêm do `configSchema` (`lib/automations/config-campos.ts`), um
+  campo por chave; a action aceita campos ou JSON.
+- `DataTable` tem `semBusca` e `visibilidadeInicial`. Busca ⌘K usa a RPC `busca_global`
+  (SECURITY INVOKER, uma viagem).
+- Auditoria é paginada (`listAuditLogPaginado`, 50 por página) e mostra frase humana.
+
 ### O que falta — e é ação humana, não código
 
 1. **Repositório é público.** Vai virar privado quando a Vercel for paga
