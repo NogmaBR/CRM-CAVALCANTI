@@ -2,10 +2,23 @@ import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
 import {
   LIMITE_SEM_DOCUMENTO,
+  type PagamentoSemDocumento,
+  type PendenteItem,
   listPagamentosSemDocumento,
   listPendentes,
 } from '@/lib/data/pendentes';
-import { Check, Clock, FileWarning, Inbox, Paperclip, X } from 'lucide-react';
+import { type DadosExtraidos, temDadosParaLancar } from '@/lib/schemas/dados-extraidos';
+import {
+  Check,
+  ChevronDown,
+  Clock,
+  FileWarning,
+  Inbox,
+  Paperclip,
+  PencilLine,
+  TriangleAlert,
+  X,
+} from 'lucide-react';
 import Link from 'next/link';
 import { confirmarPendencia, rejeitarPendencia } from './actions';
 import './pendentes.css';
@@ -48,6 +61,74 @@ function formatDate(iso: string): string {
 
 /** O raciocínio só ajuda quando vem do modelo real; o do mock é texto de teste. */
 const mostrarRaciocinio = process.env.IA_PROVIDER === 'anthropic';
+
+/**
+ * Lacuna visível (A4): o que a IA não extraiu aparece em âmbar com ícone,
+ * não em cinza itálico — é o dado que falta para poder confirmar.
+ */
+function ValorAusente({ children }: { children: string }) {
+  return (
+    <span className="pendente-extracted__value--empty">
+      <TriangleAlert size={12} aria-hidden="true" />
+      {children}
+    </span>
+  );
+}
+
+/**
+ * Link para o formulário de pagamento já preenchido com o que a IA extraiu.
+ * Só entram os campos que existem; o formulário lê os params (outro PR).
+ */
+function linkCompletar(item: PendenteItem, de: DadosExtraidos | null): string {
+  const qs = new URLSearchParams({ msg: item.mensagem_id });
+  if (de?.valor != null) qs.set('valor', String(de.valor));
+  if (de?.obra_id) qs.set('obra_id', de.obra_id);
+  if (de?.fornecedor_id) qs.set('fornecedor_id', de.fornecedor_id);
+  if (de?.data_pagamento) qs.set('data_pagamento', de.data_pagamento);
+  if (de?.descricao) qs.set('descricao', de.descricao);
+  return `/pagamentos/novo?${qs.toString()}`;
+}
+
+/**
+ * Limiares da cobrança (M4): 50 linhas em vermelho viravam ruído. Vermelho
+ * só acima de 30 dias; âmbar entre 7 e 30; abaixo disso cor de texto comum.
+ */
+function classeDias(dias: number): string {
+  if (dias > 30) return 'pendentes-sem-doc__dias pendentes-sem-doc__dias--critico';
+  if (dias > 7) return 'pendentes-sem-doc__dias pendentes-sem-doc__dias--alerta';
+  return 'pendentes-sem-doc__dias';
+}
+
+function textoDias(dias: number): string {
+  return dias === 1 ? 'há 1 dia' : `há ${dias} dias`;
+}
+
+interface GrupoFornecedor {
+  chave: string;
+  nome: string;
+  itens: PagamentoSemDocumento[];
+  total: number;
+  maisAntigoDias: number;
+}
+
+/**
+ * Agrupa por fornecedor (M4): é assim que se cobra nota — por fornecedor,
+ * não por linha. Grupos na ordem do pagamento mais antigo; dentro do grupo a
+ * ordem que veio do banco (mais antigo primeiro) se mantém.
+ */
+function agruparPorFornecedor(itens: PagamentoSemDocumento[]): GrupoFornecedor[] {
+  const mapa = new Map<string, GrupoFornecedor>();
+  for (const p of itens) {
+    const nome = p.fornecedor_nome ?? 'Sem fornecedor';
+    const chave = p.fornecedor_nome ?? '__sem_fornecedor__';
+    const grupo = mapa.get(chave) ?? { chave, nome, itens: [], total: 0, maisAntigoDias: 0 };
+    grupo.itens.push(p);
+    grupo.total += p.valor;
+    grupo.maisAntigoDias = Math.max(grupo.maisAntigoDias, p.dias);
+    mapa.set(chave, grupo);
+  }
+  return [...mapa.values()].sort((a, b) => b.maisAntigoDias - a.maisAntigoDias);
+}
 
 export default async function PendentesPage({
   searchParams,
@@ -93,6 +174,14 @@ export default async function PendentesPage({
           <div className="pendentes-list">
             {pendentes.map((item) => {
               const de = item.dados_extraidos;
+              // A4: confirmar sem valor ou sem obra gravaria pagamento incompleto
+              // (o service já recusa com `dados_incompletos`; a UI não deve convidar).
+              const podeConfirmar = temDadosParaLancar(de);
+              const faltando = [
+                de?.valor == null ? 'valor' : null,
+                de?.obra_id ? null : 'obra',
+              ].filter(Boolean);
+              const motivoBloqueio = `Falta ${faltando.join(' e ')}. Use "Completar e confirmar" para preencher no formulário.`;
               return (
                 <article key={item.confirmacao_id} className="pendente-card">
                   {/* Header */}
@@ -123,7 +212,7 @@ export default async function PendentesPage({
                           {de?.valor != null ? (
                             formatBRL(de.valor)
                           ) : (
-                            <span className="pendente-extracted__value--empty">não informado</span>
+                            <ValorAusente>não informado</ValorAusente>
                           )}
                         </span>
                       </div>
@@ -134,7 +223,7 @@ export default async function PendentesPage({
                           {de?.data_pagamento ? (
                             formatDate(de.data_pagamento)
                           ) : (
-                            <span className="pendente-extracted__value--empty">não informada</span>
+                            <ValorAusente>não informada</ValorAusente>
                           )}
                         </span>
                       </div>
@@ -142,22 +231,14 @@ export default async function PendentesPage({
                       <div className="pendente-extracted__field">
                         <span className="pendente-extracted__label">Obra</span>
                         <span className="pendente-extracted__value">
-                          {item.obra_nome ?? (
-                            <span className="pendente-extracted__value--empty">
-                              não identificada
-                            </span>
-                          )}
+                          {item.obra_nome ?? <ValorAusente>não identificada</ValorAusente>}
                         </span>
                       </div>
 
                       <div className="pendente-extracted__field">
                         <span className="pendente-extracted__label">Fornecedor</span>
                         <span className="pendente-extracted__value">
-                          {item.fornecedor_nome ?? (
-                            <span className="pendente-extracted__value--empty">
-                              não identificado
-                            </span>
-                          )}
+                          {item.fornecedor_nome ?? <ValorAusente>não identificado</ValorAusente>}
                         </span>
                       </div>
 
@@ -209,17 +290,45 @@ export default async function PendentesPage({
                       </Button>
                     </form>
 
-                    <form action={confirmarPendencia}>
-                      <input type="hidden" name="confirmacao_id" value={item.confirmacao_id} />
-                      <Button
-                        type="submit"
-                        variant="primary"
-                        size="sm"
-                        leadingIcon={<Check size={14} />}
-                      >
-                        Confirmar
-                      </Button>
-                    </form>
+                    {podeConfirmar ? (
+                      <form action={confirmarPendencia}>
+                        <input type="hidden" name="confirmacao_id" value={item.confirmacao_id} />
+                        <Button
+                          type="submit"
+                          variant="primary"
+                          size="sm"
+                          leadingIcon={<Check size={14} />}
+                        >
+                          Confirmar
+                        </Button>
+                      </form>
+                    ) : (
+                      <>
+                        {/* O `.ng-btn[disabled]` tira pointer-events; o title vai no wrapper. */}
+                        <span className="pendente-card__bloqueado" title={motivoBloqueio}>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            disabled
+                            aria-disabled="true"
+                            title={motivoBloqueio}
+                            leadingIcon={<Check size={14} />}
+                          >
+                            Confirmar
+                          </Button>
+                        </span>
+                        <Link
+                          href={linkCompletar(item, de)}
+                          className="ng-btn ng-btn--primary ng-btn--sm"
+                        >
+                          <span className="ng-btn__icon" aria-hidden="true">
+                            <PencilLine size={14} />
+                          </span>
+                          Completar e confirmar
+                        </Link>
+                      </>
+                    )}
                   </div>
                 </article>
               );
@@ -243,35 +352,46 @@ export default async function PendentesPage({
               </span>
             </h2>
 
-            <div className="pendentes-sem-doc__lista">
-              {semDocumento.map((p) => (
-                <Link key={p.id} href={`/pagamentos/${p.id}`} className="pendentes-sem-doc__item">
-                  <span className="pendentes-sem-doc__valor">{formatBRL(p.valor)}</span>
+            <div className="pendentes-sem-doc__grupos">
+              {agruparPorFornecedor(semDocumento).map((grupo, indice) => (
+                <details key={grupo.chave} className="pendentes-sem-doc__grupo" open={indice === 0}>
+                  <summary className="pendentes-sem-doc__resumo">
+                    <ChevronDown size={16} aria-hidden="true" className="pendentes-sem-doc__seta" />
+                    <span className="pendentes-sem-doc__fornecedor">{grupo.nome}</span>
+                    <span className="pendentes-sem-doc__qtd">
+                      {grupo.itens.length === 1
+                        ? '1 pagamento'
+                        : `${grupo.itens.length} pagamentos`}
+                    </span>
+                    <span className="pendentes-sem-doc__soma">{formatBRL(grupo.total)}</span>
+                    <span className={classeDias(grupo.maisAntigoDias)}>
+                      <Clock size={12} aria-hidden="true" />
+                      mais antigo {textoDias(grupo.maisAntigoDias)}
+                    </span>
+                  </summary>
 
-                  <span className="pendentes-sem-doc__meta">
-                    {[p.fornecedor_nome, p.obra_nome].filter(Boolean).join(' · ') ||
-                      p.descricao ||
-                      'Sem descrição'}
-                  </span>
+                  <div className="pendentes-sem-doc__lista">
+                    {grupo.itens.map((p) => (
+                      <Link
+                        key={p.id}
+                        href={`/pagamentos/${p.id}`}
+                        className="pendentes-sem-doc__item"
+                      >
+                        <span className="pendentes-sem-doc__valor">{formatBRL(p.valor)}</span>
 
-                  {/*
-                    Limiares validados com o cliente no protótipo: acima de 3
-                    dias vira âmbar, acima de 7 vira vermelho. São os prazos
-                    que ele já usa pra cobrar o fornecedor.
-                  */}
-                  <span
-                    className={
-                      p.dias > 7
-                        ? 'pendentes-sem-doc__dias pendentes-sem-doc__dias--critico'
-                        : p.dias > 3
-                          ? 'pendentes-sem-doc__dias pendentes-sem-doc__dias--alerta'
-                          : 'pendentes-sem-doc__dias'
-                    }
-                  >
-                    <Clock size={12} aria-hidden="true" />
-                    {p.dias === 1 ? 'há 1 dia' : `há ${p.dias} dias`}
-                  </span>
-                </Link>
+                        <span className="pendentes-sem-doc__meta">
+                          {[formatDate(p.data_pagamento), p.obra_nome].filter(Boolean).join(' · ')}
+                          {p.descricao ? ` · ${p.descricao}` : ''}
+                        </span>
+
+                        <span className={classeDias(p.dias)}>
+                          <Clock size={12} aria-hidden="true" />
+                          {textoDias(p.dias)}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                </details>
               ))}
             </div>
           </section>
