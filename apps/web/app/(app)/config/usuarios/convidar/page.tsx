@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { convidarUsuario } from '../actions';
 import '../usuarios.css';
+import { estadoDoFormulario } from '../../../_shared/form-erros';
 import '../../../_shared/form-layout.css';
 
 export const metadata = { title: 'Convidar novo usuário' };
@@ -14,7 +15,7 @@ export const metadata = { title: 'Convidar novo usuário' };
 export default async function ConvidarUsuarioPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; campo?: string; v?: string }>;
 }) {
   const supabase = await createClient();
   const { data: userData } = await supabase.auth.getUser();
@@ -30,7 +31,12 @@ export default async function ConvidarUsuarioPage({
   if (profile?.papel !== 'admin') notFound();
 
   const params = await searchParams;
-  const errorMsg = params.error ?? null;
+  const estado = estadoDoFormulario(params);
+  const v = estado.valores;
+  const campo = estado.campo;
+  const erroCurto = estado.error ? estado.error.replace(/^[^:]+:\s*/u, '') : undefined;
+  const erroDe = (name: string) => (campo === name ? erroCurto : undefined);
+  const errorMsg = estado.error ?? null;
 
   const papeis = Object.entries(PAPEL_LABELS) as Array<[keyof typeof PAPEL_LABELS, string]>;
 
@@ -60,8 +66,11 @@ export default async function ConvidarUsuarioPage({
                   name="email"
                   type="email"
                   required
+                  defaultValue={v.email ?? ''}
                   autoComplete="off"
                   placeholder="colaborador@empresa.com.br"
+                  error={erroDe('email')}
+                  autoFocus={campo === 'email'}
                 />
               </div>
 
@@ -72,21 +81,30 @@ export default async function ConvidarUsuarioPage({
                   type="text"
                   required
                   minLength={2}
+                  defaultValue={v.nome ?? ''}
                   placeholder="Nome do colaborador"
                   autoComplete="off"
+                  error={erroDe('nome')}
+                  autoFocus={campo === 'nome'}
                 />
               </div>
 
               <div className="form-layout__field form-layout__field--wide">
-                <label className="form-layout__label" htmlFor="papel-select">
+                <label
+                  className="form-layout__label form-layout__label--required"
+                  htmlFor="papel-select"
+                >
                   Papel
                 </label>
                 <select
                   id="papel-select"
                   name="papel"
                   className="form-layout__select"
-                  defaultValue="leitura"
+                  defaultValue={v.papel ?? 'leitura'}
                   required
+                  aria-invalid={campo === 'papel' ? true : undefined}
+                  // biome-ignore lint/a11y/noAutofocus: foco no campo que a action recusou (T-QA-6)
+                  autoFocus={campo === 'papel'}
                 >
                   {papeis.map(([value, label]) => (
                     <option key={value} value={value}>
@@ -107,6 +125,8 @@ export default async function ConvidarUsuarioPage({
               </div>
             </div>
           </fieldset>
+
+          <p className="form-layout__obrigatorio">* obrigatório</p>
 
           <div className="form-layout__actions">
             <Link href="/config/usuarios" className="form-layout__cancel">

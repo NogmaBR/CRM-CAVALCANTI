@@ -8,8 +8,25 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
+import { type Rotulos, voltarComErro } from '../../_shared/form-erros';
 
 const BASE_PATH = '/config/webhooks';
+
+const ROTULOS_WEBHOOK: Rotulos = { nome: 'Nome', url: 'URL do endpoint', eventos: 'Eventos' };
+
+/**
+ * O que volta para o formulário quando a action recusa. `eventos` são vários
+ * checkboxes com o mesmo `name`; vão juntos por vírgula porque o codificador
+ * guarda um valor por chave. O secret nunca passa por aqui.
+ */
+function valoresDoWebhook(formData: FormData): FormData {
+  const fd = new FormData();
+  fd.set('nome', String(formData.get('nome') ?? ''));
+  fd.set('url', String(formData.get('url') ?? ''));
+  fd.set('eventos', formData.getAll('eventos').map(String).join(','));
+  if (formData.get('ativo') !== null) fd.set('ativo', 'on');
+  return fd;
+}
 
 const EVENTOS_VALIDOS = [
   'pagamento_created',
@@ -74,15 +91,20 @@ export async function criarWebhook(formData: FormData) {
 
   const parsed = CriarWebhookSchema.safeParse(raw);
   if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    redirect(`${BASE_PATH}/novo?error=${encodeURIComponent(first?.message ?? 'Dados inválidos')}`);
+    voltarComErro(`${BASE_PATH}/novo`, parsed.error, {
+      rotulos: ROTULOS_WEBHOOK,
+      valores: valoresDoWebhook(formData),
+    });
   }
 
   // Finding A-4: resolve o host e recusa destino em rede interna antes de
   // gravar. Sem isso o botão "Testar" vira um scanner da rede do Vercel.
   const ssrf = await validarUrlWebhook(parsed.data.url);
   if (!ssrf.ok) {
-    redirect(`${BASE_PATH}/novo?error=${encodeURIComponent(ssrf.motivo)}`);
+    voltarComErro(`${BASE_PATH}/novo`, ssrf.motivo, {
+      valores: valoresDoWebhook(formData),
+      campo: 'url',
+    });
   }
 
   const secret = generateWebhookSecret();
@@ -100,9 +122,9 @@ export async function criarWebhook(formData: FormData) {
     .single();
 
   if (error || !wh) {
-    redirect(
-      `${BASE_PATH}/novo?error=${encodeURIComponent('Erro ao criar webhook. Tente novamente.')}`,
-    );
+    voltarComErro(`${BASE_PATH}/novo`, 'Erro ao criar webhook. Tente novamente.', {
+      valores: valoresDoWebhook(formData),
+    });
   }
 
   // Finding A-3: o secret vai por cookie httpOnly de 60s, não pela query
@@ -131,16 +153,19 @@ export async function atualizarWebhook(formData: FormData) {
 
   const parsed = AtualizarWebhookSchema.safeParse(raw);
   if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    redirect(
-      `${BASE_PATH}/${id}/editar?error=${encodeURIComponent(first?.message ?? 'Dados inválidos')}`,
-    );
+    voltarComErro(`${BASE_PATH}/${id}/editar`, parsed.error, {
+      rotulos: ROTULOS_WEBHOOK,
+      valores: valoresDoWebhook(formData),
+    });
   }
 
   if (parsed.data.url !== undefined) {
     const ssrf = await validarUrlWebhook(parsed.data.url);
     if (!ssrf.ok) {
-      redirect(`${BASE_PATH}/${parsed.data.id}/editar?error=${encodeURIComponent(ssrf.motivo)}`);
+      voltarComErro(`${BASE_PATH}/${parsed.data.id}/editar`, ssrf.motivo, {
+        valores: valoresDoWebhook(formData),
+        campo: 'url',
+      });
     }
   }
 
@@ -157,9 +182,9 @@ export async function atualizarWebhook(formData: FormData) {
     .is('deleted_at', null);
 
   if (error) {
-    redirect(
-      `${BASE_PATH}/${parsed.data.id}/editar?error=${encodeURIComponent('Erro ao atualizar webhook.')}`,
-    );
+    voltarComErro(`${BASE_PATH}/${parsed.data.id}/editar`, 'Erro ao atualizar webhook.', {
+      valores: valoresDoWebhook(formData),
+    });
   }
 
   revalidatePath(BASE_PATH);

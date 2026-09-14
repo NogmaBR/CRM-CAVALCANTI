@@ -5,10 +5,18 @@ import { mapDbErrorWithContext } from '@/lib/schemas/errors';
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { type Rotulos, voltarComErro } from '../../_shared/form-erros';
 
 const BASE_PATH = '/config/autorizados';
 
 const DUPLICADO_MSG = 'Já existe um cadastro com esse telefone';
+
+const ROTULOS_AUTORIZADO: Rotulos = {
+  nome: 'Nome',
+  telefone_whats: 'WhatsApp',
+  papel_obra: 'Função na obra',
+  ativo: 'Pode lançar pagamentos',
+};
 
 /** Garante que o caller é admin. Redireciona com ?error= se não for. */
 async function assertAdmin(): Promise<void> {
@@ -39,8 +47,10 @@ export async function criarAutorizado(formData: FormData) {
   });
 
   if (!parsed.success) {
-    const msg = parsed.error.issues[0]?.message ?? 'Dados inválidos';
-    redirect(`${BASE_PATH}/novo?error=${encodeURIComponent(msg)}`);
+    voltarComErro(`${BASE_PATH}/novo`, parsed.error, {
+      rotulos: ROTULOS_AUTORIZADO,
+      valores: formData,
+    });
   }
 
   const supabase = await createClient();
@@ -52,8 +62,10 @@ export async function criarAutorizado(formData: FormData) {
   });
 
   if (error) {
-    const msg = mapDbErrorWithContext(error, { '23505': DUPLICADO_MSG });
-    redirect(`${BASE_PATH}/novo?error=${encodeURIComponent(msg)}`);
+    voltarComErro(`${BASE_PATH}/novo`, mapDbErrorWithContext(error, { '23505': DUPLICADO_MSG }), {
+      valores: formData,
+      campo: error.code === '23505' ? 'telefone_whats' : undefined,
+    });
   }
 
   revalidatePath(BASE_PATH);
@@ -73,8 +85,10 @@ export async function atualizarAutorizado(formData: FormData) {
   });
 
   if (!parsed.success) {
-    const msg = parsed.error.issues[0]?.message ?? 'Dados inválidos';
-    redirect(`${BASE_PATH}/${id}/editar?error=${encodeURIComponent(msg)}`);
+    voltarComErro(`${BASE_PATH}/${id}/editar`, parsed.error, {
+      rotulos: ROTULOS_AUTORIZADO,
+      valores: formData,
+    });
   }
 
   const supabase = await createClient();
@@ -89,8 +103,11 @@ export async function atualizarAutorizado(formData: FormData) {
     .eq('id', parsed.data.id);
 
   if (error) {
-    const msg = mapDbErrorWithContext(error, { '23505': DUPLICADO_MSG });
-    redirect(`${BASE_PATH}/${parsed.data.id}/editar?error=${encodeURIComponent(msg)}`);
+    voltarComErro(
+      `${BASE_PATH}/${parsed.data.id}/editar`,
+      mapDbErrorWithContext(error, { '23505': DUPLICADO_MSG }),
+      { valores: formData, campo: error.code === '23505' ? 'telefone_whats' : undefined },
+    );
   }
 
   revalidatePath(BASE_PATH);

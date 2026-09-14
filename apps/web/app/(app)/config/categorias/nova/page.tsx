@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { criarCategoria } from '../actions';
 import '../categorias.css';
+import { estadoDoFormulario } from '@/app/(app)/_shared/form-erros';
 import '@/app/(app)/_shared/form-layout.css';
 
 export const metadata = { title: 'Nova categoria' };
@@ -15,7 +16,7 @@ export const metadata = { title: 'Nova categoria' };
 export default async function NovaCategoriaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; campo?: string; v?: string }>;
 }) {
   const supabase = await createClient();
   const { data: userData } = await supabase.auth.getUser();
@@ -31,7 +32,12 @@ export default async function NovaCategoriaPage({
   if (profile?.papel !== 'admin') notFound();
 
   const params = await searchParams;
-  const errorMsg = params.error ?? null;
+  const estado = estadoDoFormulario(params);
+  const v = estado.valores;
+  const campo = estado.campo;
+  const erroCurto = estado.error ? estado.error.replace(/^[^:]+:\s*/u, '') : undefined;
+  const erroDe = (name: string) => (campo === name ? erroCurto : undefined);
+  const errorMsg = estado.error ?? null;
 
   return (
     <>
@@ -58,8 +64,11 @@ export default async function NovaCategoriaPage({
                   required
                   minLength={2}
                   maxLength={80}
+                  defaultValue={v.nome ?? ''}
                   placeholder="Ex: Material de construção"
                   autoComplete="off"
+                  error={erroDe('nome')}
+                  autoFocus={campo === 'nome'}
                 />
               </div>
 
@@ -68,8 +77,11 @@ export default async function NovaCategoriaPage({
                   label="Ícone (opcional)"
                   name="icone"
                   maxLength={50}
+                  defaultValue={v.icone ?? ''}
                   placeholder="Ex: wrench, hard-hat, package"
                   autoComplete="off"
+                  error={erroDe('icone')}
+                  autoFocus={campo === 'icone'}
                   hint="Nome do icone Lucide (ex: 'wrench', 'hard-hat'). Deixe vazio para sem icone."
                 />
               </div>
@@ -95,7 +107,12 @@ export default async function NovaCategoriaPage({
             >
               {CATEGORIA_CORES.map((cor) => (
                 <label key={cor.value} className="categoria-cor-radio">
-                  <input type="radio" name="cor" value={cor.value} />
+                  <input
+                    type="radio"
+                    name="cor"
+                    value={cor.value}
+                    defaultChecked={v.cor === cor.value}
+                  />
                   <span
                     className="categoria-cor-radio__swatch"
                     style={{ background: cor.value }}
@@ -106,6 +123,8 @@ export default async function NovaCategoriaPage({
               ))}
             </div>
           </fieldset>
+
+          <p className="form-layout__obrigatorio">* obrigatório</p>
 
           <div className="form-layout__actions">
             <Link href="/config/categorias" className="form-layout__cancel">

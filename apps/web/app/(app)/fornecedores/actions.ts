@@ -1,11 +1,22 @@
 'use server';
 
-import { mapDbError, mapDbErrorWithContext } from '@/lib/schemas/errors';
+import { mapDbErrorWithContext } from '@/lib/schemas/errors';
 import { FornecedorCreateSchema, FornecedorUpdateSchema } from '@/lib/schemas/fornecedor';
 import { erroDeEscrita } from '@/lib/supabase/escrita';
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { type Rotulos, voltarComErro } from '../_shared/form-erros';
+
+const ROTULOS_FORNECEDOR: Rotulos = {
+  nome: 'Nome',
+  razao_social: 'Razão social',
+  documento: 'Documento',
+  categoria_id: 'Categoria',
+  telefone: 'Telefone',
+  email: 'E-mail',
+  ativo: 'Fornecedor ativo',
+};
 
 function formToRecord(fd: FormData): Record<string, unknown> {
   const rec: Record<string, unknown> = {};
@@ -31,9 +42,10 @@ function extractDoc(doc: unknown): {
 export async function createFornecedor(formData: FormData) {
   const parsed = FornecedorCreateSchema.safeParse(formToRecord(formData));
   if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    const msg = first ? `${first.path.join('.')}: ${first.message}` : 'Dados inválidos';
-    redirect(`/fornecedores/novo?error=${encodeURIComponent(msg)}`);
+    voltarComErro('/fornecedores/novo', parsed.error, {
+      rotulos: ROTULOS_FORNECEDOR,
+      valores: formData,
+    });
   }
 
   const { documento, documento_tipo } = extractDoc(parsed.data.documento);
@@ -56,12 +68,10 @@ export async function createFornecedor(formData: FormData) {
     .single();
 
   if (error) {
-    redirect(
-      `/fornecedores/novo?error=${encodeURIComponent(
-        mapDbErrorWithContext(error, {
-          '23505': 'Já existe fornecedor com este CNPJ/CPF',
-        }),
-      )}`,
+    voltarComErro(
+      '/fornecedores/novo',
+      mapDbErrorWithContext(error, { '23505': 'Já existe fornecedor com este CNPJ/CPF' }),
+      { valores: formData, campo: error.code === '23505' ? 'documento' : undefined },
     );
   }
 
@@ -74,10 +84,11 @@ export async function updateFornecedor(formData: FormData) {
   const raw = formToRecord(formData);
   const parsed = FornecedorUpdateSchema.safeParse(raw);
   if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    const msg = first ? `${first.path.join('.')}: ${first.message}` : 'Dados inválidos';
     const id = typeof raw.id === 'string' ? raw.id : '';
-    redirect(`/fornecedores/${id}/editar?error=${encodeURIComponent(msg)}`);
+    voltarComErro(`/fornecedores/${id}/editar`, parsed.error, {
+      rotulos: ROTULOS_FORNECEDOR,
+      valores: formData,
+    });
   }
 
   const { id, ...rest } = parsed.data;
@@ -99,12 +110,10 @@ export async function updateFornecedor(formData: FormData) {
     .eq('id', id);
 
   if (error) {
-    redirect(
-      `/fornecedores/${id}/editar?error=${encodeURIComponent(
-        mapDbErrorWithContext(error, {
-          '23505': 'Já existe outro fornecedor com este CNPJ/CPF',
-        }),
-      )}`,
+    voltarComErro(
+      `/fornecedores/${id}/editar`,
+      mapDbErrorWithContext(error, { '23505': 'Já existe outro fornecedor com este CNPJ/CPF' }),
+      { valores: formData, campo: error.code === '23505' ? 'documento' : undefined },
     );
   }
 

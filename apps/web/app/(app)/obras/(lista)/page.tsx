@@ -3,7 +3,7 @@ import { Button } from '@/components/nogma/Button';
 import { type Obra, listObras } from '@/lib/data/obras';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
-import { ObrasTable } from './obras-table';
+import { ObrasTable } from '../obras-table';
 
 export const metadata = { title: 'Obras' };
 

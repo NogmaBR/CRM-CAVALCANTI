@@ -6,10 +6,13 @@ import { erroDeEscrita } from '@/lib/supabase/escrita';
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { type Rotulos, voltarComErro } from '../../_shared/form-erros';
 
 const BASE_PATH = '/config/categorias';
 
 const DUPLICATE_NAME_MSG = 'Já existe uma categoria com esse nome';
+
+const ROTULOS_CATEGORIA: Rotulos = { nome: 'Nome', cor: 'Cor', icone: 'Ícone' };
 
 /** Garante que o caller é admin. Redireciona com ?error= se não for. */
 async function assertAdmin(): Promise<string> {
@@ -41,9 +44,10 @@ export async function criarCategoria(formData: FormData) {
 
   const parsed = CategoriaCreateSchema.safeParse(raw);
   if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    const msg = first?.message ?? 'Dados inválidos';
-    redirect(`${BASE_PATH}/nova?error=${encodeURIComponent(msg)}`);
+    voltarComErro(`${BASE_PATH}/nova`, parsed.error, {
+      rotulos: ROTULOS_CATEGORIA,
+      valores: formData,
+    });
   }
 
   const supabase = await createClient();
@@ -54,8 +58,14 @@ export async function criarCategoria(formData: FormData) {
   });
 
   if (error) {
-    const msg = mapDbErrorWithContext(error, { '23505': DUPLICATE_NAME_MSG });
-    redirect(`${BASE_PATH}/nova?error=${encodeURIComponent(msg)}`);
+    voltarComErro(
+      `${BASE_PATH}/nova`,
+      mapDbErrorWithContext(error, { '23505': DUPLICATE_NAME_MSG }),
+      {
+        valores: formData,
+        campo: error.code === '23505' ? 'nome' : undefined,
+      },
+    );
   }
 
   revalidatePath(BASE_PATH);
@@ -75,9 +85,10 @@ export async function atualizarCategoria(formData: FormData) {
 
   const parsed = CategoriaUpdateSchema.safeParse(raw);
   if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    const msg = first?.message ?? 'Dados inválidos';
-    redirect(`${BASE_PATH}/${raw.id}/editar?error=${encodeURIComponent(msg)}`);
+    voltarComErro(`${BASE_PATH}/${raw.id}/editar`, parsed.error, {
+      rotulos: ROTULOS_CATEGORIA,
+      valores: formData,
+    });
   }
 
   const supabase = await createClient();
@@ -91,8 +102,11 @@ export async function atualizarCategoria(formData: FormData) {
     .eq('id', parsed.data.id);
 
   if (error) {
-    const msg = mapDbErrorWithContext(error, { '23505': DUPLICATE_NAME_MSG });
-    redirect(`${BASE_PATH}/${parsed.data.id}/editar?error=${encodeURIComponent(msg)}`);
+    voltarComErro(
+      `${BASE_PATH}/${parsed.data.id}/editar`,
+      mapDbErrorWithContext(error, { '23505': DUPLICATE_NAME_MSG }),
+      { valores: formData, campo: error.code === '23505' ? 'nome' : undefined },
+    );
   }
 
   revalidatePath(BASE_PATH);

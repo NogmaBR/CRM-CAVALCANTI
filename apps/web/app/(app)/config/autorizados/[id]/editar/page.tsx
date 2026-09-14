@@ -1,3 +1,4 @@
+import { estadoDoFormulario } from '@/app/(app)/_shared/form-erros';
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
 import { Checkbox } from '@/components/nogma/Checkbox';
@@ -16,7 +17,7 @@ export default async function EditarAutorizadoPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; campo?: string; v?: string }>;
 }) {
   const supabase = await createClient();
   const { data: userData } = await supabase.auth.getUser();
@@ -32,7 +33,14 @@ export default async function EditarAutorizadoPage({
   if (profile?.papel !== 'admin') notFound();
 
   const { id } = await params;
-  const errorMsg = (await searchParams).error ?? null;
+  const params2 = await searchParams;
+  const estado = estadoDoFormulario(params2);
+  const v = estado.valores;
+  const campo = estado.campo;
+  const erroCurto = estado.error ? estado.error.replace(/^[^:]+:\s*/u, '') : undefined;
+  const erroDe = (name: string) => (campo === name ? erroCurto : undefined);
+  const errorMsg = estado.error ?? null;
+  const temValores = Object.keys(v).length > 0;
 
   const { data: autorizado } = await supabase
     .from('autorizados')
@@ -67,8 +75,10 @@ export default async function EditarAutorizadoPage({
                   required
                   minLength={2}
                   maxLength={120}
-                  defaultValue={autorizado.nome}
+                  defaultValue={v.nome ?? autorizado.nome}
                   autoComplete="off"
+                  error={erroDe('nome')}
+                  autoFocus={campo === 'nome'}
                 />
               </div>
 
@@ -77,7 +87,9 @@ export default async function EditarAutorizadoPage({
                   label="WhatsApp"
                   name="telefone_whats"
                   required
-                  defaultValue={formatarTelefone(autorizado.telefone_whats)}
+                  defaultValue={v.telefone_whats ?? formatarTelefone(autorizado.telefone_whats)}
+                  error={erroDe('telefone_whats')}
+                  autoFocus={campo === 'telefone_whats'}
                   autoComplete="off"
                   hint="Com DDD. O DDI 55 é assumido quando não informado."
                 />
@@ -88,7 +100,9 @@ export default async function EditarAutorizadoPage({
                   label="Função na obra (opcional)"
                   name="papel_obra"
                   maxLength={80}
-                  defaultValue={autorizado.papel_obra ?? ''}
+                  defaultValue={v.papel_obra ?? autorizado.papel_obra ?? ''}
+                  error={erroDe('papel_obra')}
+                  autoFocus={campo === 'papel_obra'}
                   autoComplete="off"
                 />
               </div>
@@ -99,11 +113,13 @@ export default async function EditarAutorizadoPage({
             <legend className="form-layout__legend">Acesso</legend>
             <Checkbox
               name="ativo"
-              defaultChecked={autorizado.ativo ?? false}
+              defaultChecked={temValores ? v.ativo != null : (autorizado.ativo ?? false)}
               label="Pode lançar pagamentos"
               description="Desmarcado, as mensagens deste número passam a ser ignoradas."
             />
           </fieldset>
+
+          <p className="form-layout__obrigatorio">* obrigatório</p>
 
           <div className="form-layout__actions">
             <Link href="/config/autorizados" className="form-layout__cancel">
