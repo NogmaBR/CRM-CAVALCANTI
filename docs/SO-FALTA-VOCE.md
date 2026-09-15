@@ -639,9 +639,31 @@ qualquer mensagem. No log da Vercel aparece `ignorada_grupo_nao_autorizado` com 
 
 Grupo com **obra dedicada** (campo na tela) não pergunta: tudo vai para aquela obra.
 
-- [ ] Migration aplicada e conferida no catálogo
-- [ ] Apelidos aplicados (10 obras) e Aguirre criada
-- [ ] Import feito; `/obras/<id>` › Pastas com contagens
+### 12.6 — Trocar os pagamentos do protótipo pelos reais (uma linha)
+
+Os 80 pagamentos que estavam no banco eram do protótipo (fictícios). Os reais estão nas
+planilhas "Controle Financeiro" de cada obra, que o import trouxe para o acervo. O script
+lê as planilhas direto do acervo, arquiva o protótipo, cria as categorias do seu plano de
+contas (ETAPA), os fornecedores que faltam, lança um pagamento por linha e liga cada nota
+do acervo ao lançamento. Rodar duas vezes não duplica nada.
+
+```bash
+# 1. ensaio: só relata, não grava (e escreve dados-iniciais/lancamentos-do-acervo.csv)
+node --env-file=.env.local scripts/lancar-pagamentos-do-acervo.mjs
+
+# 2. gravar
+node --env-file=.env.local scripts/lancar-pagamentos-do-acervo.mjs --aplicar
+```
+
+O que conferir no fim (o próprio script imprime): "No banco agora: 250 pagamentos da
+planilha, 0 do protótipo vivos, 200 notas ligadas". As 11 notas que não ligam têm o
+comprovante com valor diferente da planilha — ficam em `/pendentes` › "Documentos sem
+pagamento", com os candidatos listados no fim do CSV.
+
+- [x] Migration aplicada e conferida no catálogo (2026-09-15)
+- [x] Apelidos aplicados (10 obras) e Aguirre criada (2026-09-15)
+- [x] Import feito: 318 documentos; `/obras/<id>` › Pastas com contagens (2026-09-15)
+- [ ] Pagamentos reais lançados (12.6)
 - [ ] Grupo cadastrado; uma foto no grupo respondida com `📁 … ✔`
 
 ---

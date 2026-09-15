@@ -158,7 +158,7 @@ aqui — não invente uma integração.
 | Vercel produção | ✅ no ar | Deploy automático a partir da `main` |
 | GitHub | ✅ ligado | `gh` autenticado com escopo `workflow` |
 | **UAZAPI (WhatsApp)** | ❌ **sem credencial** | Código pronto. Sem `UAZAPI_BASE_URL`/`UAZAPI_TOKEN` o CRM recebe e registra, mas **nunca responde** — o ciclo de confirmação não fecha |
-| **IA (OpenAI)** | ✅ ligada em produção (`IA_PROVIDER=openai`, 2026-09-15) | **Tudo OpenAI** (`gpt-5.4-mini`: classificador com visão, visão do acervo, assistente; `gpt-4o-mini-transcribe`; `text-embedding-3-small`). Health mostra `classificador/transcricao/busca: true`. A chave foi colada no chat pelo usuário — recomendada rotação (`scripts/configurar-ia-vercel.mjs --redeploy` regrava). Anthropic ficou como provider alternativo, sem chave |
+| **IA (OpenAI)** | ✅ ligada em produção (`IA_PROVIDER=openai`, 2026-09-15) | **Tudo OpenAI** (`gpt-5.4-mini`: classificador com visão, visão do acervo, assistente; `gpt-4o-mini-transcribe`; `text-embedding-3-small`). Health mostra `classificador/transcricao/busca: true`. **Decisão do usuário (2026-09-15): a chave fica como está, sem rotação** — não volte a sugerir. Anthropic ficou como provider alternativo, sem chave |
 | n8n | ❌ não provisionado | Opcional; o CRM faz tudo sozinho agora |
 | CI (`ci.yml`) | ✅ verde (PR #14) | typecheck, vitest, build, lint do diff. Sem segredo. É o check que vale |
 | CI E2E (Playwright) | ⏸ só por dispatch | Precisa de staging Supabase (Fase 15) que nunca existiu. Saiu do gatilho de PR no PR #14 para parar de pintar tudo de vermelho |
@@ -629,11 +629,23 @@ humanas na §12 de `SO-FALTA-VOCE.md`. O que muda de regra para quem for mexer:
   plano free = 50 MB): 4 `.MOV`, 1 `.mp4` e 2 PDFs — zip/xz não reduz nada (0,2–3 %);
   os 2 PDFs viraram "(versão leve)" (pypdf+PIL, JPEG q85, 51→20 e 105→21 MB) com
   `origem='painel'` para o importador não os apagar; vídeo só com ffmpeg ou Supabase Pro.
-- **Os 80 pagamentos do banco são fictícios** (protótipo: jan–mar/2026, valores redondos).
-  As 211 notas/comprovantes reais vão de 04/2025 a 07/2026 — a conciliação vinculou 1
-  (coincidência plausível) e está certa em deixar 210 em "Documentos sem pagamento".
-  Lançar os reais a partir das notas (a extração já tem valor, data, tipo e nº da NF) e
-  apagar os 80 é decisão do usuário, não código.
+- **Os 80 pagamentos do protótipo eram fictícios** (jan–mar/2026, valores redondos) e o
+  usuário mandou trocá-los pelos reais. **`scripts/lancar-pagamentos-do-acervo.mjs`**
+  (núcleo puro e testado em `scripts/lib/lancar-pagamentos-core.mjs`) lê as planilhas
+  "Controle Financeiro" de cada obra **que já estão no acervo** (aba com cabeçalho
+  `ITEM | ETAPA | DATA | FORNECEDOR | DESCRIÇÃO | VALOR | PAGAMENTO | ADM | OBS`), arquiva
+  o protótipo, cria o plano de contas do cliente como `categorias` (ETAPA), unifica
+  grafias de fornecedor, insere um pagamento por linha (`origem='importado'`,
+  `observacoes` começa com `planilha: <arquivo> item <n>` = chave de idempotência) e liga
+  cada nota do acervo ao lançamento por **data do nome do arquivo + valor lido pelo
+  modelo (veta divergência) + fornecedor + descrição**. Ensaio sem flag; `--aplicar`
+  grava. Valores das notas ficam em cache em `dados-iniciais/valores-das-notas.json`
+  (fora do Git). Ensaio de 2026-09-15: 250 lançamentos (Casa EJ 97 = R$ 264.070,39;
+  Garibaldi 67 = R$ 134.231,05; INOX 86 = R$ 292.180,36 — somas iguais às planilhas),
+  200/211 notas ligam, 11 ficam para o gestor (valor do comprovante ≠ valor da planilha).
+  **O classificador barra o `--aplicar` (escrita em massa em produção)**: é o usuário
+  que roda, com `!`. "EM ABERTO" vira `aguardando`; linha numerada sem VALOR (ADM
+  mensal em Garibaldi) não é lançamento.
 - A extração/RAG/conciliação da carga inicial rodou por `next start -p 3101` local
   apontando para produção (a Vercel mata em 60 s); daqui em diante o `pg_cron` dá conta,
   20 documentos por rodada.
@@ -647,7 +659,7 @@ humanas na §12 de `SO-FALTA-VOCE.md`. O que muda de regra para quem for mexer:
    **Ao rotacionar, regrave o secret `BACKUP_DB_URL` no GitHub** — senão o backup
    semanal para de funcionar.
 3. **Credenciais UAZAPI** — sem elas o WhatsApp não fecha o ciclo.
-4. **Rotacionar a `OPENAI_API_KEY`** (foi colada no chat) e cadastrar o grupo em `/config/autorizados/grupos`.
+4. **Rodar `scripts/lancar-pagamentos-do-acervo.mjs --aplicar`** (o classificador barra a escrita em massa) e cadastrar o grupo em `/config/autorizados/grupos`.
 5. **Cadastrar a equipe em `/config/autorizados`** — sem isso, toda mensagem é ignorada.
 6. **Restore de teste do backup** num projeto descartável (`docs/RUNBOOK-BACKUP.md`).
    Até existir um registrado, o backup é hipótese.
