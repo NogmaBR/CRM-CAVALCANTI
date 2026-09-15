@@ -225,7 +225,18 @@ async function coletarRegistros(supabase: Client): Promise<DocumentoIndexavel[]>
  * Não gera embedding nenhum. É barato e idempotente: rodar duas vezes seguidas
  * devolve tudo como `inalterados`.
  */
-export async function sincronizarDocumentos(supabase: Client): Promise<ResultadoSincronizacao> {
+export async function sincronizarDocumentos(
+  supabase: Client,
+  opts: { limiteMs?: number } = {},
+): Promise<ResultadoSincronizacao> {
+  // Orçamento de tempo: as atualizações são uma a uma (~0,4 s cada com o
+  // banco em São Paulo e a função na Vercel). Depois de uma carga de acervo,
+  // centenas de documentos mudam de hash de uma vez; sem teto a função da
+  // Vercel morre em 60 s antes de chegar aos embeddings. O que sobrar entra
+  // na próxima rodada — o hash garante que nada se perde.
+  const inicio = Date.now();
+  const estourou = () => opts.limiteMs != null && Date.now() - inicio > opts.limiteMs;
+
   const documentos = [
     ...(await coletarPagamentos(supabase)),
     ...(await coletarObras(supabase)),
@@ -260,6 +271,7 @@ export async function sincronizarDocumentos(supabase: Client): Promise<Resultado
   }> = [];
 
   for (const doc of documentos) {
+    if (estourou()) break;
     const existente = porChave.get(`${doc.origem}|${doc.origemId}`);
 
     if (existente && existente.hash_conteudo === doc.hash) {
