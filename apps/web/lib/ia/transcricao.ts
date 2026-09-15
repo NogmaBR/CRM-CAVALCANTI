@@ -93,7 +93,9 @@ async function transcreverComOpenAI(
     return { ok: false, motivo: 'sem_chave' };
   }
 
-  const modelo = process.env.OPENAI_TRANSCRICAO_MODEL ?? 'whisper-1';
+  // `gpt-4o-mini-transcribe` entende português de canteiro melhor que o
+  // whisper-1 e custa menos; `whisper-1` continua aceito pela variável.
+  const modelo = process.env.OPENAI_TRANSCRICAO_MODEL ?? 'gpt-4o-mini-transcribe';
 
   try {
     const form = new FormData();

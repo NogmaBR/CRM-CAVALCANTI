@@ -1,24 +1,22 @@
 import 'server-only';
-import { montarConteudo } from '@/lib/ia/anthropic-classifier';
+import { blocoDeMidia, chatCompletions, modeloOpenAI, openaiDisponivel } from '@/lib/ia/openai';
 import { logger } from '@/lib/log';
 import { validateFileMagicBytes } from '@/lib/schemas/documento';
-import Anthropic from '@anthropic-ai/sdk';
 
 /**
- * Transcrição de imagem e PDF escaneado pelo modelo com visão.
+ * Transcrição de imagem e PDF escaneado pelo modelo com visão (OpenAI).
  *
- * Só existe com `IA_PROVIDER=anthropic` + `ANTHROPIC_API_KEY` — a mesma chave
- * que liga o classificador. Sem ela `visaoDisponivel()` é falso e a extração
- * deixa o documento sem texto, em vez de fingir.
+ * Só existe com `IA_PROVIDER=openai` + `OPENAI_API_KEY` — a mesma chave que
+ * liga o classificador. Sem ela `visaoDisponivel()` é falso e a extração deixa
+ * o documento sem texto, em vez de fingir.
  *
- * Reaproveita `montarConteudo` do classificador (bloco `image`/`document` em
- * base64, com os mesmos limites de tamanho) e a mesma checagem de assinatura
- * dos uploads: os bytes têm que ser o que o mime diz antes de ir ao modelo.
+ * Mesma checagem de assinatura dos uploads: os bytes têm que ser o que o mime
+ * diz antes de ir ao modelo. Provider Anthropic não tem visão aqui de
+ * propósito — a decisão de 2026-09-15 é uma chave só.
  */
 
 const log = logger('acervo_visao');
 
-const MODELO_PADRAO = 'claude-opus-5';
 const MAX_TOKENS = 4096;
 
 const INSTRUCOES = [
@@ -29,14 +27,11 @@ const INSTRUCOES = [
 ].join(' ');
 
 export function visaoDisponivel(): boolean {
-  return (
-    (process.env.IA_PROVIDER ?? 'mock') === 'anthropic' && Boolean(process.env.ANTHROPIC_API_KEY)
-  );
+  return (process.env.IA_PROVIDER ?? 'mock') === 'openai' && openaiDisponivel();
 }
 
 export async function lerComVisao(bytes: Uint8Array, mime: string): Promise<string | null> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
+  if (!openaiDisponivel()) return null;
 
   const assinatura = validateFileMagicBytes(
     bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer,
@@ -47,29 +42,25 @@ export async function lerComVisao(bytes: Uint8Array, mime: string): Promise<stri
     return null;
   }
 
-  const conteudo = montarConteudo('Transcreva este documento.', { bytes, mime });
-  if (typeof conteudo === 'string') {
-    // `montarConteudo` devolve só texto quando o arquivo passa do limite da API.
+  const bloco = blocoDeMidia({ bytes, mime }, 'documento');
+  if (!bloco) {
     log.aviso('arquivo_grande_demais_para_visao', { mime, bytes: bytes.byteLength });
     return null;
   }
 
-  const client = new Anthropic({ apiKey });
-  try {
-    const resposta = await client.messages.create({
-      model: process.env.IA_MODEL ?? MODELO_PADRAO,
-      max_tokens: MAX_TOKENS,
-      system: INSTRUCOES,
-      messages: [{ role: 'user', content: conteudo }],
-    });
-    const texto = resposta.content
-      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-      .map((b) => b.text)
-      .join('\n')
-      .trim();
-    return texto.length > 0 ? texto : null;
-  } catch (err) {
-    log.aviso('visao_falhou', { mime, err });
+  const r = await chatCompletions({
+    model: modeloOpenAI(),
+    messages: [
+      { role: 'system', content: INSTRUCOES },
+      { role: 'user', content: [bloco, { type: 'text', text: 'Transcreva este documento.' }] },
+    ],
+    max_completion_tokens: MAX_TOKENS,
+    reasoning_effort: 'low',
+  });
+  if (!r.ok) {
+    log.aviso('visao_falhou', { mime, status: r.status });
     return null;
   }
+  const texto = r.resposta.choices[0]?.message.content?.trim() ?? '';
+  return texto.length > 0 ? texto : null;
 }

@@ -72,11 +72,13 @@ export interface Classifier {
 /**
  * Factory. Escolha do provider vem de env var — troca sem tocar em código chamador.
  *   - `IA_PROVIDER=mock` (default): MockClassifier determinístico, sem custo.
- *   - `IA_PROVIDER=anthropic`: Claude com structured outputs. Modelo em
- *     `IA_MODEL` (default `claude-opus-5`).
+ *   - `IA_PROVIDER=openai`: **o padrão do projeto desde 2026-09-15.** Chat
+ *     Completions com `json_schema` estrito e visão. Modelo em `IA_MODEL`
+ *     (default `gpt-5.4-mini`).
+ *   - `IA_PROVIDER=anthropic`: Claude com structured outputs (alternativo).
  *
  * O import é dinâmico pra que o SDK da Anthropic só entre no bundle da
- * function quando o provider real estiver ligado.
+ * function quando esse provider estiver ligado.
  */
 export async function getClassifier(): Promise<Classifier> {
   const provider = process.env.IA_PROVIDER ?? 'mock';
@@ -86,10 +88,15 @@ export async function getClassifier(): Promise<Classifier> {
     return new MockClassifier();
   }
 
+  if (provider === 'openai') {
+    const { OpenAIClassifier } = await import('./openai-classifier');
+    return new OpenAIClassifier();
+  }
+
   if (provider === 'anthropic') {
     const { AnthropicClassifier } = await import('./anthropic-classifier');
     return new AnthropicClassifier();
   }
 
-  throw new Error(`IA_PROVIDER desconhecido: ${provider}. Suportados: mock, anthropic`);
+  throw new Error(`IA_PROVIDER desconhecido: ${provider}. Suportados: mock, openai, anthropic`);
 }

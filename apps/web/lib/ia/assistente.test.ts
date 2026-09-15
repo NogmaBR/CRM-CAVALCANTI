@@ -1,33 +1,30 @@
-import type { Message } from '@anthropic-ai/sdk/resources/messages/messages';
 import type { Database } from '@nogma/db';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod/v4';
-import { type ClienteDeMensagens, extrairCitacoes, perguntar } from './assistente';
+import { extrairCitacoes, perguntar } from './assistente';
 import { ferramenta } from './ferramentas/registro';
+import type {
+  ModeloComFerramentas,
+  RespostaDoModelo,
+  ResultadoDeFerramenta,
+} from './modelo-ferramentas';
 import { SEM_EMBEDDINGS, SEM_RESPOSTA } from './prompts/assistente-obra';
 
-/**
- * O laço de ferramentas, sem rede e sem banco.
- *
- * O que precisa ser verdade:
- *
- *  1. O modelo pede uma ferramenta → ela executa com argumentos validados →
- *     o resultado volta como `tool_result` → o modelo redige.
- *  2. Ferramenta fora da allowlist volta como erro para o modelo, e o laço
- *     continua — não derruba a resposta.
- *  3. O laço tem teto. Um modelo que pede ferramenta para sempre não trava.
- *  4. Tudo é gravado: conversa, duas mensagens, e uma linha por ferramenta.
- *  5. Sem modelo e sem embeddings, a resposta é o texto fixo — sem chamada.
- */
-
 type Client = SupabaseClient<Database>;
+
+/**
+ * O laço do assistente, sem rede e sem provider: o modelo é um fake que
+ * implementa `ModeloComFerramentas`. O que importa aqui é o contrato do laço
+ * — ferramenta pedida é executada e devolvida, allowlist e Zod barram o que
+ * não pode, o teto de rodadas segura, e falha do modelo vira texto fixo.
+ * O adaptador de cada provider (OpenAI/Anthropic) é testado à parte.
+ */
 
 // ---------------------------------------------------------------------------
 // Fakes
 // ---------------------------------------------------------------------------
 
-/** Supabase mínimo: registra inserts e devolve ids; `buscar` recebe erro de rpc. */
 function supabaseFake() {
   const inserts: Array<{ tabela: string; linhas: unknown }> = [];
   let seq = 0;
@@ -50,43 +47,46 @@ function supabaseFake() {
   return { cliente: cliente as unknown as Client, inserts };
 }
 
-function msg(content: Message['content'], stop: Message['stop_reason']): Message {
-  return {
-    id: 'msg',
-    type: 'message',
-    role: 'assistant',
-    model: 'fake',
-    content,
-    stop_reason: stop,
-    stop_sequence: null,
-    usage: { input_tokens: 10, output_tokens: 5 } as Message['usage'],
-  } as Message;
+interface Chamada {
+  tipo: 'perguntar' | 'continuar';
+  prompt?: string;
+  resultados?: ResultadoDeFerramenta[];
 }
 
-const texto = (t: string) => ({ type: 'text' as const, text: t, citations: null });
-const usoDe = (id: string, name: string, input: unknown) => ({
-  type: 'tool_use' as const,
-  id,
-  name,
-  input,
-  caller: { type: 'direct' as const },
-});
-
-/** Cliente que devolve as respostas na ordem, e guarda o que recebeu. */
-function clienteFake(respostas: Message[]): ClienteDeMensagens & { chamadas: unknown[] } {
-  const chamadas: unknown[] = [];
+function modeloFake(respostas: RespostaDoModelo[]): ModeloComFerramentas & { chamadas: Chamada[] } {
+  const chamadas: Chamada[] = [];
   let i = 0;
+  const proxima = () => {
+    const r = respostas[Math.min(i, respostas.length - 1)];
+    i += 1;
+    if (!r) throw new Error('sem resposta');
+    return r;
+  };
   return {
     chamadas,
-    async create(params) {
-      chamadas.push(params);
-      const r = respostas[Math.min(i, respostas.length - 1)];
-      i += 1;
-      if (!r) throw new Error('sem resposta');
-      return r;
+    async perguntar(prompt) {
+      chamadas.push({ tipo: 'perguntar', prompt });
+      return proxima();
+    },
+    async continuar(resultados) {
+      chamadas.push({ tipo: 'continuar', resultados });
+      return proxima();
     },
   };
 }
+
+const texto = (t: string): RespostaDoModelo => ({
+  texto: t,
+  usos: [],
+  tokensEntrada: 10,
+  tokensSaida: 5,
+});
+const uso = (id: string, nome: string, argumentos: unknown): RespostaDoModelo => ({
+  texto: '',
+  usos: [{ id, nome, argumentos }],
+  tokensEntrada: 10,
+  tokensSaida: 5,
+});
 
 const somaFake = ferramenta({
   nome: 'soma_fake',
@@ -107,13 +107,13 @@ describe('perguntar — laço de ferramentas', () => {
 
   it('executa a ferramenta pedida, devolve o resultado ao modelo e redige', async () => {
     const { cliente, inserts } = supabaseFake();
-    const modelo = clienteFake([
-      msg([usoDe('tu1', 'soma_fake', { obra: 'garibaldi' })], 'tool_use'),
-      msg([texto('Na Garibaldi foram R$ 1.234,50.')], 'end_turn'),
+    const modelo = modeloFake([
+      uso('tu1', 'soma_fake', { obra: 'garibaldi' }),
+      texto('Na Garibaldi foram R$ 1.234,50.'),
     ]);
 
     const r = await perguntar(cliente, entrada, {
-      criarCliente: () => modelo,
+      criarModelo: () => modelo,
       ferramentas: [somaFake],
       hoje: () => '2026-09-11',
     });
@@ -123,26 +123,13 @@ describe('perguntar — laço de ferramentas', () => {
     expect(r.ferramentas).toHaveLength(1);
     expect(r.ferramentas[0]).toMatchObject({ ferramenta: 'soma_fake', ok: true });
 
-    // A segunda chamada ao modelo recebeu o tool_result certo.
-    const segunda = modelo.chamadas[1] as { messages: Array<{ role: string; content: unknown }> };
-    expect(segunda.messages).toHaveLength(3);
-    const resultado = segunda.messages[2]?.content as Array<Record<string, unknown>>;
-    expect(resultado[0]).toMatchObject({
-      type: 'tool_result',
-      tool_use_id: 'tu1',
-      is_error: false,
-    });
-    expect(String(resultado[0]?.content)).toContain('1234.5');
+    expect(modelo.chamadas[0]?.tipo).toBe('perguntar');
+    expect(modelo.chamadas[0]?.prompt).toContain('HOJE: 2026-09-11');
+    const segunda = modelo.chamadas[1];
+    expect(segunda?.tipo).toBe('continuar');
+    expect(segunda?.resultados?.[0]).toMatchObject({ id: 'tu1', erro: false });
+    expect(String(segunda?.resultados?.[0]?.conteudo)).toContain('1234.5');
 
-    // O prompt levou a data de hoje, e as ferramentas foram declaradas.
-    const primeira = modelo.chamadas[0] as {
-      messages: Array<{ content: string }>;
-      tools: unknown[];
-    };
-    expect(primeira.messages[0]?.content).toContain('HOJE: 2026-09-11');
-    expect(primeira.tools).toHaveLength(1);
-
-    // Gravou conversa, 2 mensagens e 1 chamada de ferramenta.
     expect(inserts.map((i) => i.tabela)).toEqual([
       'ai_conversations',
       'ai_messages',
@@ -159,31 +146,23 @@ describe('perguntar — laço de ferramentas', () => {
 
   it('ferramenta fora da allowlist vira erro para o modelo, e a resposta segue', async () => {
     const { cliente } = supabaseFake();
-    const modelo = clienteFake([
-      msg([usoDe('tu1', 'apagar_tudo', {})], 'tool_use'),
-      msg([texto('Não consigo fazer isso.')], 'end_turn'),
-    ]);
+    const modelo = modeloFake([uso('tu1', 'apagar_tudo', {}), texto('Não consigo fazer isso.')]);
 
     const r = await perguntar(cliente, entrada, {
-      criarCliente: () => modelo,
+      criarModelo: () => modelo,
       ferramentas: [somaFake],
     });
 
     expect(r.texto).toBe('Não consigo fazer isso.');
     expect(r.ferramentas[0]).toMatchObject({ ferramenta: 'apagar_tudo', ok: false });
-    const segunda = modelo.chamadas[1] as { messages: Array<{ content: unknown }> };
-    const resultado = segunda.messages[2]?.content as Array<Record<string, unknown>>;
-    expect(resultado[0]?.is_error).toBe(true);
+    expect(modelo.chamadas[1]?.resultados?.[0]?.erro).toBe(true);
   });
 
   it('argumento inválido também vira erro, sem executar', async () => {
     const { cliente } = supabaseFake();
-    const modelo = clienteFake([
-      msg([usoDe('tu1', 'soma_fake', { obra: 'x' })], 'tool_use'),
-      msg([texto('Qual obra?')], 'end_turn'),
-    ]);
+    const modelo = modeloFake([uso('tu1', 'soma_fake', { obra: 'x' }), texto('Qual obra?')]);
     const r = await perguntar(cliente, entrada, {
-      criarCliente: () => modelo,
+      criarModelo: () => modelo,
       ferramentas: [somaFake],
     });
     expect(r.ferramentas[0]?.ok).toBe(false);
@@ -192,12 +171,10 @@ describe('perguntar — laço de ferramentas', () => {
 
   it('o laço tem teto: modelo que só pede ferramenta não trava', async () => {
     const { cliente } = supabaseFake();
-    const modelo = clienteFake([
-      msg([usoDe('tu', 'soma_fake', { obra: 'garibaldi' })], 'tool_use'),
-    ]);
+    const modelo = modeloFake([uso('tu', 'soma_fake', { obra: 'garibaldi' })]);
 
     const r = await perguntar(cliente, entrada, {
-      criarCliente: () => modelo,
+      criarModelo: () => modelo,
       ferramentas: [somaFake],
     });
 
@@ -208,13 +185,16 @@ describe('perguntar — laço de ferramentas', () => {
 
   it('modelo que lança devolve texto fixo, não exceção', async () => {
     const { cliente } = supabaseFake();
-    const modelo: ClienteDeMensagens = {
-      create: async () => {
+    const modelo: ModeloComFerramentas = {
+      perguntar: async () => {
+        throw new Error('429');
+      },
+      continuar: async () => {
         throw new Error('429');
       },
     };
     const r = await perguntar(cliente, entrada, {
-      criarCliente: () => modelo,
+      criarModelo: () => modelo,
       ferramentas: [somaFake],
     });
     expect(r.usouModelo).toBe(false);
