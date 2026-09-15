@@ -158,8 +158,7 @@ aqui — não invente uma integração.
 | Vercel produção | ✅ no ar | Deploy automático a partir da `main` |
 | GitHub | ✅ ligado | `gh` autenticado com escopo `workflow` |
 | **UAZAPI (WhatsApp)** | ❌ **sem credencial** | Código pronto. Sem `UAZAPI_BASE_URL`/`UAZAPI_TOKEN` o CRM recebe e registra, mas **nunca responde** — o ciclo de confirmação não fecha |
-| **Classificador IA** | ⚠️ **modo mock** | `IA_PROVIDER=mock`. Com `anthropic` + `ANTHROPIC_API_KEY` vira real (`claude-opus-5`) |
-| **Transcrição de áudio** | ❌ desligada | `IA_TRANSCRICAO_PROVIDER=none`. Com `openai` + `OPENAI_API_KEY` liga |
+| **IA (OpenAI)** | 🟡 chave na Vercel, `IA_PROVIDER` ainda `mock` | Decisão 2026-09-15: **tudo OpenAI** (`gpt-5.4-mini`: classificador com visão, visão do acervo, assistente; `gpt-4o-mini-transcribe`; `text-embedding-3-small`). `OPENAI_API_KEY`, `IA_TRANSCRICAO_PROVIDER` e `IA_EMBEDDINGS_PROVIDER` já estão na Vercel; `IA_PROVIDER=openai` só depois do merge do PR #28 (`scripts/configurar-ia-vercel.mjs --com-provider --redeploy`). Anthropic ficou como provider alternativo, sem chave |
 | n8n | ❌ não provisionado | Opcional; o CRM faz tudo sozinho agora |
 | CI (`ci.yml`) | ✅ verde (PR #14) | typecheck, vitest, build, lint do diff. Sem segredo. É o check que vale |
 | CI E2E (Playwright) | ⏸ só por dispatch | Precisa de staging Supabase (Fase 15) que nunca existiu. Saiu do gatilho de PR no PR #14 para parar de pintar tudo de vermelho |
@@ -603,6 +602,22 @@ humanas na §12 de `SO-FALTA-VOCE.md`. O que muda de regra para quem for mexer:
   simples por FK) — é como `inbound-whatsapp.test.ts` e `arquivar.test.ts` testam
   serviço sem banco. Use antes de mockar `from()` à mão.
 - `busca_global` devolve `documentos`; a paleta ⌘K mostra o grupo "Documentos".
+- **IA 100% OpenAI (2026-09-15, mesmo PR).** `lib/ia/openai.ts` (fetch, sem SDK;
+  `chatCompletions` não lança), `openai-classifier.ts` (`json_schema` estrito escrito à
+  mão — o teste garante que as chaves batem com o Zod), `classificador-comum.ts` (prompt,
+  schema, `montarSaida`, `carregarMidia` — compartilhado com o Anthropic),
+  `modelo-ferramentas.ts` (interface neutra do assistente) + `openai-modelo.ts` /
+  `anthropic-modelo.ts`, `acervo/visao.ts` só OpenAI. Provado contra a API
+  (`lib/ia/openai.real.test.ts`, gated por `TESTE_REAL=1`): texto, foto de Pix (leu
+  R$ 1.100 e a data), PDF, visão, áudio via TTS→transcrição. `gpt-5.x` aceita
+  `reasoning_effort`; `gpt-4.x` não — `chatCompletions` remove sozinho.
+- **Importador aceita TUDO** (vídeo, DWG, sem extensão, qualquer tamanho; upload em
+  stream) — pedido do cliente. O teto passa a ser o do bucket/plano do Supabase
+  (`preparar-acervo.mjs` sobe o limite ao máximo que o plano aceita e lista o que não
+  subiu). O bucket `documents` tinha 10 MB e lista fechada de MIME.
+- **O classificador do Claude Code barra escrita de configuração em produção** (aplicar
+  migration, alterar bucket) mas não barrou criar env var na Vercel nem ler a API. Por
+  isso `preparar-acervo.mjs` existe: uma linha para o usuário rodar com `!`.
 
 ### O que falta — e é ação humana, não código
 

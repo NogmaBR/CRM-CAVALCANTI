@@ -79,7 +79,7 @@ chave passa a ser cobrada à toa.
 | Integração | Variáveis | Sem isso |
 |---|---|---|
 | **WhatsApp** | `UAZAPI_BASE_URL` · `UAZAPI_TOKEN` | O CRM recebe e registra, mas **nunca responde** |
-| **Classificador** | `IA_PROVIDER=anthropic` · `ANTHROPIC_API_KEY` | A extração da nota é simulada |
+| **Classificador** | `IA_PROVIDER=openai` · `OPENAI_API_KEY` (**já na Vercel**, 15/09) | A extração da nota é simulada |
 | **Transcrição** | `IA_TRANSCRICAO_PROVIDER=openai` · `OPENAI_API_KEY` | Áudio vira pendência para alguém ouvir |
 | **Busca (RAG)** | `IA_EMBEDDINGS_PROVIDER=openai` | Perguntas livres não funcionam |
 
@@ -559,6 +559,26 @@ pagamento continua com o "SIM".
 
 **Nada disso toca produção antes da demo.** A ordem, na quarta à tarde:
 
+> **Atualização 2026-09-15 (noite):** os ZIPs já estão em
+> `C:\Users\User\Downloads\OBRAS ATIVAS CAVALCANTI` (um por obra: Aguirre,
+> Caminho do Meio E&J, Garibaldi, Inox Piratini — 329 arquivos, ~1,1 GB, TUDO
+> entra: vídeo, DWG, planilha). E a IA passou a ser **100% OpenAI** (chave já no
+> `.env.local` e na Vercel). Os passos 12.2–12.4 viraram **um comando**, que o
+> Claude Code não pode rodar (escrita de configuração em produção). Rode no
+> prompt com `!`:
+>
+> ```
+> ! node --env-file=.env.local scripts/preparar-acervo.mjs "C:\Users\User\Downloads\OBRAS ATIVAS CAVALCANTI"
+> ```
+>
+> Ele sobe o limite do bucket ao máximo do plano e libera todos os tipos, aplica
+> a migration (confere o catálogo), grava os apelidos e importa os 329 arquivos
+> (cria a Aguirre). Arquivo acima do teto do plano do Supabase aparece numa lista
+> "Não subiram" no fim — é o único caso em que algo fica de fora, e é do plano,
+> não do código. Com `--ensaio` no fim só mostra o plano. Depois do merge do
+> PR #28: `node --env-file=.env.local scripts/configurar-ia-vercel.mjs
+> --com-provider --redeploy` liga o classificador OpenAI em produção.
+
 ### 12.1 — Baixar o ZIP do OneDrive
 
 O link que ele mandou não abre por API sem login. Abra no navegador (logado na conta
@@ -601,7 +621,7 @@ cada 20 min). **Reexecutar com um ZIP novo é sincronizar.**
 **Como conferir:** `/obras/<id>` mostra a seção **Pastas** com contagens; `/documentos`
 filtra por pasta; `/pendentes` mostra "Notas e comprovantes sem pagamento vinculado" com
 o que a conciliação não conseguiu ligar sozinha (você liga pelo formulário do documento).
-Sem `ANTHROPIC_API_KEY`, foto e PDF escaneado ficam sem texto — só PDF com camada de
+Sem `OPENAI_API_KEY` (já está), foto e PDF escaneado ficam sem texto — só PDF com camada de
 texto é lido.
 
 ### 12.5 — Cadastrar o grupo
