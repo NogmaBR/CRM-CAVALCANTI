@@ -660,10 +660,28 @@ planilha, 0 do protótipo vivos, 200 notas ligadas". As 11 notas que não ligam 
 comprovante com valor diferente da planilha — ficam em `/pendentes` › "Documentos sem
 pagamento", com os candidatos listados no fim do CSV.
 
+### 12.7 — Tirar o que sobrou do protótipo (uma linha)
+
+Decisão de 2026-09-15: no CRM fica só o que veio das pastas do OneDrive. O script arquiva
+as 7 obras sem pasta, 4 fornecedores fictícios e 5 categorias genéricas; nas 4 obras
+reais troca cliente/endereço/datas inventados pelo que o alvará, a ART e as propostas
+dizem (e deixa vazio o que nenhum documento prova); limpa telefones e CNPJs inventados
+dos fornecedores e põe o CNPJ real lido das notas fiscais deles. Tudo reversível.
+
+```bash
+node --env-file=.env.local scripts/arquivar-dados-do-prototipo.mjs            # ensaio
+node --env-file=.env.local scripts/arquivar-dados-do-prototipo.mjs --aplicar  # grava
+```
+
+Esperado no fim: "4 obras vivas, 37 fornecedores (0 com telefone), 19 categorias".
+Depois, `/api/cron/indexar` (ou esperar o `rag-indexar` das :07) tira as obras
+arquivadas do RAG.
+
 - [x] Migration aplicada e conferida no catálogo (2026-09-15)
 - [x] Apelidos aplicados (10 obras) e Aguirre criada (2026-09-15)
 - [x] Import feito: 318 documentos; `/obras/<id>` › Pastas com contagens (2026-09-15)
 - [ ] Pagamentos reais lançados (12.6)
+- [ ] Protótipo arquivado (12.7)
 - [ ] Grupo cadastrado; uma foto no grupo respondida com `📁 … ✔`
 
 ---
