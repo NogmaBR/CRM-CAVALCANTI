@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   dividirEmTrechos,
+  documentoParaDocumento,
   fornecedorParaDocumento,
   obraParaDocumento,
   pagamentoParaDocumento,
+  registroParaDocumento,
 } from './documentos';
 
 /**
@@ -162,5 +164,89 @@ describe('divisão em trechos', () => {
     for (const t of trechos) {
       expect(t.length).toBeLessThanOrEqual(260);
     }
+  });
+});
+
+describe('documento do acervo', () => {
+  const base = {
+    id: 'doc-1',
+    nome_arquivo: 'NF 123.pdf',
+    categoriaRotulo: 'NFs/Pagamentos',
+    tipo: 'nota_fiscal',
+    numero_nf: '123',
+    origem: 'onedrive',
+    caminho_origem: 'Garibaldi/NFs/NF 123.pdf',
+    texto_extraido: 'NOTA FISCAL 123. Cimento CP-II 50 sacos. Total R$ 3.450,00.',
+    obra: { id: 'obra-1', nome: 'Garibaldi' },
+    fornecedor: null,
+    pagamento: null,
+  };
+
+  it('título é obra › pasta › arquivo, e o conteúdo traz o texto extraído', () => {
+    const doc = documentoParaDocumento(base);
+    expect(doc.origem).toBe('documento');
+    expect(doc.obraId).toBe('obra-1');
+    expect(doc.titulo).toBe('Garibaldi › NFs/Pagamentos › NF 123.pdf');
+    expect(doc.conteudo).toContain('na pasta NFs/Pagamentos da obra Garibaldi');
+    expect(doc.conteudo).toContain('número da nota 123');
+    expect(doc.conteudo).toContain('Cimento CP-II');
+  });
+
+  it('sem texto extraído ainda é encontrável pelo cabeçalho', () => {
+    const doc = documentoParaDocumento({
+      ...base,
+      texto_extraido: null,
+      numero_nf: null,
+      tipo: 'outro',
+    });
+    expect(doc.conteudo).toContain('Arquivo "NF 123.pdf"');
+    expect(doc.conteudo).toContain('sem texto extraível');
+    expect(doc.conteudo).not.toContain('tipo outro');
+  });
+
+  it('corta texto longo e o hash muda com o conteúdo', () => {
+    const longo = documentoParaDocumento({ ...base, texto_extraido: 'x'.repeat(50_000) });
+    expect(longo.conteudo.length).toBeLessThan(13_000);
+    expect(longo.hash).not.toBe(documentoParaDocumento(base).hash);
+  });
+
+  it('pagamento vinculado aparece por extenso', () => {
+    const doc = documentoParaDocumento({
+      ...base,
+      pagamento: { valor: 3450, data_pagamento: '2026-01-10' },
+    });
+    expect(doc.conteudo).toContain('R$ 3.450,00');
+    expect(doc.conteudo).toContain('janeiro de 2026');
+  });
+});
+
+describe('registro do diário', () => {
+  it('data por extenso, obra, autor e texto', () => {
+    const doc = registroParaDocumento({
+      id: 'reg-1',
+      texto: 'Hoje a laje do segundo pavimento ficou pronta.',
+      resumo: 'Laje do 2º pavimento concluída',
+      data_registro: '2026-09-15',
+      autor: 'Fernando',
+      obra: { id: 'obra-1', nome: 'Garibaldi' },
+    });
+    expect(doc.origem).toBe('registro');
+    expect(doc.titulo).toBe('Garibaldi › Diário › Laje do 2º pavimento concluída');
+    expect(doc.conteudo).toBe(
+      'Registro do diário da obra Garibaldi em 15/09/2026 (setembro de 2026) por Fernando: Hoje a laje do segundo pavimento ficou pronta.',
+    );
+  });
+
+  it('sem resumo o título usa o começo do texto', () => {
+    const doc = registroParaDocumento({
+      id: 'reg-2',
+      texto: 'Faltou areia, pedi mais 10 metros.',
+      resumo: null,
+      data_registro: '2026-09-15',
+      autor: null,
+      obra: null,
+    });
+    expect(doc.titulo).toBe('sem obra › Diário › Faltou areia, pedi mais 10 metros.');
+    expect(doc.obraId).toBeNull();
   });
 });

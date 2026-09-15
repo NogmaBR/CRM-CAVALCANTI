@@ -35,7 +35,7 @@ const MESES = [
 ];
 
 export interface DocumentoIndexavel {
-  origem: 'pagamento' | 'obra' | 'fornecedor' | 'documento';
+  origem: 'pagamento' | 'obra' | 'fornecedor' | 'documento' | 'registro';
   origemId: string;
   obraId: string | null;
   titulo: string;
@@ -229,4 +229,99 @@ export function dividirEmTrechos(texto: string, maxCaracteres = 1200): string[] 
 
   if (atual.trim().length > 0) trechos.push(atual.trim());
   return trechos;
+}
+
+// ---------------------------------------------------------------------------
+// Acervo: arquivos e diário de obra
+// ---------------------------------------------------------------------------
+
+/**
+ * O texto de um PDF grande não cabe num embedding e não precisa: o assistente
+ * responde "existe cronograma da Aguirre?" pelo título e "quanto foi a NF
+ * 123?" pelas primeiras páginas. Cortar aqui limita o custo por documento
+ * (12k chars ≈ 10 trechos) sem perder o que se pergunta de verdade.
+ */
+const MAX_TEXTO_DOCUMENTO = 12_000;
+
+export interface DocumentoParaIndexar {
+  id: string;
+  nome_arquivo: string;
+  categoriaRotulo: string;
+  tipo: string;
+  numero_nf: string | null;
+  origem: string;
+  caminho_origem: string | null;
+  texto_extraido: string | null;
+  obra: { id: string; nome: string } | null;
+  fornecedor: { nome: string } | null;
+  pagamento: { valor: number; data_pagamento: string } | null;
+}
+
+export function documentoParaDocumento(d: DocumentoParaIndexar): DocumentoIndexavel {
+  const obra = d.obra?.nome ?? 'sem obra';
+  const titulo = `${obra} › ${d.categoriaRotulo} › ${d.nome_arquivo}`;
+
+  const cabecalho = [
+    `Arquivo "${d.nome_arquivo}" na pasta ${d.categoriaRotulo} da obra ${obra}`,
+    d.tipo !== 'outro' ? `tipo ${d.tipo.replace('_', ' ')}` : null,
+    d.numero_nf ? `número da nota ${d.numero_nf}` : null,
+    d.fornecedor ? `fornecedor ${d.fornecedor.nome}` : null,
+    d.pagamento
+      ? `vinculado ao pagamento de ${moeda(d.pagamento.valor)} em ${dataPorExtenso(d.pagamento.data_pagamento)}`
+      : null,
+    d.origem === 'onedrive'
+      ? 'veio do OneDrive'
+      : d.origem === 'whatsapp'
+        ? 'veio pelo WhatsApp'
+        : null,
+  ]
+    .filter(Boolean)
+    .join(', ');
+
+  const texto = d.texto_extraido?.trim();
+  const conteudo = texto
+    ? `${cabecalho}.\n\n${texto.slice(0, MAX_TEXTO_DOCUMENTO)}`
+    : `${cabecalho}. (conteúdo não lido: sem texto extraível)`;
+
+  return {
+    origem: 'documento',
+    origemId: d.id,
+    obraId: d.obra?.id ?? null,
+    titulo: titulo.slice(0, 200),
+    conteudo,
+    hash: hashDe(conteudo),
+  };
+}
+
+export interface RegistroParaIndexar {
+  id: string;
+  texto: string;
+  resumo: string | null;
+  data_registro: string;
+  autor: string | null;
+  obra: { id: string; nome: string } | null;
+}
+
+/** Diário de obra: "em 15/09/2026 (setembro de 2026), na obra Garibaldi, Fernando registrou: …". */
+export function registroParaDocumento(r: RegistroParaIndexar): DocumentoIndexavel {
+  const obra = r.obra?.nome ?? 'sem obra';
+  const conteudo = [
+    `Registro do diário da obra ${obra} em ${dataPorExtenso(r.data_registro)}`,
+    r.autor ? `por ${r.autor}` : null,
+    `: ${r.texto.trim().slice(0, MAX_TEXTO_DOCUMENTO)}`,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .replace(' :', ':');
+
+  const titulo = `${obra} › Diário › ${(r.resumo ?? r.texto).trim().slice(0, 80)}`;
+
+  return {
+    origem: 'registro',
+    origemId: r.id,
+    obraId: r.obra?.id ?? null,
+    titulo: titulo.slice(0, 200),
+    conteudo,
+    hash: hashDe(conteudo),
+  };
 }

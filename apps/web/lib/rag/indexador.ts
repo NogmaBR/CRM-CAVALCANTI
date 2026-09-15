@@ -1,14 +1,17 @@
 import 'server-only';
 import { MAX_LOTE, embeddingsAtivo, gerarEmbeddings, paraLiteralVetor } from '@/lib/ia/embeddings';
 import { logger } from '@/lib/log';
+import { CATEGORIA_LABELS } from '@/lib/status-labels';
 import type { Database } from '@nogma/db';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   type DocumentoIndexavel,
   dividirEmTrechos,
+  documentoParaDocumento,
   fornecedorParaDocumento,
   obraParaDocumento,
   pagamentoParaDocumento,
+  registroParaDocumento,
 } from './documentos';
 
 /**
@@ -164,6 +167,59 @@ async function coletarFornecedores(supabase: Client): Promise<DocumentoIndexavel
 }
 
 /**
+ * Arquivos do acervo (OneDrive, WhatsApp, painel). Entram mesmo sem texto
+ * extraído: o título já responde "existe cronograma da Aguirre?". Quando a
+ * extração terminar, o hash muda e o documento é reindexado.
+ */
+async function coletarArquivos(supabase: Client): Promise<DocumentoIndexavel[]> {
+  const { data, error } = await supabase
+    .from('documentos')
+    .select(
+      'id, nome_arquivo, categoria, tipo, numero_nf, origem, caminho_origem, texto_extraido, obras ( id, nome ), fornecedores ( nome ), pagamentos ( valor, data_pagamento )',
+    )
+    .is('deleted_at', null);
+
+  if (error) throw new Error(`Falha ao ler documentos: ${error.message}`);
+
+  return (data ?? []).map((d) => {
+    const pag = d.pagamentos as { valor: number; data_pagamento: string } | null;
+    return documentoParaDocumento({
+      id: d.id,
+      nome_arquivo: d.nome_arquivo,
+      categoriaRotulo: CATEGORIA_LABELS[d.categoria]?.rotulo ?? String(d.categoria),
+      tipo: String(d.tipo),
+      numero_nf: d.numero_nf,
+      origem: String(d.origem),
+      caminho_origem: d.caminho_origem,
+      texto_extraido: d.texto_extraido,
+      obra: (d.obras as { id: string; nome: string } | null) ?? null,
+      fornecedor: (d.fornecedores as { nome: string } | null) ?? null,
+      pagamento: pag ? { valor: Number(pag.valor), data_pagamento: pag.data_pagamento } : null,
+    });
+  });
+}
+
+async function coletarRegistros(supabase: Client): Promise<DocumentoIndexavel[]> {
+  const { data, error } = await supabase
+    .from('registros_obra')
+    .select('id, texto, resumo, data_registro, obras ( id, nome ), autorizados ( nome )')
+    .is('deleted_at', null);
+
+  if (error) throw new Error(`Falha ao ler registros de obra: ${error.message}`);
+
+  return (data ?? []).map((r) =>
+    registroParaDocumento({
+      id: r.id,
+      texto: r.texto,
+      resumo: r.resumo,
+      data_registro: r.data_registro,
+      autor: (r.autorizados as { nome: string } | null)?.nome ?? null,
+      obra: (r.obras as { id: string; nome: string } | null) ?? null,
+    }),
+  );
+}
+
+/**
  * Reescreve os textos de conhecimento a partir do estado atual do CRM.
  *
  * Não gera embedding nenhum. É barato e idempotente: rodar duas vezes seguidas
@@ -174,6 +230,8 @@ export async function sincronizarDocumentos(supabase: Client): Promise<Resultado
     ...(await coletarPagamentos(supabase)),
     ...(await coletarObras(supabase)),
     ...(await coletarFornecedores(supabase)),
+    ...(await coletarArquivos(supabase)),
+    ...(await coletarRegistros(supabase)),
   ];
 
   const { data: existentes } = await supabase
