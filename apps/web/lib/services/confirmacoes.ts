@@ -6,9 +6,17 @@ import {
   temDadosParaLancar,
 } from '@/lib/schemas/dados-extraidos';
 import { anexarMidiaComoDocumento } from '@/lib/services/anexar-midia';
+import { CATEGORIAS, type DocCategoria } from '@/lib/status-labels';
 import { hojeBR } from '@/lib/util/datas';
+import type { Opcao } from '@/lib/whatsapp/escolha';
 import type { Database } from '@nogma/db';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import {
+  arquivarDocumentoDeObra,
+  registrarNaObra,
+  respostaArquivado,
+  respostaRegistrado,
+} from './arquivar';
 
 const log = logger('confirmacoes');
 
@@ -42,9 +50,12 @@ export type ResultadoConfirmacao =
         | 'ja_resolvida'
         | 'dados_incompletos'
         | 'erro_insert'
-        | 'sem_permissao';
+        | 'sem_permissao'
+        | 'tipo_diferente';
       motivo: string;
     };
+
+export type TipoPendencia = 'pagamento' | 'obra_documento' | 'obra_registro';
 
 export type ResultadoRecusa =
   | { ok: true; jaEstavaResolvida: boolean }
@@ -77,12 +88,20 @@ export async function aplicarConfirmacao(
 ): Promise<ResultadoConfirmacao> {
   const { data: confirmacao } = await supabase
     .from('confirmacoes_pendentes')
-    .select('id, mensagem_id, resolvida, pagamento_id')
+    .select('id, mensagem_id, resolvida, pagamento_id, tipo')
     .eq('id', ctx.confirmacaoId)
     .maybeSingle();
 
   if (!confirmacao) {
     return { ok: false, codigo: 'nao_encontrada', motivo: 'Confirmação não encontrada.' };
+  }
+  // Pergunta de obra não lança pagamento: o caminho é `aplicarEscolhaDeObra`.
+  if (confirmacao.tipo && confirmacao.tipo !== 'pagamento') {
+    return {
+      ok: false,
+      codigo: 'tipo_diferente',
+      motivo: 'Esta pendência pergunta a obra do arquivo, não confirma pagamento. Escolha a obra.',
+    };
   }
 
   const { data: mensagem } = await supabase
@@ -319,16 +338,26 @@ export async function recusarConfirmacao(
  * de anteontem: passado o prazo, a resposta volta a ser tratada como mensagem
  * nova e a pendência antiga fica pro gestor decidir.
  */
+export interface PendenciaAberta {
+  id: string;
+  mensagemId: string;
+  perguntaEnviada: string;
+  tipo: TipoPendencia;
+  opcoes: Opcao[];
+}
+
 export async function buscarConfirmacaoAberta(
   supabase: Client,
   telefone: string,
   janelaHoras = 24,
-): Promise<{ id: string; mensagemId: string; perguntaEnviada: string } | null> {
+): Promise<PendenciaAberta | null> {
   const desde = new Date(Date.now() - janelaHoras * 3600_000).toISOString();
 
   const { data, error } = await supabase
     .from('confirmacoes_pendentes')
-    .select('id, mensagem_id, pergunta_enviada, created_at, mensagens_whats!inner(telefone_from)')
+    .select(
+      'id, mensagem_id, pergunta_enviada, created_at, tipo, opcoes, mensagens_whats!inner(telefone_from)',
+    )
     .eq('resolvida', false)
     .eq('mensagens_whats.telefone_from', telefone)
     .gte('created_at', desde)
@@ -347,5 +376,162 @@ export async function buscarConfirmacaoAberta(
     id: linha.id,
     mensagemId: linha.mensagem_id,
     perguntaEnviada: linha.pergunta_enviada,
+    tipo: tipoValido(linha.tipo),
+    opcoes: lerOpcoes(linha.opcoes),
   };
+}
+
+function tipoValido(t: unknown): TipoPendencia {
+  return t === 'obra_documento' || t === 'obra_registro' ? t : 'pagamento';
+}
+
+function lerOpcoes(v: unknown): Opcao[] {
+  if (!Array.isArray(v)) return [];
+  return v
+    .filter(
+      (o): o is Record<string, unknown> =>
+        !!o && typeof o === 'object' && typeof (o as Record<string, unknown>).id === 'string',
+    )
+    .map((o) => ({
+      n: Number(o.n),
+      id: String(o.id),
+      nome: String(o.nome ?? ''),
+      apelidos: Array.isArray(o.apelidos) ? o.apelidos.map(String) : [],
+    }));
+}
+
+export type ResultadoEscolha =
+  | { ok: true; resposta: string; jaEstavaResolvida: boolean }
+  | {
+      ok: false;
+      codigo:
+        | 'nao_encontrada'
+        | 'ja_resolvida'
+        | 'tipo_diferente'
+        | 'erro_insert'
+        | 'sem_permissao';
+      motivo: string;
+    };
+
+/**
+ * Resolve uma pendência de obra (`obra_documento` / `obra_registro`) com a
+ * obra escolhida — pelo número no WhatsApp ou pelo gestor no painel.
+ *
+ * Arquiva (ou registra) na obra e fecha a pendência. Idempotente: a segunda
+ * chamada devolve a mesma resposta sem duplicar (o arquivamento é por
+ * mensagem, e a pendência já resolvida devolve `jaEstavaResolvida`).
+ */
+export async function aplicarEscolhaDeObra(
+  supabase: Client,
+  ctx: ContextoResolucao & { obraId: string },
+): Promise<ResultadoEscolha> {
+  const { data: confirmacao } = await supabase
+    .from('confirmacoes_pendentes')
+    .select('id, mensagem_id, resolvida, tipo')
+    .eq('id', ctx.confirmacaoId)
+    .maybeSingle();
+  if (!confirmacao) {
+    return { ok: false, codigo: 'nao_encontrada', motivo: 'Pendência não encontrada.' };
+  }
+  const tipo = tipoValido(confirmacao.tipo);
+  if (tipo === 'pagamento') {
+    return {
+      ok: false,
+      codigo: 'tipo_diferente',
+      motivo: 'Esta pendência é de pagamento; confirme ou recuse.',
+    };
+  }
+
+  const { data: obra } = await supabase
+    .from('obras')
+    .select('id, nome')
+    .eq('id', ctx.obraId)
+    .is('deleted_at', null)
+    .maybeSingle();
+  if (!obra) {
+    return { ok: false, codigo: 'nao_encontrada', motivo: 'Obra não encontrada.' };
+  }
+
+  const { data: mensagem } = await supabase
+    .from('mensagens_whats')
+    .select(
+      'id, texto_bruto, texto_transcrito, dados_extraidos, midia_storage_path, midia_mime, autorizado_id',
+    )
+    .eq('id', confirmacao.mensagem_id)
+    .maybeSingle();
+  if (!mensagem) {
+    return { ok: false, codigo: 'nao_encontrada', motivo: 'Mensagem original não encontrada.' };
+  }
+
+  const dados = (mensagem.dados_extraidos ?? {}) as Record<string, unknown>;
+  const categoria = categoriaValida(dados.categoria);
+
+  let resposta: string;
+  if (tipo === 'obra_documento') {
+    const r = await arquivarDocumentoDeObra(supabase, {
+      mensagemId: mensagem.id,
+      obraId: obra.id,
+      categoria,
+      tipo: tipoAnexoValido(dados.tipo_documento),
+      storagePath: mensagem.midia_storage_path,
+      mime: mensagem.midia_mime,
+      autorizadoId: mensagem.autorizado_id,
+      legenda: mensagem.texto_bruto,
+    });
+    if (!r.ok) {
+      return { ok: false, codigo: 'erro_insert', motivo: `Não consegui arquivar (${r.motivo}).` };
+    }
+    resposta = respostaArquivado(obra.nome, categoria);
+  } else {
+    const r = await registrarNaObra(supabase, {
+      mensagemId: mensagem.id,
+      obraId: obra.id,
+      texto: mensagem.texto_bruto ?? mensagem.texto_transcrito,
+      resumo: typeof dados.resumo === 'string' ? dados.resumo : null,
+      storagePath: mensagem.midia_storage_path,
+      mime: mensagem.midia_mime,
+      autorizadoId: mensagem.autorizado_id,
+    });
+    if (!r.ok) {
+      return { ok: false, codigo: 'erro_insert', motivo: `Não consegui registrar (${r.motivo}).` };
+    }
+    resposta = respostaRegistrado(obra.nome);
+  }
+
+  if (confirmacao.resolvida) return { ok: true, resposta, jaEstavaResolvida: true };
+
+  const confUpd = await supabase
+    .from('confirmacoes_pendentes')
+    .update({
+      resolvida: true,
+      respondida_em: new Date().toISOString(),
+      resposta_bruta: ctx.respostaBruta,
+      resolvida_via: ctx.via,
+      resultado: 'confirmada',
+    })
+    .eq('id', ctx.confirmacaoId)
+    .select('id');
+  if (confUpd.error || (confUpd.data?.length ?? 0) === 0) {
+    log.erro('escolha_pendencia_nao_fechada', {
+      confirmacaoId: ctx.confirmacaoId,
+      erro: confUpd.error?.message ?? 'zero linhas (permissão?)',
+    });
+    return {
+      ok: false,
+      codigo: 'sem_permissao',
+      motivo: 'Sem permissão para resolver esta pendência.',
+    };
+  }
+
+  return { ok: true, resposta, jaEstavaResolvida: false };
+}
+
+function categoriaValida(c: unknown): DocCategoria {
+  return typeof c === 'string' && (CATEGORIAS as readonly string[]).includes(c)
+    ? (c as DocCategoria)
+    : 'outro';
+}
+
+function tipoAnexoValido(t: unknown): 'nota_fiscal' | 'comprovante' | 'contrato' | 'outro' {
+  return t === 'nota_fiscal' || t === 'comprovante' || t === 'contrato' ? t : 'outro';
 }

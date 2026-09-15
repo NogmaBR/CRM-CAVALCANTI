@@ -1,9 +1,18 @@
 import 'server-only';
 import { type Classifier, type ClassifierInput, getClassifier } from '@/lib/ia/classifier';
 import { logger } from '@/lib/log';
+import { CATEGORIAS, type DocCategoria } from '@/lib/status-labels';
 import { hojeBR } from '@/lib/util/datas';
+import { type Opcao, formatarOpcoes } from '@/lib/whatsapp/escolha';
 import type { Database } from '@nogma/db';
+import type { Json } from '@nogma/db/types';
 import { createClient as createSbClient } from '@supabase/supabase-js';
+import {
+  arquivarDocumentoDeObra,
+  registrarNaObra,
+  respostaArquivado,
+  respostaRegistrado,
+} from './arquivar';
 
 const log = logger('classificacao');
 
@@ -60,6 +69,12 @@ export async function classifyAndPersist(mensagemId: string): Promise<
        * precisa confirmar, e o fluxo automático morre na primeira etapa.
        */
       confirmacao: { id: string; pergunta: string } | null;
+      /**
+       * Resposta curta a mandar no chat quando a mensagem foi resolvida sem
+       * pergunta ("📁 Garibaldi › Fotos ✔"). Só para documento/registro de
+       * obra; pagamento continua pelo `confirmacao`.
+       */
+      resposta?: string;
     }
   | { ok: false; error: string }
 > {
@@ -72,17 +87,33 @@ export async function classifyAndPersist(mensagemId: string): Promise<
 
   const { data: msg, error: msgErr } = await supabase
     .from('mensagens_whats')
-    .select('id, telefone_from, texto_bruto, texto_transcrito, midia_mime, midia_storage_path')
+    .select(
+      'id, telefone_from, texto_bruto, texto_transcrito, midia_mime, midia_storage_path, chat_id, grupo_id, autorizado_id',
+    )
     .eq('id', mensagemId)
     .single();
   if (msgErr || !msg) return { ok: false, error: `mensagem ${mensagemId} não encontrada` };
 
   await supabase.from('mensagens_whats').update({ status: 'processando' }).eq('id', mensagemId);
 
-  const [obrasRes, fornRes] = await Promise.all([
-    supabase.from('obras').select('id, nome').is('deleted_at', null).eq('status', 'ativa'),
+  const [obrasRes, fornRes, grupoRes] = await Promise.all([
+    supabase
+      .from('obras')
+      .select('id, nome, apelidos')
+      .is('deleted_at', null)
+      .eq('status', 'ativa')
+      .order('nome', { ascending: true }),
     supabase.from('fornecedores').select('id, nome').is('deleted_at', null),
+    msg.grupo_id
+      ? supabase.from('whatsapp_grupos').select('obra_id').eq('id', msg.grupo_id).maybeSingle()
+      : Promise.resolve({ data: null as { obra_id: string | null } | null }),
   ]);
+
+  const obrasAtivas = (obrasRes.data ?? []).map((o) => ({
+    id: o.id,
+    nome: o.nome,
+    apelidos: o.apelidos ?? [],
+  }));
 
   const input: ClassifierInput = {
     // Áudio chega com `texto_bruto` nulo: quem tem o conteúdo é a transcrição.
@@ -92,8 +123,9 @@ export async function classifyAndPersist(mensagemId: string): Promise<
     midiaMime: msg.midia_mime,
     telefone: msg.telefone_from,
     contexto: {
-      obrasAtivas: (obrasRes.data ?? []).map((o) => ({ id: o.id, nome: o.nome })),
+      obrasAtivas,
       fornecedoresConhecidos: (fornRes.data ?? []).map((f) => ({ id: f.id, nome: f.nome })),
+      grupoObraId: grupoRes.data?.obra_id ?? null,
     },
   };
 
@@ -129,6 +161,119 @@ export async function classifyAndPersist(mensagemId: string): Promise<
       confianca: out.confidence,
       kind: out.kind,
       confirmacao: null,
+    };
+  }
+
+  // ---------------------------------------------------------------------
+  // Documento de obra e registro do diário: arquiva e avisa. Sem obra,
+  // pergunta qual (por número). Nunca abre pendência de pagamento.
+  // ---------------------------------------------------------------------
+  if (out.kind === 'documento_obra' || out.kind === 'registro_obra') {
+    const obra = out.extracted.obra_id
+      ? obrasAtivas.find((o) => o.id === out.extracted.obra_id)
+      : undefined;
+
+    if (!obra) {
+      const opcoes: Opcao[] = obrasAtivas.slice(0, 10).map((o, i) => ({
+        n: i + 1,
+        id: o.id,
+        nome: o.nome,
+        apelidos: o.apelidos,
+      }));
+      if (opcoes.length === 0) {
+        await supabase
+          .from('mensagens_whats')
+          .update({
+            status: 'erro',
+            erro_msg: 'Nenhuma obra ativa cadastrada para arquivar.',
+            confianca_ia: out.confidence,
+            dados_extraidos: out.extracted,
+          })
+          .eq('id', mensagemId);
+        return {
+          ok: true,
+          status: 'erro',
+          confianca: out.confidence,
+          kind: out.kind,
+          confirmacao: null,
+        };
+      }
+      const pergunta = `${out.kind === 'documento_obra' ? 'De qual obra é esse arquivo?' : 'Anoto isso em qual obra?'}\n${formatarOpcoes(opcoes)}\nResponda com o número.`;
+      return abrirPendencia(supabase, {
+        mensagemId,
+        pergunta,
+        out,
+        tipo: out.kind === 'documento_obra' ? 'obra_documento' : 'obra_registro',
+        opcoes,
+        chatId: msg.chat_id,
+      });
+    }
+
+    const resultado =
+      out.kind === 'documento_obra'
+        ? await arquivarDocumentoDeObra(supabase, {
+            mensagemId,
+            obraId: obra.id,
+            categoria: categoriaValida(out.extracted.categoria),
+            tipo: out.extracted.tipo_documento ?? 'outro',
+            storagePath: msg.midia_storage_path,
+            mime: msg.midia_mime,
+            autorizadoId: msg.autorizado_id,
+            legenda: msg.texto_bruto,
+          })
+        : await registrarNaObra(supabase, {
+            mensagemId,
+            obraId: obra.id,
+            texto: msg.texto_bruto ?? msg.texto_transcrito,
+            resumo: out.extracted.resumo ?? null,
+            storagePath: msg.midia_storage_path,
+            mime: msg.midia_mime,
+            autorizadoId: msg.autorizado_id,
+          });
+
+    if (!resultado.ok) {
+      await supabase
+        .from('mensagens_whats')
+        .update({
+          status: 'erro',
+          erro_msg:
+            out.kind === 'documento_obra'
+              ? 'Não consegui guardar o arquivo; arquive pelo painel.'
+              : 'Não consegui anotar no diário; registre pelo painel.',
+          confianca_ia: out.confidence,
+          dados_extraidos: out.extracted,
+        })
+        .eq('id', mensagemId);
+      log.aviso('arquivamento_falhou', {
+        mensagem_id: mensagemId,
+        kind: out.kind,
+        motivo: resultado.motivo,
+      });
+      return {
+        ok: true,
+        status: 'erro',
+        confianca: out.confidence,
+        kind: out.kind,
+        confirmacao: null,
+        resposta: 'Não consegui guardar isso agora. Ficou registrado para o gestor ver no painel.',
+      };
+    }
+
+    await supabase
+      .from('mensagens_whats')
+      .update({ confianca_ia: out.confidence, dados_extraidos: out.extracted })
+      .eq('id', mensagemId);
+
+    return {
+      ok: true,
+      status: 'confirmada',
+      confianca: out.confidence,
+      kind: out.kind,
+      confirmacao: null,
+      resposta:
+        out.kind === 'documento_obra'
+          ? respostaArquivado(obra.nome, categoriaValida(out.extracted.categoria))
+          : respostaRegistrado(obra.nome),
     };
   }
 
@@ -193,11 +338,55 @@ export async function classifyAndPersist(mensagemId: string): Promise<
     out.perguntaConfirmacao ??
     'Recebi sua mensagem mas preciso confirmar os dados antes de lançar. Pode revisar no painel?';
 
+  return abrirPendencia(supabase, {
+    mensagemId,
+    pergunta,
+    out,
+    tipo: 'pagamento',
+    chatId: msg.chat_id,
+  });
+}
+
+function categoriaValida(c: string | undefined): DocCategoria {
+  return (CATEGORIAS as readonly string[]).includes(c ?? '') ? (c as DocCategoria) : 'outro';
+}
+
+/**
+ * Abre a pendência (pagamento ou obra) e marca a mensagem como `classificada`.
+ * Uma por mensagem: o índice parcial segura a segunda pergunta no retry.
+ */
+async function abrirPendencia(
+  supabase: ReturnType<typeof createSbClient<Database>>,
+  args: {
+    mensagemId: string;
+    pergunta: string;
+    out: Awaited<ReturnType<Classifier['classify']>>;
+    tipo: 'pagamento' | 'obra_documento' | 'obra_registro';
+    opcoes?: Opcao[];
+    chatId: string | null;
+  },
+): Promise<{
+  ok: true;
+  status: string;
+  confianca: number;
+  kind: string;
+  confirmacao: { id: string; pergunta: string } | null;
+}> {
+  const { mensagemId, pergunta, out } = args;
+  const { data: msg } = await supabase
+    .from('mensagens_whats')
+    .select('texto_bruto, telefone_from, midia_mime')
+    .eq('id', mensagemId)
+    .maybeSingle();
+
   const { data: confirmacaoCriada, error: erroConfirmacao } = await supabase
     .from('confirmacoes_pendentes')
     .insert({
       mensagem_id: mensagemId,
       pergunta_enviada: pergunta,
+      tipo: args.tipo,
+      opcoes: args.opcoes ? (JSON.parse(JSON.stringify(args.opcoes)) as Json) : null,
+      chat_id: args.chatId,
     })
     .select('id')
     .single();
@@ -235,6 +424,17 @@ export async function classifyAndPersist(mensagemId: string): Promise<
     })
     .eq('id', mensagemId);
 
+  // Pergunta de obra não é pendência financeira: nem webhook, nem evento.
+  if (args.tipo !== 'pagamento') {
+    return {
+      ok: true,
+      status: 'classificada',
+      confianca: out.confidence,
+      kind: out.kind,
+      confirmacao: confirmacaoCriada ? { id: confirmacaoCriada.id, pergunta } : null,
+    };
+  }
+
   // Nota: automação de e-mail "pendência nova" removida — fora do escopo
   // contratado (briefing de alinhamento 16/09). Webhook outbound (fase
   // n8n) segue best-effort abaixo.
@@ -248,9 +448,9 @@ export async function classifyAndPersist(mensagemId: string): Promise<
     const { dispatchEvento } = await import('@/lib/services/dispatch-webhook');
     await dispatchEvento('confirmacao_pendente_created', {
       mensagem_id: mensagemId,
-      texto_bruto: msg.texto_bruto,
-      telefone_from: msg.telefone_from,
-      midia_mime: msg.midia_mime,
+      texto_bruto: msg?.texto_bruto ?? null,
+      telefone_from: msg?.telefone_from ?? null,
+      midia_mime: msg?.midia_mime ?? null,
       confianca_ia: out.confidence,
       dados_extraidos: out.extracted,
       pendencia_count: pendenciaCount ?? 1,

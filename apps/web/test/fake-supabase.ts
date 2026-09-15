@@ -23,6 +23,13 @@ interface Filtro {
 
 interface Opcoes {
   unicos?: Record<string, string[][]>;
+  /**
+   * Relações para filtros com ponto (`.eq('mensagens_whats.telefone_from', x)`):
+   * `{ confirmacoes_pendentes: { mensagens_whats: 'mensagem_id' } }` diz que a
+   * linha de `confirmacoes_pendentes` chega em `mensagens_whats` pelo
+   * `mensagem_id`.
+   */
+  relacoes?: Record<string, Record<string, string>>;
 }
 
 let seq = 0;
@@ -31,8 +38,8 @@ function novoId(): string {
   return `00000000-0000-4000-8000-${String(seq).padStart(12, '0')}`;
 }
 
-function passa(linha: Linha, f: Filtro): boolean {
-  const v = linha[f.coluna];
+function passa(linha: Linha, f: Filtro, resolver: (l: Linha, c: string) => unknown): boolean {
+  const v = resolver(linha, f.coluna);
   switch (f.tipo) {
     case 'eq':
       return v === f.valor;
@@ -139,7 +146,15 @@ class Consulta implements PromiseLike<{ data: unknown; error: unknown }> {
 
   private executar(): { data: Linha[]; error: { code?: string; message: string } | null } {
     const tabela = this.db.tabela(this.tabela);
-    const casam = () => tabela.filter((l) => this.filtros.every((f) => passa(l, f)));
+    const resolver = (l: Linha, coluna: string): unknown => {
+      if (!coluna.includes('.')) return l[coluna];
+      const [rel, col] = coluna.split('.') as [string, string];
+      const fk = this.db.relacoes[this.tabela]?.[rel];
+      if (!fk) return undefined;
+      const alvo = this.db.tabela(rel).find((r) => r.id === l[fk]);
+      return alvo?.[col];
+    };
+    const casam = () => tabela.filter((l) => this.filtros.every((f) => passa(l, f, resolver)));
 
     if (this.operacao === 'insert') {
       const linhas = Array.isArray(this.carga) ? this.carga : [this.carga as Linha];
@@ -223,6 +238,7 @@ export interface RegistroLog {
 export class FakeSupabase {
   readonly tabelas: Record<string, Linha[]>;
   readonly unicos: Record<string, string[][]>;
+  readonly relacoes: Record<string, Record<string, string>>;
   readonly log: RegistroLog[] = [];
   readonly rpcs: Record<string, (args: Linha) => unknown> = {};
 
@@ -231,6 +247,7 @@ export class FakeSupabase {
       Object.entries(dados).map(([k, v]) => [k, v.map((l) => ({ ...l }))]),
     );
     this.unicos = opts.unicos ?? {};
+    this.relacoes = opts.relacoes ?? {};
   }
 
   tabela(nome: string): Linha[] {

@@ -63,7 +63,13 @@ export function whatsappConfigurado(): boolean {
  * `telefone` deve vir só com dígitos (o mesmo formato que `normalizeTelefone`
  * grava em `mensagens_whats.telefone_from`).
  */
-export async function enviarTexto(telefone: string, texto: string): Promise<ResultadoEnvio> {
+/**
+ * `destino` é o telefone (só dígitos) ou o JID do grupo (`…@g.us`): o
+ * endpoint aceita os dois em `number`. No log o campo se chama `telefone`
+ * para cair na máscara automática.
+ */
+export async function enviarTexto(destino: string, texto: string): Promise<ResultadoEnvio> {
+  const telefone = destino;
   const cfg = config();
   if (!cfg) {
     log.aviso('envio_ignorado_nao_configurado', {
