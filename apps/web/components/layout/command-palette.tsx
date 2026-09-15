@@ -1,6 +1,7 @@
 'use client';
 
 import { IconButton } from '@/components/nogma/IconButton';
+import { CATEGORIA_LABELS, type DocCategoria } from '@/lib/status-labels';
 import * as Dialog from '@radix-ui/react-dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import {
@@ -32,7 +33,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface Item {
   id: string;
-  grupo: 'Ir para' | 'Criar' | 'Obras' | 'Fornecedores' | 'Pagamentos';
+  grupo: 'Ir para' | 'Criar' | 'Obras' | 'Fornecedores' | 'Pagamentos' | 'Documentos';
   label: string;
   meta?: string;
   href: string;
@@ -71,6 +72,7 @@ interface ResultadoBusca {
     data: string | null;
     obra: string | null;
   }>;
+  documentos?: Array<{ id: string; nome: string; categoria: string; obra: string | null }>;
 }
 
 function normalizar(s: string): string {
@@ -181,6 +183,17 @@ export function CommandPalette() {
           icon: Receipt,
         });
       }
+      for (const d of remoto.documentos ?? []) {
+        const pasta = CATEGORIA_LABELS[d.categoria as DocCategoria]?.rotulo ?? d.categoria;
+        dinamicos.push({
+          id: `doc-${d.id}`,
+          grupo: 'Documentos',
+          label: d.nome,
+          meta: [d.obra, pasta].filter(Boolean).join(' › '),
+          href: `/documentos/${d.id}`,
+          icon: FileText,
+        });
+      }
     }
     return [...dinamicos, ...fixos];
   }, [q, remoto]);
@@ -217,7 +230,14 @@ export function CommandPalette() {
   }, [ativo]);
 
   const grupos = useMemo(() => {
-    const ordem: Item['grupo'][] = ['Obras', 'Fornecedores', 'Pagamentos', 'Ir para', 'Criar'];
+    const ordem: Item['grupo'][] = [
+      'Obras',
+      'Fornecedores',
+      'Pagamentos',
+      'Documentos',
+      'Ir para',
+      'Criar',
+    ];
     return ordem
       .map((g) => ({ g, itens: itens.filter((i) => i.grupo === g) }))
       .filter((x) => x.itens.length > 0);

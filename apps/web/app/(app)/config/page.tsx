@@ -4,6 +4,7 @@ import {
   Bot,
   Layers,
   MessageCircle,
+  MessagesSquare,
   ScrollText,
   ShieldCheck,
   Tag,
@@ -42,6 +43,13 @@ const OPERACAO: Atalho[] = [
     label: 'Números autorizados',
     hint: 'Quem pode lançar pagamentos pelo WhatsApp. Números fora desta lista são ignorados.',
     icon: ShieldCheck,
+    admin: true,
+  },
+  {
+    href: '/config/autorizados/grupos',
+    label: 'Grupos de WhatsApp',
+    hint: 'Em quais grupos o agente lê e responde. Grupo fora desta lista é ignorado.',
+    icon: MessagesSquare,
     admin: true,
   },
   {

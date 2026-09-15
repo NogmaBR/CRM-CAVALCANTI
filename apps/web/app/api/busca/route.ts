@@ -17,7 +17,7 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 const LIMITE = 5;
-const VAZIO = { obras: [], fornecedores: [], pagamentos: [] };
+const VAZIO = { obras: [], fornecedores: [], pagamentos: [], documentos: [] };
 
 interface Resultado {
   obras: Array<{ id: string; nome: string; cliente: string | null }>;
@@ -29,6 +29,7 @@ interface Resultado {
     data: string;
     obra: string | null;
   }>;
+  documentos: Array<{ id: string; nome: string; categoria: string; obra: string | null }>;
 }
 
 export async function GET(req: Request) {
@@ -48,6 +49,7 @@ export async function GET(req: Request) {
       obras: r.obras ?? [],
       fornecedores: r.fornecedores ?? [],
       pagamentos: (r.pagamentos ?? []).map((p) => ({ ...p, valor: Number(p.valor) })),
+      documentos: r.documentos ?? [],
     },
     { headers: { 'Cache-Control': 'private, no-store' } },
   );
