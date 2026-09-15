@@ -284,3 +284,68 @@ GRANT EXECUTE ON FUNCTION public.busca_global(text, integer) TO authenticated, s
 
 COMMENT ON FUNCTION public.busca_global(text, integer) IS
   'Paleta ⌘K: obras, fornecedores, pagamentos e documentos que casam com o termo, numa viagem. SECURITY INVOKER: respeita a RLS de quem chama.';
+
+-- ---------------------------------------------------------------------------
+-- 9. Agendamento do acervo (extração → indexação → conciliação)
+-- ---------------------------------------------------------------------------
+-- Pelo pg_cron, como a indexação (20260910240000): o vercel.json já tem os
+-- dois crons que o plano Hobby permite. A cada 20 minutos: o importador e o
+-- WhatsApp criam documentos a qualquer hora, e o gestor espera ver o texto
+-- pesquisável "daqui a pouco", não amanhã. Cada chamada processa um lote
+-- limitado e drena em laço até o tempo acabar; sem pendência, custa um SELECT.
+CREATE OR REPLACE FUNCTION processar_acervo_agendado()
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, net, vault
+AS $$
+DECLARE
+  v_base   TEXT;
+  v_secret TEXT;
+BEGIN
+  SELECT decrypted_secret INTO v_base
+    FROM vault.decrypted_secrets WHERE name = 'app_base_url';
+  SELECT decrypted_secret INTO v_secret
+    FROM vault.decrypted_secrets WHERE name = 'fila_consumidor_secret';
+
+  IF v_base IS NULL OR v_secret IS NULL THEN
+    RETURN 'vault sem app_base_url/fila_consumidor_secret; rode scripts/provisionar-vault.mjs';
+  END IF;
+
+  -- Só chama quando há trabalho: documento sem texto extraído ou nota sem
+  -- conciliar. Sem pendência, nem a função da Vercel acorda.
+  IF NOT EXISTS (
+    SELECT 1 FROM documentos
+     WHERE deleted_at IS NULL
+       AND (texto_extraido_em IS NULL
+            OR (categoria = 'nfs_pagamentos' AND pagamento_id IS NULL AND conciliado_em IS NULL))
+     LIMIT 1
+  ) THEN
+    RETURN 'sem pendência';
+  END IF;
+
+  PERFORM net.http_post(
+    url := v_base || '/api/cron/acervo',
+    headers := jsonb_build_object('Authorization', 'Bearer ' || v_secret, 'Content-Type', 'application/json'),
+    body := '{}'::jsonb,
+    timeout_milliseconds := 20000
+  );
+
+  RETURN 'acervo chamado';
+END;
+$$;
+
+REVOKE ALL ON FUNCTION processar_acervo_agendado() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION processar_acervo_agendado() TO service_role;
+
+COMMENT ON FUNCTION processar_acervo_agendado() IS
+  'Chamado pelo pg_cron a cada 20 min. Extrai texto, indexa no RAG e concilia notas com pagamentos — só quando há pendência.';
+
+SELECT cron.unschedule('acervo-processar')
+WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'acervo-processar');
+
+SELECT cron.schedule(
+  'acervo-processar',
+  '13,33,53 * * * *',
+  $cron$ SELECT processar_acervo_agendado(); $cron$
+);
