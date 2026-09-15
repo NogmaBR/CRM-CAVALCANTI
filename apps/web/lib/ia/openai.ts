@@ -1,8 +1,8 @@
 import 'server-only';
 import { logger } from '@/lib/log';
 import {
-  MAX_BYTES_IMAGEM,
-  MAX_BYTES_PDF,
+  MAX_BYTES_IMAGEM_OPENAI,
+  MAX_BYTES_PDF_OPENAI,
   MIME_PDF,
   type MidiaCarregada,
 } from './classificador-comum';
@@ -93,8 +93,12 @@ export async function chatCompletions(
   if (!apiKey) return { ok: false, status: 0, detalhe: 'OPENAI_API_KEY ausente' };
 
   const modelo = String(corpo.model ?? modeloOpenAI());
-  const body: Record<string, unknown> = { ...corpo, model: modelo };
-  if (!aceitaRaciocinio(modelo)) delete body.reasoning_effort;
+  // gpt-4.x recusa `reasoning_effort`; fora do JSON (undefined some no stringify).
+  const { reasoning_effort, ...semRaciocinio } = corpo;
+  const body: Record<string, unknown> = aceitaRaciocinio(modelo)
+    ? { ...corpo, model: modelo }
+    : { ...semRaciocinio, model: modelo };
+  void reasoning_effort;
 
   try {
     const r = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -122,7 +126,7 @@ export async function chatCompletions(
  */
 export function blocoDeMidia(midia: MidiaCarregada, nomeArquivo = 'anexo'): ParteDeConteudo | null {
   const ehPdf = midia.mime === MIME_PDF;
-  const limite = ehPdf ? MAX_BYTES_PDF : MAX_BYTES_IMAGEM;
+  const limite = ehPdf ? MAX_BYTES_PDF_OPENAI : MAX_BYTES_IMAGEM_OPENAI;
   if (midia.bytes.byteLength > limite) return null;
 
   const data = Buffer.from(midia.bytes).toString('base64');

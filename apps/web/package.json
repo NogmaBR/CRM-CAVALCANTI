@@ -22,6 +22,7 @@
     "@supabase/supabase-js": "^2.115.0",
     "@tanstack/react-table": "^8.21.3",
     "lucide-react": "^0.462.0",
+    "mammoth": "^1.12.3",
     "motion": "^13.2.0",
     "next": "16.3.4",
     "react": "19.2.8",
@@ -29,6 +30,7 @@
     "recharts": "^3.10.1",
     "sonner": "^1.7.4",
     "unpdf": "^1.8.1",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^3.25.76"
   },
   "devDependencies": {
@@ -38,6 +40,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "dotenv": "^17.4.2",
+    "jszip": "^3.10.2",
     "postcss": "^8.5.28",
     "tailwindcss": "^4.0.0-alpha.36",
     "typescript": "^5.6.3",

@@ -23,9 +23,15 @@ const log = logger('classificador');
 /** Formatos que as APIs aceitam como bloco de imagem/documento. */
 export const MIMES_IMAGEM = new Set(['image/jpeg', 'image/png', 'image/webp']);
 export const MIME_PDF = 'application/pdf';
-/** Limites das APIs (Anthropic: 5 MB/imagem, 32 MB/PDF; OpenAI: 20 MB/imagem, 32 MB/PDF); abaixo por margem. */
+/**
+ * Limites das APIs, abaixo por margem. Anthropic: 5 MB/imagem, 32 MB/PDF.
+ * OpenAI: 20 MB/imagem, 32 MB/PDF (e 100 páginas) — os renders do cliente
+ * têm 5–7 MB por foto e ficavam de fora com o teto da Anthropic.
+ */
 export const MAX_BYTES_IMAGEM = 4.5 * 1024 * 1024;
 export const MAX_BYTES_PDF = 20 * 1024 * 1024;
+export const MAX_BYTES_IMAGEM_OPENAI = 19 * 1024 * 1024;
+export const MAX_BYTES_PDF_OPENAI = 30 * 1024 * 1024;
 
 /** Como o classificador obtém os bytes da mídia. Injetável para teste. */
 export interface DepsClassificador {

@@ -106,8 +106,16 @@ describe('corpoDaChamada / montarConteudoOpenAI', () => {
     expect(montarConteudoOpenAI('ctx', null)).toBe('ctx');
   });
 
+  it('imagem de 5 MB passa (limite da OpenAI é 20 MB, não os 5 MB da Anthropic)', () => {
+    const r = montarConteudoOpenAI('ctx', {
+      bytes: new Uint8Array(5 * 1024 * 1024),
+      mime: 'image/png',
+    });
+    expect(Array.isArray(r)).toBe(true);
+  });
+
   it('mídia acima do limite vira aviso em texto', () => {
-    const grande = new Uint8Array(5 * 1024 * 1024);
+    const grande = new Uint8Array(21 * 1024 * 1024);
     const r = montarConteudoOpenAI('ctx', { bytes: grande, mime: 'image/png' });
     expect(typeof r).toBe('string');
     expect(r).toContain('grande demais');

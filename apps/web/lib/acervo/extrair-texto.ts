@@ -3,6 +3,7 @@ import { logger } from '@/lib/log';
 import { downloadDocumentBytes } from '@/lib/storage/documents';
 import type { Database } from '@nogma/db';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { MIMES_PLANILHA, MIMES_WORD } from './office';
 
 /**
  * Extração de texto dos arquivos do acervo.
@@ -12,12 +13,14 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  * `documentos.texto_extraido` e dali para o RAG (`lib/rag/indexador.ts`) e
  * para a conciliação com pagamentos (`lib/acervo/conciliar.ts`).
  *
- * Três caminhos, do mais barato ao mais caro:
+ * Quatro caminhos, do mais barato ao mais caro:
  *   - PDF com camada de texto → `unpdf` (pdfjs), sem custo.
- *   - PDF escaneado ou imagem → visão do Claude (`lib/acervo/visao.ts`),
- *     só com `IA_PROVIDER=anthropic`. Sem chave, fica sem texto — o mock não
- *     finge que leu.
- *   - XLSX/DOCX → sem extração nesta rodada.
+ *   - Planilha (xls/xlsx) e Word (docx) → `lib/acervo/office.ts`, sem custo.
+ *   - PDF escaneado ou imagem → visão do modelo (`lib/acervo/visao.ts`), só
+ *     com `IA_PROVIDER=openai`. Sem chave, fica sem texto — o mock não finge
+ *     que leu.
+ *   - Arquivo sem extensão (`application/octet-stream`) é farejado pela
+ *     assinatura: se for PDF/JPEG/PNG por dentro, segue o caminho de cima.
  *
  * `texto_extraido_em` é marcado **sempre**, com ou sem texto e até quando o
  * download falha. É o que impede um arquivo corrompido de travar a fila para
@@ -28,8 +31,13 @@ type Client = SupabaseClient<Database>;
 
 const log = logger('acervo_extracao');
 
-/** Acima disto não vale a pena baixar na função: fica só o cabeçalho no RAG. */
-export const LIMITE_EXTRACAO_BYTES = 8 * 1024 * 1024;
+/**
+ * Acima disto não se baixa na função: fica só o cabeçalho no RAG. É o teto do
+ * bucket (50 MB no plano atual); a função da Vercel tem memória para isso e o
+ * `unpdf` só olha a camada de texto. O que a visão aceita é decidido depois,
+ * por `blocoDeMidia` (20 MB de imagem, 32 MB de PDF — limites da OpenAI).
+ */
+export const LIMITE_EXTRACAO_BYTES = 50 * 1024 * 1024;
 
 /** Texto com menos que isto é "sem camada de texto" (PDF escaneado). */
 const MINIMO_CHARS_PDF = 20;
@@ -39,24 +47,70 @@ const MAX_CHARS = 60_000;
 
 const MIMES_IMAGEM = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const MIME_PDF = 'application/pdf';
+const MIME_GENERICO = 'application/octet-stream';
+
+/** Assinaturas dos tipos que sabemos ler, para arquivo sem extensão. */
+function farejarMime(bytes: Uint8Array): string | null {
+  if (
+    bytes.length >= 4 &&
+    bytes[0] === 0x25 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x44 &&
+    bytes[3] === 0x46
+  )
+    return MIME_PDF; // %PDF
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff)
+    return 'image/jpeg';
+  if (
+    bytes.length >= 4 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47
+  )
+    return 'image/png';
+  return null;
+}
+
+export function mimeLegivel(mime: string): boolean {
+  return (
+    mime === MIME_PDF ||
+    MIMES_IMAGEM.has(mime) ||
+    MIMES_PLANILHA.has(mime) ||
+    MIMES_WORD.has(mime) ||
+    mime === MIME_GENERICO
+  );
+}
 
 export interface DepsExtracao {
   lerPdf: (bytes: Uint8Array) => Promise<string>;
+  lerPlanilha: (bytes: Uint8Array) => Promise<string>;
+  lerDocx: (bytes: Uint8Array) => Promise<string>;
   /** `null` quando não há modelo com visão configurado. */
   lerComVisao: ((bytes: Uint8Array, mime: string) => Promise<string | null>) | null;
   baixar: (storagePath: string) => Promise<Uint8Array | null>;
 }
 
-async function lerPdfComUnpdf(bytes: Uint8Array): Promise<string> {
+/**
+ * Exportada para o teste que prova o detalhe abaixo com o `unpdf` de verdade.
+ * O pdfjs **transfere** o ArrayBuffer que recebe (fica "detached"): sem a
+ * cópia, um PDF escaneado chegava à visão com buffer vazio e estourava
+ * `ArrayBuffer.prototype.slice on a detached ArrayBuffer` — foi o "erros 1"
+ * de várias rodadas da carga inicial.
+ */
+export async function lerPdfComUnpdf(bytes: Uint8Array): Promise<string> {
   const { extractText } = await import('unpdf');
-  const { text } = await extractText(bytes, { mergePages: true });
+  const { text } = await extractText(new Uint8Array(bytes), { mergePages: true });
   return text;
 }
 
 export async function depsPadrao(): Promise<DepsExtracao> {
   const { visaoDisponivel, lerComVisao } = await import('./visao');
+  const { lerPlanilha, lerDocx } = await import('./office');
   return {
     lerPdf: lerPdfComUnpdf,
+    lerPlanilha,
+    lerDocx,
     lerComVisao: visaoDisponivel() ? lerComVisao : null,
     baixar: downloadDocumentBytes,
   };
@@ -71,7 +125,24 @@ export async function extrairTextoDe(
   mime: string,
   deps: DepsExtracao,
 ): Promise<string | null> {
-  const tipo = mime.split(';')[0]?.trim().toLowerCase() ?? '';
+  let tipo = mime.split(';')[0]?.trim().toLowerCase() ?? '';
+  if (tipo === MIME_GENERICO) {
+    const farejado = farejarMime(bytes);
+    if (!farejado) return null;
+    tipo = farejado;
+  }
+
+  if (MIMES_PLANILHA.has(tipo) || MIMES_WORD.has(tipo)) {
+    try {
+      const texto = MIMES_PLANILHA.has(tipo)
+        ? await deps.lerPlanilha(bytes)
+        : await deps.lerDocx(bytes);
+      return texto.trim().length > 0 ? texto.trim().slice(0, MAX_CHARS) : null;
+    } catch (err) {
+      log.aviso('office_nao_lido', { mime: tipo, err });
+      return null;
+    }
+  }
 
   if (tipo === MIME_PDF) {
     let texto = '';
@@ -130,7 +201,7 @@ export async function extrairTextoPendentes(
     let erro = false;
 
     const tamanho = Number(doc.tamanho_bytes ?? 0);
-    const legivel = doc.mime_type === MIME_PDF || MIMES_IMAGEM.has(doc.mime_type);
+    const legivel = mimeLegivel(doc.mime_type);
 
     if (legivel && tamanho <= LIMITE_EXTRACAO_BYTES && doc.storage_path !== 'pending') {
       try {
