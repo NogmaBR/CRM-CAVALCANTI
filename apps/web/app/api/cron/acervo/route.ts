@@ -19,7 +19,9 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 /** Orçamento de tempo para o laço: sobra margem para responder. */
-const ORCAMENTO_MS = 45_000;
+const ORCAMENTO_MS = 42_000;
+/** Extração pode comer tudo; guardamos parte para indexar e conciliar. */
+const ORCAMENTO_EXTRACAO_MS = 22_000;
 
 const log = logger('cron');
 
@@ -49,12 +51,12 @@ async function processar(request: NextRequest) {
   });
 
   const inicio = Date.now();
-  const LOTE = 40;
+  const LOTE = 20;
 
   return comContexto({ correlacao: randomUUID(), rota: 'cron/acervo' }, async () => {
     try {
       const extracao = { processados: 0, comTexto: 0, semTexto: 0, erros: 0, rodadas: 0 };
-      while (Date.now() - inicio < ORCAMENTO_MS) {
+      while (Date.now() - inicio < ORCAMENTO_EXTRACAO_MS) {
         const r = await extrairTextoPendentes(supabase, { limite: LOTE });
         extracao.rodadas += 1;
         extracao.processados += r.processados;
@@ -64,15 +66,22 @@ async function processar(request: NextRequest) {
         if (r.processados < LOTE) break;
       }
 
-      const textos = await sincronizarDocumentos(supabase);
-      const embeddings = await gerarEmbeddingsPendentes(supabase);
+      const restante = () => ORCAMENTO_MS - (Date.now() - inicio);
+      const textos =
+        restante() > 8_000
+          ? await sincronizarDocumentos(supabase, { limiteMs: restante() - 6_000 })
+          : { lidos: 0, criados: 0, atualizados: 0, inalterados: 0 };
+      const embeddings =
+        restante() > 8_000
+          ? await gerarEmbeddingsPendentes(supabase)
+          : { pendentes: 0, indexados: 0, trechos: 0 };
       if (embeddings.erro) {
         log.aviso('acervo_embeddings_indisponiveis', { erro: embeddings.erro });
       }
 
       const conciliacao =
-        Date.now() - inicio < ORCAMENTO_MS
-          ? await conciliarPendentes(supabase, { limite: 20 })
+        restante() > 10_000
+          ? await conciliarPendentes(supabase, { limite: 5 })
           : { analisados: 0, vinculados: 0, ambiguos: 0, semCandidato: 0, erros: 0 };
 
       const duracao_ms = Date.now() - inicio;
