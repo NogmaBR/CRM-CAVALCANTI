@@ -12,7 +12,15 @@ import { z } from 'zod';
  * fixture correspondente em `scripts/fixtures/uazapi/`.
  */
 
-const msgTipoUazapi = z.enum(['text', 'image', 'document', 'audio', 'video', 'sticker', 'location']);
+const msgTipoUazapi = z.enum([
+  'text',
+  'image',
+  'document',
+  'audio',
+  'video',
+  'sticker',
+  'location',
+]);
 export type MsgTipoUazapi = z.infer<typeof msgTipoUazapi>;
 
 /** Mapeamento tipo do provider → enum do nosso banco (msg_tipo). */
@@ -49,8 +57,15 @@ export const UazapiInboundSchema = z
     type: msgTipoUazapi,
     // Timestamp da mensagem (UNIX seconds ou ISO string)
     timestamp: z.union([z.number(), z.string()]),
-    // Remetente (telefone no formato E.164 sem '+' ou com — normalizamos abaixo)
+    // Remetente (telefone no formato E.164 sem '+' ou com — normalizamos abaixo).
+    // Num grupo, é quem FALOU (o participante), nunca o grupo.
     from: z.string().min(3),
+    // Chat de origem: JID do grupo ('…@g.us') ou do privado. É para onde a
+    // resposta vai. Ausente = privado, igual a `from`.
+    chatId: z.string().min(3).optional(),
+    isGroup: z.boolean().optional(),
+    // Nome do participante como o provider entrega (só para log/tela).
+    senderName: z.string().optional(),
     // Texto da mensagem (quando type === 'text' ou legenda de mídia)
     text: z.string().optional(),
     // Mídia (quando type ∈ image/document/audio/video)
@@ -61,6 +76,23 @@ export const UazapiInboundSchema = z
   .passthrough();
 
 export type UazapiInbound = z.infer<typeof UazapiInboundSchema>;
+
+/** JID de grupo do WhatsApp. */
+export function ehChatDeGrupo(chatId: string | null | undefined): boolean {
+  return typeof chatId === 'string' && chatId.endsWith('@g.us');
+}
+
+/**
+ * Para onde responder: o grupo, quando a mensagem veio de um; senão o
+ * próprio remetente. Nunca o grupo quando `chatId` faltou — responder no
+ * privado é o comportamento antigo e continua sendo o seguro.
+ */
+export function destinoDaResposta(
+  payload: Pick<UazapiInbound, 'from' | 'chatId' | 'isGroup'>,
+): string {
+  if (payload.chatId && (payload.isGroup || ehChatDeGrupo(payload.chatId))) return payload.chatId;
+  return payload.from;
+}
 
 /**
  * Normaliza telefone recebido. UAZAPI pode enviar '5511987654321', '5511987654321@c.us'

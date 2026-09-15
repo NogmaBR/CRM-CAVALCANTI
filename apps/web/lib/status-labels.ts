@@ -71,3 +71,46 @@ export const MSG_STATUS_LABEL: Record<MensagemStatus, string> = {
   recusada: 'Recusada',
   erro: 'Erro no processamento',
 };
+
+// ---------------------------------------------------------------------------
+// Pastas do acervo (categoria de documento)
+// ---------------------------------------------------------------------------
+/**
+ * A estrutura é a do cliente: em toda obra existem `Documentação` e
+ * `NFs/Pagamentos`; o resto aparece conforme o projeto. O enum do banco é
+ * `doc_categoria`; o rótulo e o ícone moram aqui e servem às telas e à
+ * resposta do bot no WhatsApp ("📁 Garibaldi › Fotos ✔").
+ */
+export type DocCategoria = Database['public']['Enums']['doc_categoria'];
+export type DocOrigem = Database['public']['Enums']['doc_origem'];
+
+/** Ordem de exibição: as duas fixas primeiro, depois as variáveis, `outro` por último. */
+export const CATEGORIAS = [
+  'documentacao',
+  'nfs_pagamentos',
+  'proposta',
+  'projeto',
+  'projeto_aprovado',
+  'cronograma',
+  'orcamentos',
+  'fotos',
+  'outro',
+] as const satisfies readonly DocCategoria[];
+
+export const CATEGORIA_LABELS: Record<DocCategoria, { rotulo: string; icone: string }> = {
+  documentacao: { rotulo: 'Documentação', icone: '📄' },
+  nfs_pagamentos: { rotulo: 'NFs/Pagamentos', icone: '🧾' },
+  proposta: { rotulo: 'Proposta', icone: '📝' },
+  projeto: { rotulo: 'Projeto', icone: '📐' },
+  projeto_aprovado: { rotulo: 'Projeto aprovado', icone: '✅' },
+  cronograma: { rotulo: 'Cronograma', icone: '🗓️' },
+  orcamentos: { rotulo: 'Orçamentos', icone: '💰' },
+  fotos: { rotulo: 'Fotos', icone: '📷' },
+  outro: { rotulo: 'Outros', icone: '📁' },
+};
+
+export const DOC_ORIGEM_LABEL: Record<DocOrigem, string> = {
+  painel: 'Painel',
+  whatsapp: 'WhatsApp',
+  onedrive: 'OneDrive',
+};

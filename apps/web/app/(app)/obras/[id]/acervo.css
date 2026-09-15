@@ -1,0 +1,92 @@
+/* Pastas e diário da obra (acervo). Tokens do tema; sem cor fixa. */
+
+.acervo-pastas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.acervo-pasta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 44px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.acervo-pasta:hover,
+.acervo-pasta:focus-visible {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
+  outline: none;
+}
+
+.acervo-pasta__icone {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.acervo-pasta__nome {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.acervo-pasta__qtd {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.acervo-diario {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.acervo-registro {
+  padding: 12px 14px;
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  background: var(--surface-2);
+}
+
+.acervo-registro__topo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.acervo-registro__topo time {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.acervo-registro__resumo {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.acervo-registro__texto {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+}

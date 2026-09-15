@@ -32,11 +32,26 @@ const uuidOptional = z
   );
 
 /** Schema pra create — inclui File validation. File é passado separado do form (via formData.get('file')). */
+const categoriaEnum = z.enum([
+  'documentacao',
+  'nfs_pagamentos',
+  'proposta',
+  'projeto',
+  'projeto_aprovado',
+  'cronograma',
+  'fotos',
+  'orcamentos',
+  'outro',
+]);
+
 export const DocumentoMetaCreateSchema = z.object({
   obra_id: uuidRequired,
   pagamento_id: uuidOptional,
   fornecedor_id: uuidOptional,
   tipo: anexoTipoEnum,
+  // A pasta da obra em que o arquivo mora (estrutura do cliente). Default
+  // `outro` para o formulário antigo continuar válido.
+  categoria: categoriaEnum.default('outro'),
   numero_nf: z.string().trim().max(50).optional(),
   chave_acesso_nf: z.string().trim().max(50).optional(),
 });

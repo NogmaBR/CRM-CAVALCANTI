@@ -28,6 +28,7 @@ const log = logger('documentos');
 const ROTULOS_DOCUMENTO: Rotulos = {
   file: 'Arquivo',
   tipo: 'Tipo',
+  categoria: 'Pasta',
   numero_nf: 'Número da NF',
   chave_acesso_nf: 'Chave de acesso NF',
   obra_id: 'Obra',
@@ -116,6 +117,8 @@ export async function createDocumento(formData: FormData) {
       pagamento_id: meta.data.pagamento_id ?? null,
       fornecedor_id: meta.data.fornecedor_id ?? null,
       tipo: meta.data.tipo,
+      categoria: meta.data.categoria,
+      origem: 'painel',
       nome_arquivo: file.name,
       mime_type: file.type,
       tamanho_bytes: file.size,
@@ -241,6 +244,7 @@ export async function updateDocumento(formData: FormData) {
       ...(rest.pagamento_id !== undefined ? { pagamento_id: rest.pagamento_id ?? null } : {}),
       ...(rest.fornecedor_id !== undefined ? { fornecedor_id: rest.fornecedor_id ?? null } : {}),
       ...(rest.tipo !== undefined ? { tipo: rest.tipo } : {}),
+      ...(rest.categoria !== undefined ? { categoria: rest.categoria } : {}),
       ...(rest.numero_nf !== undefined ? { numero_nf: rest.numero_nf ?? null } : {}),
       ...(rest.chave_acesso_nf !== undefined
         ? { chave_acesso_nf: rest.chave_acesso_nf ?? null }

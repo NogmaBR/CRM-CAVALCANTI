@@ -1,4 +1,5 @@
 import 'server-only';
+import type { DocCategoria } from '@/lib/status-labels';
 
 /**
  * Interface do classificador IA para mensagens de WhatsApp.
@@ -18,6 +19,8 @@ export type ClassifierKind =
   | 'pagamento_completo' // tem valor + fornecedor + obra hint
   | 'pagamento_parcial' // tem alguns campos, precisa confirmação humana
   | 'documento_apenas' // NF/comprovante sem contexto de pagamento
+  | 'documento_obra' // arquivo de obra que não é nota/comprovante: foto, projeto, proposta… (arquiva em obra+pasta)
+  | 'registro_obra' // informação do dia a dia sem valor a lançar (vira diário de obra)
   | 'nao_identificado'; // não é operacional (ex: "bom dia", audio, etc.)
 
 export interface ClassifierInput {
@@ -33,6 +36,11 @@ export interface ClassifierInput {
   contexto: {
     obrasAtivas: Array<{ id: string; nome: string; apelidos?: string[] }>;
     fornecedoresConhecidos: Array<{ id: string; nome: string; apelidos?: string[] }>;
+    /**
+     * Obra do grupo de WhatsApp de onde a mensagem veio, quando o grupo é
+     * dedicado a uma obra. É o default quando a mensagem não cita nenhuma.
+     */
+    grupoObraId?: string | null;
   };
 }
 
@@ -49,6 +57,10 @@ export interface ClassifierOutput {
     numero_nf?: string;
     descricao?: string;
     raciocinio?: string; // explicação humana pra revisor
+    /** Pasta de destino quando kind = documento_obra. */
+    categoria?: DocCategoria;
+    /** Uma linha para o diário quando kind = registro_obra. */
+    resumo?: string;
   };
   perguntaConfirmacao?: string; // texto pra enviar via WhatsApp se pagamento_parcial
 }
@@ -60,11 +72,13 @@ export interface Classifier {
 /**
  * Factory. Escolha do provider vem de env var — troca sem tocar em código chamador.
  *   - `IA_PROVIDER=mock` (default): MockClassifier determinístico, sem custo.
- *   - `IA_PROVIDER=anthropic`: Claude com structured outputs. Modelo em
- *     `IA_MODEL` (default `claude-opus-5`).
+ *   - `IA_PROVIDER=openai`: **o padrão do projeto desde 2026-09-15.** Chat
+ *     Completions com `json_schema` estrito e visão. Modelo em `IA_MODEL`
+ *     (default `gpt-5.4-mini`).
+ *   - `IA_PROVIDER=anthropic`: Claude com structured outputs (alternativo).
  *
  * O import é dinâmico pra que o SDK da Anthropic só entre no bundle da
- * function quando o provider real estiver ligado.
+ * function quando esse provider estiver ligado.
  */
 export async function getClassifier(): Promise<Classifier> {
   const provider = process.env.IA_PROVIDER ?? 'mock';
@@ -74,10 +88,15 @@ export async function getClassifier(): Promise<Classifier> {
     return new MockClassifier();
   }
 
+  if (provider === 'openai') {
+    const { OpenAIClassifier } = await import('./openai-classifier');
+    return new OpenAIClassifier();
+  }
+
   if (provider === 'anthropic') {
     const { AnthropicClassifier } = await import('./anthropic-classifier');
     return new AnthropicClassifier();
   }
 
-  throw new Error(`IA_PROVIDER desconhecido: ${provider}. Suportados: mock, anthropic`);
+  throw new Error(`IA_PROVIDER desconhecido: ${provider}. Suportados: mock, openai, anthropic`);
 }

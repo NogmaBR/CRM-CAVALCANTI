@@ -1,5 +1,6 @@
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
+import { getDocumentosSemPagamento } from '@/lib/data/acervo';
 import {
   LIMITE_SEM_DOCUMENTO,
   type PagamentoSemDocumento,
@@ -8,11 +9,14 @@ import {
   listPendentes,
 } from '@/lib/data/pendentes';
 import { type DadosExtraidos, temDadosParaLancar } from '@/lib/schemas/dados-extraidos';
+import { CATEGORIA_LABELS, DOC_ORIGEM_LABEL, type DocCategoria } from '@/lib/status-labels';
 import {
   Check,
   ChevronDown,
   Clock,
+  FileSearch,
   FileWarning,
+  FolderInput,
   Inbox,
   Paperclip,
   PencilLine,
@@ -20,7 +24,7 @@ import {
   X,
 } from 'lucide-react';
 import Link from 'next/link';
-import { confirmarPendencia, rejeitarPendencia } from './actions';
+import { confirmarPendencia, escolherObraPendencia, rejeitarPendencia } from './actions';
 import './pendentes.css';
 
 export const metadata = { title: 'Pendentes' };
@@ -139,9 +143,10 @@ export default async function PendentesPage({
   const errorMsg = params.error ?? null;
   const successMsg = params.success ?? null;
 
-  const [pendentes, semDocumento] = await Promise.all([
+  const [pendentes, semDocumento, docsSemPagamento] = await Promise.all([
     listPendentes(),
     listPagamentosSemDocumento(),
+    getDocumentosSemPagamento(),
   ]);
 
   return (
@@ -173,6 +178,9 @@ export default async function PendentesPage({
         ) : (
           <div className="pendentes-list">
             {pendentes.map((item) => {
+              if (item.tipo_pendencia !== 'pagamento') {
+                return <CardPendenciaDeObra key={item.confirmacao_id} item={item} />;
+              }
               const de = item.dados_extraidos;
               // A4: confirmar sem valor ou sem obra gravaria pagamento incompleto
               // (o service já recusa com `dados_incompletos`; a UI não deve convidar).
@@ -396,7 +404,121 @@ export default async function PendentesPage({
             </div>
           </section>
         ) : null}
+
+        {/*
+          Terceiro bloco: notas do acervo (OneDrive/WhatsApp) que a conciliação
+          automática não conseguiu ligar a um pagamento — sem candidato ou com
+          dois iguais. O gestor liga pelo formulário do documento.
+        */}
+        {docsSemPagamento.length > 0 ? (
+          <section className="pendentes-sem-doc" aria-labelledby="docs-sem-pag-titulo">
+            <h2 id="docs-sem-pag-titulo" className="pendentes-sem-doc__titulo">
+              <FileSearch size={16} aria-hidden="true" />
+              Notas e comprovantes sem pagamento vinculado
+              <span className="pendentes-sem-doc__contagem">{docsSemPagamento.length}</span>
+            </h2>
+            <p className="pendentes-sem-doc__ajuda">
+              Arquivos da pasta NFs/Pagamentos que não casaram com nenhum lançamento pelo valor e
+              pela data. Abra o documento e escolha o pagamento.
+            </p>
+            <div className="pendentes-sem-doc__lista">
+              {docsSemPagamento.map((d) => (
+                <Link
+                  key={d.id}
+                  href={`/documentos/${d.id}/editar`}
+                  className="pendentes-sem-doc__item"
+                >
+                  <span className="pendentes-sem-doc__valor">
+                    {d.numero_nf ? `NF ${d.numero_nf}` : d.nome_arquivo}
+                  </span>
+                  <span className="pendentes-sem-doc__meta">
+                    {[d.obra_nome, d.fornecedor_nome, DOC_ORIGEM_LABEL[d.origem]]
+                      .filter(Boolean)
+                      .join(' · ')}
+                    {d.numero_nf ? ` · ${d.nome_arquivo}` : ''}
+                  </span>
+                  <span className="pendentes-sem-doc__dias">
+                    <FolderInput size={12} aria-hidden="true" />
+                    vincular
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        ) : null}
       </div>
     </>
+  );
+}
+
+/**
+ * Pendência de obra: o agente recebeu um arquivo ou uma anotação e não soube
+ * a obra. O gestor escolhe aqui — mesma regra do "2" no WhatsApp.
+ */
+function CardPendenciaDeObra({ item }: { item: PendenteItem }) {
+  const de = item.dados_extraidos as
+    | (DadosExtraidos & { categoria?: string; resumo?: string })
+    | null;
+  const ehDocumento = item.tipo_pendencia === 'obra_documento';
+  const categoria = (de?.categoria ?? 'outro') as DocCategoria;
+  const rotuloCategoria = CATEGORIA_LABELS[categoria]?.rotulo ?? 'Outros';
+  return (
+    <article className="pendente-card">
+      <div className="pendente-card__header">
+        <span className="pendente-card__telefone">{formatTelefone(item.telefone_from)}</span>
+        <span className="pendente-card__data">{formatDateTime(item.recebida_em)}</span>
+        <span className="pendente-card__badge">
+          <Paperclip size={11} />
+          {ehDocumento ? `Arquivo · pasta ${rotuloCategoria}` : 'Anotação para o diário'}
+        </span>
+      </div>
+
+      <div className="pendente-card__body">
+        {item.texto_bruto ? <div className="pendente-card__texto">{item.texto_bruto}</div> : null}
+        <div className="pendente-card__extracted">
+          <div className="pendente-extracted__field pendente-extracted__value--wide">
+            <span className="pendente-extracted__label">Obra</span>
+            <span className="pendente-extracted__value">
+              <ValorAusente>não identificada — escolha abaixo</ValorAusente>
+            </span>
+          </div>
+          {de?.resumo ? (
+            <div className="pendente-extracted__field pendente-extracted__value--wide">
+              <span className="pendente-extracted__label">Resumo</span>
+              <span className="pendente-extracted__value">{de.resumo}</span>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="pendente-card__actions">
+        <form action={rejeitarPendencia}>
+          <input type="hidden" name="confirmacao_id" value={item.confirmacao_id} />
+          <Button type="submit" variant="danger" size="sm" leadingIcon={<X size={14} />}>
+            Descartar
+          </Button>
+        </form>
+
+        <form action={escolherObraPendencia} className="pendente-card__escolha">
+          <input type="hidden" name="confirmacao_id" value={item.confirmacao_id} />
+          <label className="pendente-card__escolha-rotulo">
+            <span className="sr-only">Obra</span>
+            <select name="obra_id" required defaultValue="" className="pendente-card__select">
+              <option value="" disabled>
+                Escolha a obra…
+              </option>
+              {item.opcoes.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.nome}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Button type="submit" variant="primary" size="sm" leadingIcon={<Check size={14} />}>
+            {ehDocumento ? 'Arquivar' : 'Anotar'}
+          </Button>
+        </form>
+      </div>
+    </article>
   );
 }

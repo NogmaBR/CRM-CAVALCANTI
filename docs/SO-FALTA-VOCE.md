@@ -34,6 +34,7 @@ SÓ FALTA VOCÊ
   🟡 9. Ligar as automações, com cuidado
   ⏳ 10. Depois de 16/09: PR #7 e a chave FILA_WHATSAPP
   🔵 11. Decisão: Fase 6 (vendas) — o que preciso de você para começar
+  ⏳ 12. Depois de 16/09: acervo do OneDrive + agente no grupo (PR da branch feat/acervo-onedrive-e-agente-grupo)
 
 PARA O DIA 16
   📋 docs/ROTEIRO-DEMO-16-09.md — o que mostrar, em que ordem, e a versão B sem WhatsApp
@@ -78,7 +79,7 @@ chave passa a ser cobrada à toa.
 | Integração | Variáveis | Sem isso |
 |---|---|---|
 | **WhatsApp** | `UAZAPI_BASE_URL` · `UAZAPI_TOKEN` | O CRM recebe e registra, mas **nunca responde** |
-| **Classificador** | `IA_PROVIDER=anthropic` · `ANTHROPIC_API_KEY` | A extração da nota é simulada |
+| **Classificador** | `IA_PROVIDER=openai` · `OPENAI_API_KEY` (**já na Vercel**, 15/09) | A extração da nota é simulada |
 | **Transcrição** | `IA_TRANSCRICAO_PROVIDER=openai` · `OPENAI_API_KEY` | Áudio vira pendência para alguém ouvir |
 | **Busca (RAG)** | `IA_EMBEDDINGS_PROVIDER=openai` | Perguntas livres não funcionam |
 
@@ -547,6 +548,104 @@ Marque só o que você **conferiu**, não o que fez.
 
 ---
 
+# ⏳ 12. Depois de 16/09 — acervo do OneDrive e agente no grupo
+
+**O que é:** a branch `feat/acervo-onedrive-e-agente-grupo` (spec em
+`docs/superpowers/specs/2026-09-15-acervo-onedrive-e-agente-grupo-design.md`) traz o
+acervo do OneDrive para dentro do CRM (pastas por obra, texto pesquisável, notas
+conciliadas com os 80 pagamentos "sem documento") e faz o agente funcionar no **grupo**
+com o Cavalcanti e o gerente: foto/PDF vira arquivo na pasta da obra, áudio vira diário,
+pagamento continua com o "SIM".
+
+**Nada disso toca produção antes da demo.** A ordem, na quarta à tarde:
+
+> **Atualização 2026-09-15 (noite):** os ZIPs já estão em
+> `C:\Users\User\Downloads\OBRAS ATIVAS CAVALCANTI` (um por obra: Aguirre,
+> Caminho do Meio E&J, Garibaldi, Inox Piratini — 329 arquivos, ~1,1 GB, TUDO
+> entra: vídeo, DWG, planilha). E a IA passou a ser **100% OpenAI** (chave já no
+> `.env.local` e na Vercel). Os passos 12.2–12.4 viraram **um comando**, que o
+> Claude Code não pode rodar (escrita de configuração em produção). Rode no
+> prompt com `!`:
+>
+> ```
+> ! node --env-file=.env.local scripts/preparar-acervo.mjs "C:\Users\User\Downloads\OBRAS ATIVAS CAVALCANTI"
+> ```
+>
+> Ele sobe o limite do bucket ao máximo do plano e libera todos os tipos, aplica
+> a migration (confere o catálogo), grava os apelidos e importa os 329 arquivos
+> (cria a Aguirre). Arquivo acima do teto do plano do Supabase aparece numa lista
+> "Não subiram" no fim — é o único caso em que algo fica de fora, e é do plano,
+> não do código. Com `--ensaio` no fim só mostra o plano. Depois do merge do
+> PR #28: `node --env-file=.env.local scripts/configurar-ia-vercel.mjs
+> --com-provider --redeploy` liga o classificador OpenAI em produção.
+
+### 12.1 — Baixar o ZIP do OneDrive
+
+O link que ele mandou não abre por API sem login. Abra no navegador (logado na conta
+Microsoft que recebeu o compartilhamento), entre em `_OBRAS ATIVAS_`, clique em
+**Baixar** (gera um ZIP) e salve fora do repositório (ex.: `Downloads/`). O repo é
+público: **nunca** copie os arquivos para dentro dele.
+
+### 12.2 — Mergear o PR e aplicar a migration
+
+```bash
+node --env-file=.env.local scripts/apply-migration.mjs 20260915120000_acervo_e_grupo.sql --ensaio
+node --env-file=.env.local scripts/apply-migration.mjs 20260915120000_acervo_e_grupo.sql
+```
+
+**Como conferir:** `select count(*) from whatsapp_grupos` responde (tabela existe);
+`select jobname from cron.job where jobname = 'acervo-processar'` devolve 1 linha.
+
+### 12.3 — Apelidos das obras e a obra Aguirre
+
+```bash
+node --env-file=.env.local scripts/seed-apelidos-obras.mjs --ensaio   # mostra
+node --env-file=.env.local scripts/seed-apelidos-obras.mjs            # aplica
+```
+
+É o que faz "manda pra Gari" e "é da EJ" casarem com a obra certa. Só faz união —
+apelido que você já tiver cadastrado fica.
+
+### 12.4 — Importar o acervo
+
+```bash
+node --env-file=.env.local scripts/importar-onedrive.mjs "C:\...\OBRAS ATIVAS.zip" --ensaio --criar-obras
+node --env-file=.env.local scripts/importar-onedrive.mjs "C:\...\OBRAS ATIVAS.zip" --criar-obras --processar
+```
+
+O `--ensaio` imprime, por obra e pasta, o que vai entrar, o que foi ignorado (e por
+quê) e as pastas que não casaram com nenhuma obra. `--criar-obras` cria a Aguirre.
+`--processar` chama a extração/indexação/conciliação na hora (senão o `pg_cron` faz a
+cada 20 min). **Reexecutar com um ZIP novo é sincronizar.**
+
+**Como conferir:** `/obras/<id>` mostra a seção **Pastas** com contagens; `/documentos`
+filtra por pasta; `/pendentes` mostra "Notas e comprovantes sem pagamento vinculado" com
+o que a conciliação não conseguiu ligar sozinha (você liga pelo formulário do documento).
+Sem `OPENAI_API_KEY` (já está), foto e PDF escaneado ficam sem texto — só PDF com camada de
+texto é lido.
+
+### 12.5 — Cadastrar o grupo
+
+Crie o grupo no WhatsApp com você, o Cavalcanti, o gerente e o número do agente. Mande
+qualquer mensagem. No log da Vercel aparece `ignorada_grupo_nao_autorizado` com o
+`chat_id` (`…@g.us`). Cole em `/config/autorizados/grupos`. A partir daí:
+
+| Ele manda | O agente faz |
+|---|---|
+| foto/PDF com valor, ou "paguei 1200…" | pergunta e espera **SIM** (como sempre) |
+| foto sem valor, PDF de proposta/projeto/cronograma | arquiva na pasta da obra e avisa `📁 Obra › Pasta ✔` |
+| áudio/texto do dia a dia | anota no diário e avisa `📝 Anotado em Obra ✔` |
+| qualquer coisa sem obra identificável | pergunta `1) Aguirre 2) Garibaldi…`, ele responde o número |
+
+Grupo com **obra dedicada** (campo na tela) não pergunta: tudo vai para aquela obra.
+
+- [ ] Migration aplicada e conferida no catálogo
+- [ ] Apelidos aplicados (10 obras) e Aguirre criada
+- [ ] Import feito; `/obras/<id>` › Pastas com contagens
+- [ ] Grupo cadastrado; uma foto no grupo respondida com `📁 … ✔`
+
+---
+
 ## Se algo der errado, olhe aqui primeiro
 
 | Sintoma | Onde olhar |
@@ -560,3 +659,6 @@ Marque só o que você **conferiu**, não o que fez.
 | `/api/health` devolve 503 | O corpo diz o quê. `problemas` é o que parou; `avisos` é o que falta configurar |
 | Qualquer erro em produção | Vercel → Logs → filtre `nivel:erro`. Cada linha tem `area` e `evento`; mensagens de WhatsApp têm `correlacao` |
 | Backup semanal falhou | E-mail do GitHub para quem fez o último commit; tabela de sintomas em `docs/RUNBOOK-BACKUP.md` |
+| Mensagem de grupo não responde | `/config/autorizados/grupos` — grupo fora da lista é ignorado; o id está no log |
+| Importador diz `column caminho_origem does not exist` | Migration `20260915120000` não aplicada (item 12.2) |
+| Documento sem texto em `/documentos` | Extração roda a cada 20 min; imagem/scan exige `ANTHROPIC_API_KEY` |

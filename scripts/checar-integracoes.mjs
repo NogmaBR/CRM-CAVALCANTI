@@ -41,7 +41,7 @@ function ehSegredo(nome) {
  * As integrações, com o que cada variável liga.
  *
  * `esperado` existe para o caso em que a variável estar presente não basta:
- * ter `ANTHROPIC_API_KEY` sem `IA_PROVIDER=anthropic` deixa o classificador em
+ * ter `OPENAI_API_KEY` sem `IA_PROVIDER=openai` deixa o classificador em
  * mock — a chave paga, e o sistema continua simulando. É o tipo de meia
  * configuração que passa despercebida justamente porque nada quebra.
  */
@@ -56,13 +56,13 @@ const INTEGRACOES = [
     ],
   },
   {
-    nome: 'Classificador de IA (Anthropic)',
+    nome: 'IA (OpenAI): classificador, visão do acervo, assistente',
     consequencia:
-      'Sem isto a extração dos dados da nota é simulada — o fluxo funciona, os valores não são reais.',
+      'Sem isto a extração dos dados da nota é simulada — o fluxo funciona, os valores não são reais; foto e PDF escaneado ficam sem texto.',
     vars: [
-      { nome: 'IA_PROVIDER', obrigatoria: true, esperado: 'anthropic', padrao: 'mock' },
-      { nome: 'ANTHROPIC_API_KEY', obrigatoria: true },
-      { nome: 'IA_MODEL', obrigatoria: false, padrao: 'claude-opus-5' },
+      { nome: 'IA_PROVIDER', obrigatoria: true, esperado: 'openai', padrao: 'mock' },
+      { nome: 'OPENAI_API_KEY', obrigatoria: true },
+      { nome: 'IA_MODEL', obrigatoria: false, padrao: 'gpt-5.4-mini' },
     ],
   },
   {

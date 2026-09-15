@@ -1,16 +1,16 @@
-# Graph Report - CRM-CONSTRUTORA-NOGMA  (2026-09-14)
+# Graph Report - CRM-CONSTRUTORA-NOGMA  (2026-09-15)
 
 ## Corpus Check
-- 461 files · ~421,753 words
+- 491 files · ~452,591 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 5308 nodes · 5896 edges · 1917 communities (234 shown, 1683 thin omitted)
-- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 90 edges (avg confidence: 0.84)
+- 5585 nodes · 6628 edges · 1932 communities (237 shown, 1695 thin omitted)
+- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 92 edges (avg confidence: 0.84)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `e210db91`
+- Built from commit: `757f7f9b`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -203,16 +203,30 @@
 - [[_COMMUNITY_Button.d Button.d.ts|Button.d: Button.d.ts]]
 - [[_COMMUNITY_IconButton.d IconButton.d.ts|IconButton.d: IconButton.d.ts]]
 - [[_COMMUNITY_Avatar Avatar.jsx|Avatar: Avatar.jsx]]
+- [[_COMMUNITY_Tag Tag.jsx|Tag: Tag.jsx]]
 - [[_COMMUNITY_Alert Alert.jsx|Alert: Alert.jsx]]
+- [[_COMMUNITY_Checkbox Checkbox.jsx|Checkbox: Checkbox.jsx]]
+- [[_COMMUNITY_Select Select.jsx|Select: Select.jsx]]
 - [[_COMMUNITY_2026 09 12 design review EmptyState|2026 09 12 design review: EmptyState]]
 - [[_COMMUNITY_coming soon coming-soon.tsx|coming soon: coming-soon.tsx]]
 - [[_COMMUNITY_tailwind.config tailwind.config.ts|tailwind.config: tailwind.config.ts]]
 - [[_COMMUNITY_Button Button.jsx|Button: Button.jsx]]
+- [[_COMMUNITY_IconButton IconButton.jsx|IconButton: IconButton.jsx]]
 - [[_COMMUNITY_Avatar.d Avatar.d.ts|Avatar.d: Avatar.d.ts]]
+- [[_COMMUNITY_Badge Badge.jsx|Badge: Badge.jsx]]
 - [[_COMMUNITY_Badge.d Badge.d.ts|Badge.d: Badge.d.ts]]
+- [[_COMMUNITY_Card Card.jsx|Card: Card.jsx]]
 - [[_COMMUNITY_Alert.d Alert.d.ts|Alert.d: Alert.d.ts]]
+- [[_COMMUNITY_Dialog Dialog.jsx|Dialog: Dialog.jsx]]
+- [[_COMMUNITY_Progress Progress.jsx|Progress: Progress.jsx]]
+- [[_COMMUNITY_Tooltip Tooltip.jsx|Tooltip: Tooltip.jsx]]
+- [[_COMMUNITY_Input Input.jsx|Input: Input.jsx]]
+- [[_COMMUNITY_RadioGroup RadioGroup.jsx|RadioGroup: RadioGroup.jsx]]
 - [[_COMMUNITY_RadioGroup.d RadioGroup.d.ts|RadioGroup.d: RadioGroup.d.ts]]
 - [[_COMMUNITY_Select.d Select.d.ts|Select.d: Select.d.ts]]
+- [[_COMMUNITY_Switch Switch.jsx|Switch: Switch.jsx]]
+- [[_COMMUNITY_Textarea Textarea.jsx|Textarea: Textarea.jsx]]
+- [[_COMMUNITY_Tabs Tabs.jsx|Tabs: Tabs.jsx]]
 - [[_COMMUNITY_Tabs.d Tabs.d.ts|Tabs.d: Tabs.d.ts]]
 - [[_COMMUNITY_Card.d Card.d.ts|Card.d: Card.d.ts]]
 - [[_COMMUNITY_Stat.d Stat.d.ts|Stat.d: Stat.d.ts]]
@@ -1899,18 +1913,33 @@
 - [[_COMMUNITY_Community 1914|Community 1914]]
 - [[_COMMUNITY_Community 1915|Community 1915]]
 - [[_COMMUNITY_Community 1916|Community 1916]]
+- [[_COMMUNITY_Community 1917|Community 1917]]
+- [[_COMMUNITY_Community 1918|Community 1918]]
+- [[_COMMUNITY_Community 1919|Community 1919]]
+- [[_COMMUNITY_Community 1920|Community 1920]]
+- [[_COMMUNITY_Community 1921|Community 1921]]
+- [[_COMMUNITY_Community 1922|Community 1922]]
+- [[_COMMUNITY_Community 1923|Community 1923]]
+- [[_COMMUNITY_Community 1924|Community 1924]]
+- [[_COMMUNITY_Community 1925|Community 1925]]
+- [[_COMMUNITY_Community 1926|Community 1926]]
+- [[_COMMUNITY_Community 1927|Community 1927]]
+- [[_COMMUNITY_Community 1928|Community 1928]]
+- [[_COMMUNITY_Community 1929|Community 1929]]
+- [[_COMMUNITY_Community 1930|Community 1930]]
+- [[_COMMUNITY_Community 1931|Community 1931]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `createClient()` - 163 edges
-2. `Database` - 56 edges
-3. `TopBar()` - 43 edges
-4. `estadoDoFormulario` - 36 edges
-5. `Button()` - 36 edges
-6. `3. Findings` - 33 edges
-7. `voltarComErro()` - 30 edges
-8. `logger` - 29 edges
-9. `hojeBR()` - 26 edges
-10. `listFornecedores()` - 23 edges
+1. `createClient()` - 176 edges
+2. `Database` - 66 edges
+3. `react` - 53 edges
+4. `TopBar()` - 44 edges
+5. `estadoDoFormulario` - 38 edges
+6. `Button()` - 37 edges
+7. `logger` - 34 edges
+8. `voltarComErro()` - 33 edges
+9. `3. Findings` - 33 edges
+10. `hojeBR()` - 28 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Bot WhatsApp inteligente (registro pelo WhatsApp, IA lê comprovantes)` --semantically_similar_to--> `Fluxo por WhatsApp (núcleo do contrato)`  [INFERRED] [semantically similar]
@@ -1925,8 +1954,8 @@
   ESTRUTURA DO PROJETO/apresentacao-projeto-cavalcanti.pdf → CLAUDE.md
 
 ## Import Cycles
-- 2-file cycle: `apps/web/lib/ia/anthropic-classifier.ts -> apps/web/lib/ia/classifier.ts -> apps/web/lib/ia/anthropic-classifier.ts`
 - 2-file cycle: `apps/web/lib/ia/classifier.ts -> apps/web/lib/ia/mock-classifier.ts -> apps/web/lib/ia/classifier.ts`
+- 2-file cycle: `apps/web/lib/ia/anthropic-classifier.ts -> apps/web/lib/ia/classifier.ts -> apps/web/lib/ia/anthropic-classifier.ts`
 
 ## Hyperedges (group relationships)
 - **Fluxo WhatsApp ponta a ponta** — claude_uazapi, claude_processar_inbound, claude_autorizados, claude_classificador_ia, claude_transcricao_audio, claude_parser_sim_conservador, claude_ia_auto_aprovar [EXTRACTED 1.00]
@@ -1958,27 +1987,27 @@
 - **Fluxo WhatsApp Fase 8: webhook → classifier → pendencia → resposta** — apps_web_app_api_webhooks_uazapi_route, apps_web_lib_webhooks_hmac_verifyhmacsignature, apps_web_lib_ia_classifier_getclassifier, apps_web_lib_services_classify_and_persist_classifyandpersist, supabase_table_mensagens_whats, supabase_table_confirmacoes_pendentes, apps_web_lib_whatsapp_uazapi_client_enviarmensagem [EXTRACTED 1.00]
 - **Provisionamento Fase 0 (Supabase + Vercel)** — docs_operacao_handoff_fase_0, docs_operacao_handoff_vercel_parceiro, docs_operacao_setup_supabase, docs_operacao_setup_vercel [INFERRED 0.85]
 
-## Communities (1917 total, 1683 thin omitted)
+## Communities (1932 total, 1695 thin omitted)
 
 ### Community 0 - "Documentos: telas e formulário"
-Cohesion: 0.07
-Nodes (46): DocumentoForm(), DocumentosTable(), TIPO_VARIANT, EditarDocumentoPage(), metadata, DocumentoDetailPage(), formatDateTime(), metadata (+38 more)
+Cohesion: 0.15
+Nodes (21): downloadDocumento(), DocumentosTable(), EditarDocumentoPage(), metadata, DocumentosPage(), metadata, Tipo, TIPO_OPTIONS (+13 more)
 
 ### Community 1 - "Autorizados: actions e telas"
-Cohesion: 0.11
-Nodes (21): Avatar(), AvatarProps, AvatarSize, initials(), BadgeProps, ButtonProps, ButtonSize, ButtonVariant (+13 more)
+Cohesion: 0.07
+Nodes (31): getAdminOrNotFound(), ImportarPage(), metadata, ATALHOS, CommandPalette(), Item, ResultadoBusca, MobileNav() (+23 more)
 
 ### Community 2 - "Categorias: CRUD"
-Cohesion: 0.09
-Nodes (26): NovoAutorizadoPage(), EditarCategoriaPage(), metadata, NovaCategoriaPage(), EditarWebhookPage(), NovoWebhookPage(), metadata, NovoFornecedorPage() (+18 more)
+Cohesion: 0.14
+Nodes (12): renderValue(), codificarValores(), decodificarValores(), Json, supabase(), vercel(), cab, ENSAIO (+4 more)
 
 ### Community 4 - "Documentos: upload e schema"
-Cohesion: 0.11
-Nodes (15): ALLOWED_MIMES, anexoTipoEnum, DocumentoMetaCreateInput, DocumentoMetaCreateSchema, DocumentoUpdateInput, DocumentoUpdateSchema, ELF, EXE (+7 more)
+Cohesion: 0.12
+Nodes (17): DocumentoForm(), ALLOWED_MIMES, ANEXO_TIPO_LABELS, anexoTipoEnum, categoriaEnum, DocumentoMetaCreateInput, DocumentoUpdateInput, ELF (+9 more)
 
 ### Community 5 - "Usuários: convite e papéis"
-Cohesion: 0.09
-Nodes (43): AlterarPapelSchema, alterarPapelUsuario(), arquivarUsuario(), assertAdmin(), ConvidarSchema, convidarUsuario(), PAPEIS, reenviarConvite() (+35 more)
+Cohesion: 0.12
+Nodes (34): AlterarPapelSchema, alterarPapelUsuario(), arquivarUsuario(), assertAdmin(), ConvidarSchema, convidarUsuario(), PAPEIS, reenviarConvite() (+26 more)
 
 ### Community 6 - "Eng review gstack (plano técnico)"
 Cohesion: 0.06
@@ -1997,8 +2026,8 @@ Cohesion: 0.04
 Nodes (44): 1. Veredito — o que este produto é hoje, em 3 frases, 2.1 Entregue e sólido (uma linha cada), 2.2 Prometido e AUSENTE, 2.3 Entregue pela metade, 2. Gap spec → entrega, 3. Fidelidade ao Nogma Design System, 4. Matriz de atrito por fluxo, 5.1 O pior problema: o app fala português quebrado (+36 more)
 
 ### Community 11 - "Classificador Anthropic (visão)"
-Cohesion: 0.06
-Nodes (49): AnthropicClassifier, DepsClassificador, log, MidiaCarregada, MIMES_IMAGEM, mimeSuportado(), montarConteudo(), montarSaida() (+41 more)
+Cohesion: 0.09
+Nodes (25): AnexoTipo, categoriaDaPasta(), normalizarNome(), REGRAS, tipoDoNome(), TIPOS, AnthropicClassifier, DepsClassificador (+17 more)
 
 ### Community 12 - "Dependências apps/web"
 Cohesion: 0.05
@@ -2009,8 +2038,8 @@ Cohesion: 0.06
 Nodes (30): 1. 🔴 BLOQUEADOR: a proposta é de outro domínio, 1. Domínio → **Cenário A, Expansão**, 2. Análise honesta da stack proposta, 2. Hospedagem → **Só Vercel, DNS na Cloudflare** *(revisado em 2026-09-10)*, 3. API → **Manter Next.js**, 3. As fases, 4. Cronograma, 🔴 5.0 — Backup, e a descoberta que move isto para o topo (+22 more)
 
 ### Community 14 - "Inbound WhatsApp e UAZAPI"
-Cohesion: 0.10
-Nodes (28): processarMensagemRecebida(), mapTipoToDb(), MsgTipoUazapi, toIsoDate(), UazapiInbound, UazapiInboundSchema, uazapiMedia, buscarConfirmacaoAberta() (+20 more)
+Cohesion: 0.08
+Nodes (44): enviarWhatsapp(), mascarar(), DocumentoSemPagamento, ListDocumentosFilters, enviarWhatsapp(), destinoDaResposta(), ehChatDeGrupo(), mapTipoToDb() (+36 more)
 
 ### Community 15 - "Manual de pendências (superado)"
 Cohesion: 0.05
@@ -2041,16 +2070,16 @@ Cohesion: 0.25
 Nodes (7): Banco (migration, 14 blocos), Como conferir, Código (PR desta revisão), Feito nesta revisão, O que o inventário mostrou (antes), Plano do banco de dados — revisão de 2026-09-12, Próximos passos (em ordem de valor)
 
 ### Community 24 - "DS bundle (componentes JSX)"
-Cohesion: 0.09
-Nodes (22): Arrow(), Stat(), Alert(), Avatar(), Badge(), Button(), Card(), Checkbox() (+14 more)
+Cohesion: 0.17
+Nodes (27): react, AgentScreen(), Alert(), AutomationsScreen(), Avatar(), Badge(), Button(), Card() (+19 more)
 
 ### Community 25 - "Auditoria: diff viewer"
-Cohesion: 0.07
+Cohesion: 0.08
 Nodes (38): ACAO_VARIANT, AuditLogDetailPage(), formatDateTime(), MetaCard(), metadata, ACAO_VARIANT, agruparPorDia(), AuditoriaPage() (+30 more)
 
 ### Community 26 - "Webhooks de saída"
-Cohesion: 0.10
-Nodes (32): arquivarWebhook(), assertAdmin(), atualizarWebhook(), AtualizarWebhookSchema, criarWebhook(), CriarWebhookSchema, EVENTOS_VALIDOS, regenerarSecret() (+24 more)
+Cohesion: 0.29
+Nodes (12): arquivarWebhook(), assertAdmin(), atualizarWebhook(), AtualizarWebhookSchema, criarWebhook(), CriarWebhookSchema, EVENTOS_VALIDOS, regenerarSecret() (+4 more)
 
 ### Community 27 - "Setup Supabase e plano 1"
 Cohesion: 0.06
@@ -2065,16 +2094,16 @@ Cohesion: 0.04
 Nodes (47): A.1 · Criar/entrar na conta empresa, A.2 · Criar o projeto `crm-cavalcanti`, A.3 · Habilitar extensões Postgres, A.4 · Criar Personal Access Token (para o **MCP Supabase**), A.5 · Coletar as 4 credenciais do projeto, A.6 · (Opcional) Criar usuário admin de teste, ✅ Adicionadas em 2026-09-04 (sessão follow-up), Anexos (+39 more)
 
 ### Community 30 - "Fornecedores e planilha compartilhada"
-Cohesion: 0.13
-Nodes (18): archiveObra(), restoreObra(), CompartilharPlanilha(), Props, Endereco, formatBRL(), formatDate(), formatDateTime() (+10 more)
+Cohesion: 0.12
+Nodes (23): DiarioDaObra(), PastasDaObra(), Endereco, formatBRL(), formatDate(), formatDateTime(), formatEndereco(), metadata (+15 more)
 
 ### Community 31 - "n8n (workflows documentados)"
 Cohesion: 0.20
 Nodes (9): 🏗️ Arquitetura — 2 patterns, 💰 Custos + limites, 🧪 Código universal — HMAC validation, 📚 Fontes, N8N COMPLETO — Guia copy-paste-ready, Pattern A — CRM direto (mais simples, recomendado se código é confortável), Pattern B — n8n como middleware (mais flexível, recomendado se prefere no-code), 🧭 Sumário (+1 more)
 
 ### Community 32 - "Interpretar SIM/NÃO"
-Cohesion: 0.22
-Nodes (13): alternarAutomacao(), assertPodeConfigurar(), salvarConfigAutomacao(), simularAutomacoes(), descreverCampos(), montarConfigDosCampos(), rotuloDaChave(), ConfigValidada (+5 more)
+Cohesion: 0.05
+Nodes (58): alternarAutomacao(), assertPodeConfigurar(), salvarConfigAutomacao(), simularAutomacoes(), AutomacaoCampos(), CampoConfig, descreverCampos(), formatarPadrao() (+50 more)
 
 ### Community 33 - "Exportação CSV/PDF (rotas)"
 Cohesion: 0.07
@@ -2089,20 +2118,20 @@ Cohesion: 0.18
 Nodes (10): 0. Primeira impressão (painel, tema claro, 1440), 1. Nota por tela (0–10), 2. Achados, por impacto, 3. O que está bom e deve ser preservado, 4. Hierarquia de informação do painel (o que se vê 1º, 2º, 3º), 5. Completion status (honesto), Alto, Design review ao vivo — CRM Cavalcanti — 2026-09-12 (+2 more)
 
 ### Community 36 - "UI kit nogmaOS"
-Cohesion: 0.12
-Nodes (9): _ds_bundle.js, NG_PATHS, AUTOMATIONS, SEED, NAV, NogmaOS index.html (router + kit CSS nos-*), App() router (authed, route, collapsed), TITLES map (dashboard, automations, agents, reports, team, settings) (+1 more)
+Cohesion: 0.18
+Nodes (9): _ds_bundle.js, NG_PATHS, NogmaIcon(), NAV, NogmaOS index.html (router + kit CSS nos-*), App() router (authed, route, collapsed), TITLES map (dashboard, automations, agents, reports, team, settings), LoginScreen() (+1 more)
 
 ### Community 37 - "package.json raiz"
 Cohesion: 0.07
 Nodes (27): devDependencies, @biomejs/biome, cross-env, typescript, engines, node, pnpm, name (+19 more)
 
 ### Community 38 - "Rotas API e cron"
-Cohesion: 0.08
-Nodes (25): GET(), Resultado, VAZIO, CategoriaRow(), CategoriasPage(), FILTER_OPTIONS, formatBRL(), metadata (+17 more)
+Cohesion: 0.09
+Nodes (34): GET(), Resultado, VAZIO, DELETE(), AutorizadosPage(), arquivarCategoria(), assertAdmin(), atualizarCategoria() (+26 more)
 
 ### Community 39 - "SO-FALTA-VOCE (ações humanas)"
-Cohesion: 0.04
-Nodes (44): ⏳ 10. Depois de 16/09, 🔵 11. Decisão: Fase 6 (vendas) — o que preciso de você, 🔴 1. Telefones reais dos fornecedores, 2.1 — O redeploy, que todo mundo esquece, 🔴 2. Credenciais + redeploy, 3.1 — Apontar o webhook, 3.2 — Cadastrar a equipe, 🔴 3. Webhook da UAZAPI + equipe autorizada (+36 more)
+Cohesion: 0.18
+Nodes (11): 4.0 — PR #20: revisão de front-end (mergeado em 2026-09-12), 4.0a — PR #22: o time virtual gstack (CEO, designer, engenharia, QA, release), 4.0b — PR #21: revisão do banco (mergeado em 2026-09-12), 4.1 — PR #19: a revisão geral (mergeado em 2026-09-12), 4.1b — Apagar as 3 mensagens de teste de 07/09, 4.2 — Apagar a tabela `pagamentos.csv`, 4.3 — Remover 2 variáveis que a Vercel não usa, 4.4 — Apagar as branches já mergeadas (+3 more)
 
 ### Community 40 - "Ferramentas da IA (obras)"
 Cohesion: 0.10
@@ -2129,8 +2158,8 @@ Cohesion: 0.06
 Nodes (34): 0. AS QUATRO REGRAS QUE NÃO SE QUEBRAM, 10. gstack — o time virtual (Garry Tan), 11. graphify — o mapa do projeto (use antes de grep), 1. O produto, em um parágrafo, 2. Onde as coisas estão, 3. Como se conectar sozinho, 4. O que está conectado de verdade (e o que não está), 5. Comandos de verificação (+26 more)
 
 ### Community 47 - "Assistente de IA (laço)"
-Cohesion: 0.13
-Nodes (15): assistenteDisponivel(), ChamadaDeFerramenta, Client, ClienteDeMensagens, extrairCitacoes(), log, PerguntaAoAssistente, perguntar() (+7 more)
+Cohesion: 0.20
+Nodes (13): assistenteDisponivel(), ChamadaDeFerramenta, Client, ClienteDeMensagens, extrairCitacoes(), log, PerguntaAoAssistente, perguntar() (+5 more)
 
 ### Community 49 - "Auditoria infra/deploy/CI"
 Cohesion: 0.33
@@ -2142,7 +2171,7 @@ Nodes (9): Apelidos (`/fornecedores/[id]#apelidos`), Auto-detect Duplicatas (`/f
 
 ### Community 51 - "Consumidor da fila"
 Cohesion: 0.08
-Nodes (31): GET(), log, Client, consumirFila(), Handler, log, ResultadoLote, Client (+23 more)
+Nodes (42): GET(), log, GET(), log, GET(), log, GET(), GET() (+34 more)
 
 ### Community 52 - "Handoff Vercel"
 Cohesion: 0.20
@@ -2157,28 +2186,28 @@ Cohesion: 0.04
 Nodes (47): 10. Auditoria e histórico, 11.1 Log, 11.2 Triggers automáticos, 11.3 Opt-in por usuário, 11. Notificações email, 12.1 Apelidos, 12.2 Auto-detect duplicatas, 12. Fornecedores: apelidos + duplicatas (+39 more)
 
 ### Community 55 - "Automações: regras e registry"
-Cohesion: 0.18
-Nodes (10): cobrarDocumentoFornecedor, orcamentoEmRisco, Automacao, AutomacaoAgendada, Client, ContextoExecucao, ehAgendada(), ResultadoCondicao (+2 more)
+Cohesion: 0.06
+Nodes (12): db(), classifyAndPersist, db(), enviarTexto, inbound(), Consulta, fakeSupabase, Filtro (+4 more)
 
 ### Community 56 - "Posts (UI kit)"
-Cohesion: 0.23
-Nodes (23): intersecoes/10.png, intersecoes/11.png, intersecoes/8.png, intersecoes/9.png, assets/logo-nogma-lime.png, styles.css (tokens), system.css (componentes de arte), Slide 01 - Capa (+15 more)
+Cohesion: 0.19
+Nodes (24): intersecoes/10.png, intersecoes/11.png, intersecoes/8.png, intersecoes/9.png, assets/logo-nogma-lime.png, system.css (componentes de arte), Slide 01 - Capa, Como eu comeco a usar IA na minha empresa? (pergunta dos lideres) (+16 more)
 
 ### Community 57 - "Perfil e preferências"
-Cohesion: 0.16
-Nodes (14): metadata, PerfilPage(), TEMA_PREVIEW_CLASS, metadata, RootLayout(), viewport, getMyProfile(), PerfilUpdateInput (+6 more)
+Cohesion: 0.15
+Nodes (16): ProfileUpdate, ROTULOS_PERFIL, salvarPerfil(), metadata, PerfilPage(), TEMA_PREVIEW_CLASS, getMyProfile(), MyProfile (+8 more)
 
 ### Community 59 - "Confirmações pendentes"
-Cohesion: 0.18
-Nodes (14): listPendentes(), DadosExtraidos, DadosExtraidosSchema, DadosLancaveis, lerDadosExtraidos(), temDadosParaLancar(), aplicarConfirmacao(), Client (+6 more)
+Cohesion: 0.08
+Nodes (40): AnexoTipo, arquivarDocumentoDeObra(), Client, DepsArquivar, depsPadrao, ligarMensagem(), log, MIMES_DOCUMENTO (+32 more)
 
 ### Community 60 - "Engine de automações"
 Cohesion: 0.06
 Nodes (33): 3. Findings, F-01 — CRÍTICO · Parser de valor pt-BR converte "1.500" em 1,50, F-02 — CRÍTICO · Import CSV não é idempotente e o servidor confia no payload do cliente, F-03 — ALTO · Redelivery do webhook UAZAPI regride mensagem já confirmada, F-04 — ALTO · `confirmacoes_pendentes` duplicadas para a mesma mensagem, F-05 — ALTO · Usuário arquivado continua com acesso total (RLS não conhece `deleted_at`), F-06 — ALTO · Secret HMAC do webhook vaza na URL e no `audit_log`, F-07 — ALTO · UPDATE barrado pela RLS retorna "sucesso" (falso positivo sistêmico) (+25 more)
 
 ### Community 61 - "Embeddings e RAG"
-Cohesion: 0.15
-Nodes (19): DIMENSAO_POR_MODELO, embeddingsAtivo(), gerarEmbedding(), gerarEmbeddings(), MAX_LOTE, modeloConfigurado(), paraLiteralVetor(), ResultadoEmbedding (+11 more)
+Cohesion: 0.21
+Nodes (12): DIMENSAO_POR_MODELO, embeddingsAtivo(), gerarEmbedding(), gerarEmbeddings(), modeloConfigurado(), paraLiteralVetor(), ResultadoEmbedding, buscar() (+4 more)
 
 ### Community 62 - "Middleware e Fase 8"
 Cohesion: 0.17
@@ -2217,8 +2246,8 @@ Cohesion: 0.33
 Nodes (13): Checkbox, Forms Card (Input · Select · Textarea · Checkbox · Switch · Radio), Input, Input `leading` adornment (icon or text like R$), Lucide icons (data-lucide, createIcons), Forms Card — print variant, Print pipeline: @page letter, freeze animations, auto window.print after fonts/images ready, RadioGroup (+5 more)
 
 ### Community 75 - "Obras: tabela e página"
-Cohesion: 0.09
-Nodes (27): metadata, metadata, metadata, EVENTOS, metadata, metadata, ObrasPage(), STATUS_OPTIONS (+19 more)
+Cohesion: 0.07
+Nodes (45): AutomacoesPage(), metadata, STATUS_ROTULO, GruposPage(), EditarAutorizadoPage(), metadata, metadata, NovoAutorizadoPage() (+37 more)
 
 ### Community 77 - "E2E Playwright"
 Cohesion: 0.21
@@ -2241,16 +2270,16 @@ Cohesion: 0.12
 Nodes (15): A.1 — Confirmado (não precisa de ação, só registro), A.2 — Perguntas para o parceiro do ERP (aguardando resposta deles, não é código nosso), A.3 — Limitações de endpoint reportadas (não travam o início — dá pra contornar com sync em lote — mas valem endpoint novo se o parceiro puder criar), A.4 — Próximo passo combinado, Alinhamento Cavalcanti — entrega 16/09, B.1 — Já implementado (nenhuma ação necessária), B.2 — RESOLVIDO 2026-09-09 (commit `65bcc36` + fixup posterior), B.3 — RESOLVIDO 2026-09-09 (commit `65bcc36`) (+7 more)
 
 ### Community 82 - "painel: page.tsx"
-Cohesion: 0.09
-Nodes (29): BarSerieMensal(), BarSerieMensalProps, CustomTooltip(), formatBRL(), CustomTooltip(), DonutCategoria(), DonutCategoriaProps, formatBRL() (+21 more)
+Cohesion: 0.08
+Nodes (31): BarSerieMensal(), BarSerieMensalProps, CustomTooltip(), formatBRL(), CustomTooltip(), DonutCategoria(), DonutCategoriaProps, formatBRL() (+23 more)
 
 ### Community 83 - "page: page.tsx"
 Cohesion: 0.19
 Nodes (14): FILTER_OPTIONS, formatBRL(), formatDateTime(), formatTelefone(), MensagemRow(), metadata, WhatsAppPage(), listMensagens() (+6 more)
 
 ### Community 84 - "rate limit: actions.ts"
-Cohesion: 0.24
-Nodes (13): definirSenha(), log, SenhaSchema, log, login(), logger, ipDaRequest(), LimiteConfig (+5 more)
+Cohesion: 0.11
+Nodes (25): log, POST(), definirSenha(), log, SenhaSchema, log, login(), ipDaRequest() (+17 more)
 
 ### Community 85 - "tsconfig.base: tsconfig.base.json"
 Cohesion: 0.12
@@ -2261,20 +2290,20 @@ Cohesion: 0.25
 Nodes (6): Documento, DocumentoEnriquecido, DocumentosAgrupados(), ICONE, Tipo, TIPO_LABEL
 
 ### Community 88 - "IconButton: mobile-nav.tsx"
-Cohesion: 0.25
-Nodes (15): createDocumento(), desfazerDocumento(), downloadDocumento(), formToRecord(), log, ROTULOS_DOCUMENTO, voltarAoNovo(), validateFileMagicBytes() (+7 more)
+Cohesion: 0.14
+Nodes (27): archiveDocumento(), createDocumento(), desfazerDocumento(), formToRecord(), log, restoreDocumento(), ROTULOS_DOCUMENTO, updateDocumento() (+19 more)
 
 ### Community 90 - "log: log.ts"
 Cohesion: 0.22
-Nodes (12): Campos, contexto, contextoAtual(), cortar(), ehCampoDeTelefone(), mascararTelefone(), Nivel, registrar() (+4 more)
+Nodes (13): Campos, contexto, contextoAtual(), cortar(), ehCampoDeTelefone(), mascararTelefone(), Nivel, registrar() (+5 more)
 
 ### Community 91 - "fase 9 relatorios: renderAtividadePdf()"
 Cohesion: 0.20
 Nodes (9): Arquivos-chave, Como testar, Custo estimado, Extensões futuras (Fase 9.x), Fase 9 — Relatórios PDF/CSV, Notas de performance, O que existe, Segurança (+1 more)
 
 ### Community 92 - "comandos whatsapp: revisao-2026-09-11.test.ts"
-Cohesion: 0.28
-Nodes (9): GET(), log, GET(), log, GET(), log, GET(), comContexto() (+1 more)
+Cohesion: 0.11
+Nodes (31): args, cabecalhos, caminhoStorage(), CRIAR_OBRAS, ENSAIO, entrada, extrairZip(), flags (+23 more)
 
 ### Community 94 - "n8n integracao: Integração n8n"
 Cohesion: 0.09
@@ -2289,8 +2318,8 @@ Cohesion: 0.08
 Nodes (23): A. Fluxo de auto-aprovação via WhatsApp não verifica remetente — tabela `autorizados` existe no schema mas nunca é consultada, ALTO, B. Secret HMAC de webhooks outbound vaza em texto puro para o papel `gestor` via `audit_log` — CORRIGIDO 2026-09-09, BAIXO / observações, C. `/api/exports` — qualquer autenticado (inclusive papel `leitura`) exporta dados financeiros completos de qualquer obra, CRÍTICO, D. CSV/Formula injection nas exportações, E. `handle_new_user()` herda `papel` de `raw_user_meta_data` — risco de auto-promoção a admin se signup público estiver habilitado — CORRIGIDO 2026-09-09 (+15 more)
 
 ### Community 99 - "documentos: documentos.ts"
-Cohesion: 0.26
-Nodes (12): dataPorExtenso(), DocumentoIndexavel, fornecedorParaDocumento(), FornecedorParaIndexar, hashDe(), MESES, moeda(), obraParaDocumento() (+4 more)
+Cohesion: 0.12
+Nodes (34): GET(), log, POST(), processar(), conciliarPendentes(), MAX_LOTE, dataPorExtenso(), dividirEmTrechos() (+26 more)
 
 ### Community 100 - "04 backend dados: tabela audit_log"
 Cohesion: 0.18
@@ -2313,32 +2342,32 @@ Cohesion: 0.17
 Nodes (12): Progress tone="lime", Checked fills: lime (Checkbox) · petroleum (Switch/Radio), Rule: 44px control height for all form controls, Contraste — regras (✓ válidas · ✕ proibidas), Forbidden: medium gray, vibrant backgrounds, gradients on the brand, Rule: isotype restricted use — no gradients, legible backgrounds only, .btn--lime (lime-500 bg, black text, 44px), --lime-500 (#CCFF00) (+4 more)
 
 ### Community 105 - "configurar dominio: configurar-dominio.mjs"
-Cohesion: 0.14
+Cohesion: 0.17
 Nodes (9): APLICAR, appUrl, args, DOMINIO, faltam, jaExiste, lista, SH (+1 more)
 
 ### Community 106 - "actions: actions.ts"
-Cohesion: 0.24
-Nodes (8): assertAdminOrGestor(), mergeFornecedoresAction(), MergeSchema, MergeButtons(), MergeButtonsProps, mergeFornecedores(), MergeResult, serviceRoleClient()
+Cohesion: 0.13
+Nodes (14): assertAdminOrGestor(), mergeFornecedoresAction(), MergeSchema, MergeButtons(), MergeButtonsProps, DuplicatasPage(), metadata, detectDuplicateFornecedores() (+6 more)
 
 ### Community 107 - "layout: layout.tsx"
-Cohesion: 0.23
-Nodes (10): AppLayout(), contarPendencias(), perfilArquivado(), logout(), Sidebar(), LABEL, ORDEM, ThemeToggle() (+2 more)
+Cohesion: 0.12
+Nodes (20): AppLayout(), contarPendencias(), perfilArquivado(), logout(), metadata, RootLayout(), viewport, MobileTabBar() (+12 more)
 
 ### Community 108 - "ESTADO RECUPERADO: assertAdmin"
 Cohesion: 0.22
 Nodes (8): Estado do repositório, Estado recuperado — 2026-09-09 (crash do VS Code ~14:01), Fatos de contexto já levantados nessa sessão, Mapeamento briefing → código (confirmado no código, ainda NÃO aplicado), O que foi concluído antes do crash, Próximo passo natural, Sessão A — "Análise geral Opus 5" (13:43 → 13:53), Sessão B — "Alinhamento Cavalcanti 16/09" (13:44 → 14:01)
 
 ### Community 109 - "fornecedor: fornecedor.ts"
-Cohesion: 0.14
-Nodes (10): documentoOptional, DocumentoTipo, documentoTipoEnum, emailOptional, FornecedorCreateInput, FornecedorCreateSchema, FornecedorUpdateInput, FornecedorUpdateSchema (+2 more)
+Cohesion: 0.12
+Nodes (20): TIPO_VARIANT, FornecedoresTable(), formatDate(), formatDateTime(), metadata, ORIGEM_LABEL, PagamentoDetailPage(), ColumnMeta (+12 more)
 
 ### Community 110 - "05 detalhes produto premium: Inventario detalhes"
 Cohesion: 0.11
 Nodes (17): 10. FEEDBACK OTIMISTA — **NÃO**, 11. UNDO — **PARCIAL** (soft-delete + restaurar existe; "desfazer" não), 12. KPIs COM HISTÓRIA — **PARCIAL** (o melhor item da app; falta o alerta de orçamento), 13. IMPRESSÃO — **NÃO**, 14. ONBOARDING DIA 1 — **NÃO**, 15. DENSIDADE — **PARCIAL** (TanStack v8 instalado e usado, mas só o básico), 1. BUSCA GLOBAL ⌘K — **NÃO** (pior: existe a *fachada* dela), 2. ATALHOS DE TECLADO — **NÃO** (+9 more)
 
 ### Community 111 - "command palette: route.ts"
-Cohesion: 0.25
-Nodes (4): ATALHOS, CommandPalette(), Item, ResultadoBusca
+Cohesion: 0.10
+Nodes (9): metadata, ObrasPage(), STATUS_OPTIONS, ObrasTable(), STATUS_LABEL, STATUS_VARIANT, RelatoriosForms(), RelatoriosFormsProps (+1 more)
 
 ### Community 113 - "09 inventario componentes ui: app/(app)/_shared/"
 Cohesion: 0.12
@@ -2357,12 +2386,12 @@ Cohesion: 0.23
 Nodes (10): DependenciasDoAssistente, Client, executarFerramenta(), ferramenta, paraAnthropic(), ResultadoFerramenta, eco, explode (+2 more)
 
 ### Community 117 - "obra: obra.ts"
-Cohesion: 0.15
-Nodes (12): apelidosOptional, enderecoSchema, isoDateOptional, ObraCreateInput, ObraCreateSchema, ObraStatus, obraStatusEnum, ObraTipo (+4 more)
+Cohesion: 0.09
+Nodes (28): archiveObra(), bulkArchiveObras(), createObra(), formToRecord(), gerarLinkPlanilha(), restoreObra(), revogarLinkPlanilha(), ROTULOS_OBRA (+20 more)
 
 ### Community 118 - "pagamento: pagamento.ts"
-Cohesion: 0.13
-Nodes (15): isoDateRequired, PagamentoCreateInput, PagamentoCreateSchema, PagamentoOrigem, pagamentoOrigemEnum, PagamentoStatus, pagamentoStatusEnum, PagamentoUpdateInput (+7 more)
+Cohesion: 0.12
+Nodes (19): EditarPagamentoPage(), metadata, PagamentoForm(), todayISO(), getPagamento(), Pagamento, formatBRL(), isoDateRequired (+11 more)
 
 ### Community 119 - "06 ultra maximo arquitetura escala: CONFIANCA_AU"
 Cohesion: 0.17
@@ -2373,8 +2402,8 @@ Cohesion: 0.17
 Nodes (11): compilerOptions, allowJs, incremental, jsx, noEmit, paths, plugins, exclude (+3 more)
 
 ### Community 121 - "types: F-32 packages/db/src/types.ts sincronizad"
-Cohesion: 0.20
-Nodes (9): CompositeTypes, Constants, DatabaseWithoutInternals, DefaultSchema, Enums, Json, Tables, TablesInsert (+1 more)
+Cohesion: 0.22
+Nodes (8): CompositeTypes, Constants, DatabaseWithoutInternals, DefaultSchema, Enums, Tables, TablesInsert, TablesUpdate
 
 ### Community 122 - "briefing cavalcanti 16 09: Passo 6 Processar res"
 Cohesion: 0.20
@@ -2401,8 +2430,8 @@ Cohesion: 0.20
 Nodes (9): args, base, __dirname, ensaio, m, MIGRATIONS_DIR, sql, target (+1 more)
 
 ### Community 130 - "type eyebrow.card: Type card: Eyebrow & mono"
-Cohesion: 0.40
-Nodes (6): Type card: Hierarquia Raleway, Hierarquia tipografica H1 800 / H2 700 / H3 600 / Body 400, Type card: Pesos Raleway, Pesos Raleway Light 300 a ExtraBold 800, --font-mono, --font-sans (Raleway)
+Cohesion: 0.38
+Nodes (7): Type card: Hierarquia Raleway, Hierarquia tipografica H1 800 / H2 700 / H3 600 / Body 400, Type card: Pesos Raleway, Pesos Raleway Light 300 a ExtraBold 800, styles.css (tokens), --font-mono, --font-sans (Raleway)
 
 ### Community 131 - "README: system.css (componentes de arte)"
 Cohesion: 0.14
@@ -2413,24 +2442,24 @@ Cohesion: 0.22
 Nodes (8): 1. Resumo executivo, 2. Findings, 3. Pontos positivos (para não reportar como achado por engano), 4. Tabela de prioridades, Alto impacto, Auditoria de Performance, Acessibilidade e Engenharia Front-end — CRM Nogma-Cavalcanti, Baixo impacto, Médio impacto
 
 ### Community 133 - "route: route.ts"
-Cohesion: 0.30
-Nodes (7): log, POST(), normalizeTelefone(), resposta429(), formaDoPayload(), signHmac(), verifyHmacSignature()
+Cohesion: 0.11
+Nodes (18): 1. O problema, 2. Escopo — três blocos, uma branch, um PR, 3. Modelo de dados (migration `20260915120000_acervo_e_grupo.sql`), 4.1 Importador `scripts/importar-onedrive.mjs`, 4.2 Extração de texto — `lib/acervo/extrair-texto.ts`, 4.3 Conciliação — `lib/acervo/conciliar.ts`, 4.4 Rota `POST /api/cron/acervo`, 4. Bloco A — Acervo (+10 more)
 
 ### Community 134 - "actions: actions.ts"
 Cohesion: 0.07
 Nodes (27): Auditoria Consolidada — 2026-09-08, 🟠 Backend BUG-01: merge-fornecedores sem transação, 🟠 Backend BUG-02: race condition em confirmarPendencia (duplo submit), 🟠 Backend BUG-04: read-modify-write race em total_execucoes, Backlog residual (não fixado nesta rodada), Curto prazo (próximas 2 semanas):, Código (commit `1a29ae4`), 🔴 F-01 (CRIT — Frontend audit): Security headers ausentes (+19 more)
 
 ### Community 135 - "sidebar nav: mobile-tabbar.tsx"
-Cohesion: 0.18
-Nodes (11): MobileNav(), MobileTabBar(), TABS, NAV, SECONDARY, SidebarNav(), SidebarNavProps, IconButton() (+3 more)
+Cohesion: 0.12
+Nodes (16): Acervo OneDrive + agente no grupo — plano de implementação, Global Constraints, Mapa de arquivos, Task 10: Arquivar e registrar, Task 11: classifyAndPersist + pendência de obra + inbound, Task 12: Painel, Task 13: Docs, verificação e PR, Task 1: Migration e tipos (+8 more)
 
 ### Community 138 - "reports: reports.ts"
-Cohesion: 0.07
-Nodes (35): restoreFornecedor(), DuplicatasPage(), metadata, FornecedorForm(), FornecedoresTable(), EditarFornecedorPage(), metadata, formatDateTime() (+27 more)
+Cohesion: 0.08
+Nodes (30): archiveFornecedor(), restoreFornecedor(), FornecedorForm(), EditarFornecedorPage(), metadata, formatDateTime(), FornecedorDetailPage(), metadata (+22 more)
 
 ### Community 139 - "comandos: comandos.ts"
-Cohesion: 0.16
-Nodes (6): agruparPorFornecedor(), GrupoFornecedor, metadata, PendentesPage(), listPagamentosSemDocumento(), PagamentoSemDocumento
+Cohesion: 0.10
+Nodes (27): comErro(), confirmarPendencia(), escolherObraPendencia(), rejeitarPendencia(), revalidarTudo(), agruparPorFornecedor(), CardPendenciaDeObra(), formatDateTime() (+19 more)
 
 ### Community 140 - "fase 12 e2e: Fase 12 Testes E2E com Playwright"
 Cohesion: 0.11
@@ -2453,8 +2482,8 @@ Cohesion: 0.20
 Nodes (7): body, __dirname, __filename, fixturePath, { positional, flags }, signature, t0
 
 ### Community 146 - "consumidor.test: Handler"
-Cohesion: 0.21
-Nodes (13): Client, clienteDeServico(), emitir(), log, OpcoesEmissao, EventosDocumento, EventosFornecedor, EventosObra (+5 more)
+Cohesion: 0.17
+Nodes (12): AnexoTipo, Client, DadosNota, decidirConciliacao(), DecisaoConciliacao, DepsConciliacao, escolherCandidato(), extrairComClassificador() (+4 more)
 
 ### Community 148 - "Tabs.prompt: Rule: Dialog is controlled, closes "
 Cohesion: 0.40
@@ -2465,12 +2494,16 @@ Cohesion: 0.08
 Nodes (23): (a) Pendência do WhatsApp → pagamento confirmado, Achados transversais (valem para as 5 jornadas), Auditoria de atrito — 5 jornadas do gestor de obras, (b) Cadastrar obra nova + primeiros fornecedores, (c) Fechar o mês e gerar relatório, Campos obrigatórios, (d) Subir nota fiscal e vincular, Detecção de duplicata por hash (+15 more)
 
 ### Community 150 - "import pagamento: ImportarClient()"
-Cohesion: 0.08
-Nodes (54): DELETE(), alternarAtivoAutorizado(), assertAdmin(), atualizarAutorizado(), criarAutorizado(), ROTULOS_AUTORIZADO, arquivarCategoria(), assertAdmin() (+46 more)
+Cohesion: 0.10
+Nodes (34): alternarAtivoAutorizado(), assertAdmin(), atualizarAutorizado(), criarAutorizado(), ROTULOS_AUTORIZADO, createFornecedor(), extractDoc(), formToRecord() (+26 more)
 
 ### Community 152 - "page: page.tsx"
 Cohesion: 0.10
 Nodes (19): 1. Upgrade para Pro, 2.1 — Trocar, 2.2 — Redeployar (sem isso não vale nada), 2.3 — Provar que melhorou, 2.4 — O que isso melhora, concretamente, 2. Região das funções → São Paulo, 3.1 — Antes de virar, 3.2 — Trocar (+11 more)
+
+### Community 154 - "08 infra deploy ci: playwright.config.ts"
+Cohesion: 0.24
+Nodes (10): alternarAtivoGrupo(), assertAdmin(), atualizarObraDoGrupo(), criarGrupo(), ROTULOS, metadata, EmptyState(), GrupoCreateInput (+2 more)
 
 ### Community 155 - "apply migrations staging: 5.2 Migrations process"
 Cohesion: 0.50
@@ -2485,8 +2518,8 @@ Cohesion: 0.12
 Nodes (22): Valid combos: petroleum/white/lime among themselves · black on lime, assets/logo-nogma-lime.png, assets/logo-nogma-petroleum.png, Isologo (full 'nogma' lettering), Isologo — lettering completo, Lime full-stop / key number accent (.dot), Motivo lime — accent como marca-texto, Rule: Lime = punctual highlight — highlighter, full stop, key number; never whole text blocks (+14 more)
 
 ### Community 158 - "05 angulos: Matriz 2x2 impacto x esforco: ganho "
-Cohesion: 0.32
-Nodes (8): Matriz 2x2 impacto x esforco: ganho rapido / vale mas planeje / se sobrar tempo / deixa pra la, Esforco: o que precisa acontecer pra resolver (dados, processo, adocao)?, Impacto: o que muda no negocio se ela sumir?, Retorno: quanto ela custa hoje, em dinheiro?, Tres perguntas por tarefa (nenhuma sobre tecnologia), Impacto alto, retorno alto, esforco baixo: comeca por aqui; ferramenta e a ultima decisao, O mapeamento e o diagnostico da Nogma; comenta RETORNO e a equipe te chama, STEPS: Diagnostico, Desenho, Implementacao, Operacao
+Cohesion: 0.47
+Nodes (6): Matriz 2x2 impacto x esforco: ganho rapido / vale mas planeje / se sobrar tempo / deixa pra la, Esforco: o que precisa acontecer pra resolver (dados, processo, adocao)?, Impacto: o que muda no negocio se ela sumir?, Retorno: quanto ela custa hoje, em dinheiro?, Tres perguntas por tarefa (nenhuma sobre tecnologia), Impacto alto, retorno alto, esforco baixo: comeca por aqui; ferramenta e a ultima decisao
 
 ### Community 159 - "transcricao: transcricao.ts"
 Cohesion: 0.38
@@ -2505,12 +2538,12 @@ Cohesion: 0.29
 Nodes (6): compilerOptions, noEmit, outDir, rootDir, extends, include
 
 ### Community 163 - "page: GET()"
-Cohesion: 0.27
-Nodes (8): EditarAutorizadoPage(), AutorizadoCreateInput, AutorizadoCreateSchema, AutorizadoUpdateInput, AutorizadoUpdateSchema, formatarTelefone(), normalizarTelefoneCadastro(), telefone
+Cohesion: 0.30
+Nodes (12): AJUDA_TEXTO, Client, executarComando(), formatBRL(), gastoDaObra(), pendencias(), resumo(), formatador (+4 more)
 
 ### Community 165 - "busca: busca.ts"
-Cohesion: 0.33
-Nodes (5): Client, montarContexto(), OpcoesBusca, ResultadoBusca, Trecho
+Cohesion: 0.21
+Nodes (8): Client, DepsExtracao, extrairTextoDe(), extrairTextoPendentes(), log, MIMES_IMAGEM, ResultadoExtracao, bytes
 
 ### Community 168 - "fase 17 dashboard: KPIs com historia parcial sem"
 Cohesion: 0.17
@@ -2534,7 +2567,7 @@ Nodes (15): 1. Baixar Chromium (uma vez), 2. Resolver hCaptcha (obrigatório), 3
 
 ### Community 180 - "pagamentos filters: pagamentos-filters.tsx"
 Cohesion: 0.29
-Nodes (10): enviarWhatsapp(), mascarar(), enviarWhatsapp(), config(), ConfigUazapi, enviarTexto(), log, ResultadoEnvio (+2 more)
+Nodes (8): DocumentoDetailPage(), formatDateTime(), metadata, TIPO_VARIANT, Row(), Section(), AnexoTipo, formatBytes()
 
 ### Community 187 - "Button.d: Button.d.ts"
 Cohesion: 0.50
@@ -2613,8 +2646,8 @@ Cohesion: 0.22
 Nodes (8): Decisões humanas em aberto (não são código), Design review (2026-09-12) — adiados [DEPOIS DE 16/09], P0 — o núcleo do contrato (CEO review, 2026-09-12), P1 — antes de ligar WhatsApp/automações em produção, P2 — qualidade e segurança, P3 — higiene, QA ao vivo (2026-09-12) — adiados com contexto, TODOS — backlog técnico (convenção gstack)
 
 ### Community 245 - "Community 245"
-Cohesion: 0.24
-Nodes (11): carregarHabilitadas(), EstadoRegra, executarAutomacoes(), jaAgiuHoje(), LinhaLog, log, OpcoesExecucao, registrar() (+3 more)
+Cohesion: 0.31
+Nodes (8): AFIRMATIVAS, EMOJI_NAO, EMOJI_SIM, Interpretacao, interpretarResposta(), NEGATIVAS, normalizar(), separarEmojis()
 
 ### Community 246 - "Community 246"
 Cohesion: 0.25
@@ -2637,12 +2670,12 @@ Cohesion: 0.29
 Nodes (8): Type card: Eyebrow & mono, Eyebrow (Agency caps, tracking .16em), Stat numerals (Agency 52px, tabular), --font-display (Agency), --lime-500 (#CCFF00), --petroleum-800, Classes nos-* (sidebar, topbar, tablecard, agentcard, login, chat), Tema: preto como superficie escura primaria
 
 ### Community 251 - "Community 251"
-Cohesion: 0.08
-Nodes (23): AutorizadosPage(), metadata, getAdminOrNotFound(), ImportarPage(), metadata, Atalho, ConfigPage(), CONTA (+15 more)
+Cohesion: 0.16
+Nodes (13): metadata, PagamentosConteudo(), Status, STATUS_OPTIONS, STATUS_VALIDOS, Option, PagamentosFilters(), PagamentosTable() (+5 more)
 
 ### Community 252 - "Community 252"
-Cohesion: 0.31
-Nodes (7): AutomacaoCampos(), AutomacoesPage(), metadata, STATUS_ROTULO, CampoConfig, AutomacaoListada, listarAutomacoes()
+Cohesion: 0.20
+Nodes (9): ⏳ 10. Depois de 16/09, 🔵 11. Decisão: Fase 6 (vendas) — o que preciso de você, 🟠 5. Vercel Pro → um comando faz o resto, 🟡 8. Indexar a base de conhecimento, Checklist final, Como conferir, Como conferir, O mapa em uma tela (+1 more)
 
 ### Community 253 - "Community 253"
 Cohesion: 0.29
@@ -2673,8 +2706,8 @@ Cohesion: 0.33
 Nodes (6): 5.3 Backup e restore — procedimento mínimo, Metas propostas, Pré-requisitos, Restore, `scripts/backup.sh` — backup completo (rodar semanalmente, no mínimo), Testar o restore — inegociável
 
 ### Community 261 - "Community 261"
-Cohesion: 0.27
-Nodes (9): anexarMidiaComoDocumento(), AnexoTipo, Client, log, MIMES_DOCUMENTO, ResultadoAnexo, tipoDoDocumento(), makeStoragePath() (+1 more)
+Cohesion: 0.22
+Nodes (3): Client, entrada, somaFake
 
 ### Community 262 - "Community 262"
 Cohesion: 0.40
@@ -2749,12 +2782,16 @@ Cohesion: 0.67
 Nodes (3): Opção 1 — n8n Cloud (10min, recomendado pra começar), Opção 2 — Self-hosted Docker (1-2h, mais barato longo prazo), ⚙️ Setup n8n (cloud ou self-hosted)
 
 ### Community 1911 - "Community 1911"
-Cohesion: 0.25
-Nodes (5): formatarPadrao(), LeitorDeCampos, montarAjuda(), ROTULOS_CONFIG, TipoCampo
+Cohesion: 0.22
+Nodes (4): Handler, Client, EstadoFake, MsgFake
+
+### Community 1912 - "Community 1912"
+Cohesion: 0.36
+Nodes (8): abrirPendencia(), dispatchEvento(), EventoWebhook, logWebhookExecution(), serviceRoleClient(), sign(), testWebhook(), WebhookPayload
 
 ### Community 1913 - "Community 1913"
-Cohesion: 0.67
-Nodes (5): comErro(), confirmarPendencia(), rejeitarPendencia(), revalidarTudo(), recusarConfirmacao()
+Cohesion: 0.36
+Nodes (7): AJUDA, Comando, interpretarComando(), normalizar(), PADROES_GASTO, PENDENCIAS, RESUMO
 
 ### Community 1914 - "Community 1914"
 Cohesion: 0.40
@@ -2764,6 +2801,66 @@ Nodes (4): Agrupamento, AGRUPAR_OPTIONS, DocumentosToolbar(), Option
 Cohesion: 0.40
 Nodes (3): LoginForm(), metadata, SearchParams
 
+### Community 1917 - "Community 1917"
+Cohesion: 0.25
+Nodes (6): Atalho, ConfigPage(), CONTA, INTEGRACOES, metadata, OPERACAO
+
+### Community 1918 - "Community 1918"
+Cohesion: 0.36
+Nodes (7): metadata, relativeTime(), statusClass(), truncateUrl(), WebhookRow, WebhooksPage(), WebhookTableRow()
+
+### Community 1919 - "Community 1919"
+Cohesion: 0.32
+Nodes (6): depsPadrao(), INSTRUCOES, lerComVisao(), log, visaoDisponivel(), montarConteudo()
+
+### Community 1920 - "Community 1920"
+Cohesion: 0.43
+Nodes (6): FAIXAS_IPV4_BLOQUEADAS, ipv4ParaInteiro(), motivoBloqueioIp(), PROTOCOLOS_PERMITIDOS, ResultadoSsrf, validarUrlWebhook()
+
+### Community 1921 - "Community 1921"
+Cohesion: 0.29
+Nodes (7): 12.1 — Baixar o ZIP do OneDrive, 12.2 — Mergear o PR e aplicar a migration, 12.3 — Apelidos das obras e a obra Aguirre, 12.4 — Importar o acervo, 12.5 — Cadastrar o grupo, ⏳ 12. Depois de 16/09 — acervo do OneDrive e agente no grupo, Se algo der errado, olhe aqui primeiro
+
+### Community 1922 - "Community 1922"
+Cohesion: 0.33
+Nodes (6): DashboardScreen(), AgentScreen(), AUTOMATIONS, AutomationsScreen(), DashboardScreen(), SEED
+
+### Community 1923 - "Community 1923"
+Cohesion: 0.33
+Nodes (4): conciliarPendentes, extrairTextoPendentes, gerarEmbeddingsPendentes, sincronizarDocumentos
+
+### Community 1924 - "Community 1924"
+Cohesion: 0.60
+Nodes (3): updateSession(), config, middleware()
+
+### Community 1925 - "Community 1925"
+Cohesion: 0.50
+Nodes (3): Arrow(), Stat(), Stat()
+
+### Community 1926 - "Community 1926"
+Cohesion: 0.50
+Nodes (4): 2.1 — O redeploy, que todo mundo esquece, 🔴 2. Credenciais + redeploy, Como conferir, Como fazer
+
+### Community 1927 - "Community 1927"
+Cohesion: 0.50
+Nodes (4): 3.1 — Apontar o webhook, 3.2 — Cadastrar a equipe, 🔴 3. Webhook da UAZAPI + equipe autorizada, Como conferir — o teste que vale
+
+### Community 1928 - "Community 1928"
+Cohesion: 0.50
+Nodes (4): 6.1 — Guardar a frase da cifra, 6.2 — Um restore de teste, 6.3 — PITR, 🟠 6. Backup — o que ainda é seu
+
+### Community 1929 - "Community 1929"
+Cohesion: 0.50
+Nodes (4): 🟡 7. Domínio próprio + Cloudflare, Como conferir, O que é seu, O que é um comando
+
+### Community 1930 - "Community 1930"
+Cohesion: 0.50
+Nodes (4): 9.1 — Comece pela inócua, 9.2 — A cobrança, só depois do item 1, 🟡 9. Ligar as automações, Para desligar tudo, rápido
+
+### Community 1931 - "Community 1931"
+Cohesion: 0.67
+Nodes (3): 🔴 1. Telefones reais dos fornecedores, Como conferir, Como fazer
+
 ## Ambiguous Edges - Review These
 - `Supabase (PostgreSQL 17.6)` → `Integração com OneDrive`  [AMBIGUOUS]
   ESTRUTURA DO PROJETO/apresentacao-projeto-cavalcanti.pdf · relation: conceptually_related_to
@@ -2771,9 +2868,9 @@ Nodes (3): LoginForm(), metadata, SearchParams
   Nogma Design System/ui_kits/nogmaos/index.html · relation: implements
 
 ## Knowledge Gaps
-- **3486 isolated node(s):** `NG_PATHS`, `ButtonVariant`, `ButtonSize`, `ButtonProps`, `IconButtonVariant` (+3481 more)
+- **3567 isolated node(s):** `NG_PATHS`, `ButtonVariant`, `ButtonSize`, `ButtonProps`, `IconButtonVariant` (+3562 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **1683 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **1695 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
@@ -2782,13 +2879,13 @@ _Questions this graph is uniquely positioned to answer:_
   _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
 - **What is the exact relationship between `Tema: preto como superficie escura primaria` and `Classes nos-* (sidebar, topbar, tablecard, agentcard, login, chat)`?**
   _Edge tagged AMBIGUOUS (relation: implements) - confidence is low._
-- **Why does `createClient()` connect `import pagamento: ImportarClient()` to `Documentos: telas e formulário`, `Categorias: CRUD`, `Usuários: convite e papéis`, `reports: reports.ts`, `comandos: comandos.ts`, `Importar CSV de pagamentos`, `Auditoria: diff viewer`, `Webhooks de saída`, `Fornecedores e planilha compartilhada`, `Interpretar SIM/NÃO`, `Exportação CSV/PDF (rotas)`, `page: GET()`, `Rotas API e cron`, `Perfil e preferências`, `Confirmações pendentes`, `Obras: tabela e página`, `painel: page.tsx`, `page: page.tsx`, `rate limit: actions.ts`, `IconButton: mobile-nav.tsx`, `actions: actions.ts`, `layout: layout.tsx`, `Community 1913`, `Community 251`, `Community 252`?**
-  _High betweenness centrality (0.014) - this node is a cross-community bridge._
-- **Why does `Database` connect `Rotas API e cron` to `Documentos: telas e formulário`, `route: route.ts`, `Usuários: convite e papéis`, `Community 261`, `reports: reports.ts`, `Classificador Anthropic (visão)`, `Inbound WhatsApp e UAZAPI`, `consumidor.test: Handler`, `Importar CSV de pagamentos`, `import pagamento: ImportarClient()`, `Auditoria: diff viewer`, `Webhooks de saída`, `Interpretar SIM/NÃO`, `Exportação CSV/PDF (rotas)`, `busca: busca.ts`, `Assistente de IA (laço)`, `Consumidor da fila`, `Automações: regras e registry`, `Confirmações pendentes`, `Embeddings e RAG`, `E2E Playwright`, `painel: page.tsx`, `page: page.tsx`, `rate limit: actions.ts`, `documentos agrupados: documentos-agrupados.tsx`, `IconButton: mobile-nav.tsx`, `comandos whatsapp: revisao-2026-09-11.test.ts`, `planilha: botao-imprimir.tsx`, `actions: actions.ts`, `registro: DependenciasDoAssistente`, `types: F-32 packages/db/src/types.ts sincronizad`?**
-  _High betweenness centrality (0.009) - this node is a cross-community bridge._
-- **Why does `Button()` connect `Obras: tabela e página` to `Documentos: telas e formulário`, `Autorizados: actions e telas`, `Categorias: CRUD`, `Usuários: convite e papéis`, `Rotas API e cron`, `reports: reports.ts`, `comandos: comandos.ts`, `Importar CSV de pagamentos`, `painel: page.tsx`, `Perfil e preferências`, `Webhooks de saída`, `Community 251`, `Community 252`, `Fornecedores e planilha compartilhada`?**
-  _High betweenness centrality (0.003) - this node is a cross-community bridge._
-- **Are the 17 inferred relationships involving `estadoDoFormulario` (e.g. with `EditarAutorizadoPage()` and `NovoAutorizadoPage()`) actually correct?**
-  _`estadoDoFormulario` has 17 INFERRED edges - model-reasoned connections that need verification._
+- **Why does `react` connect `DS bundle (componentes JSX)` to `Autorizados: actions e telas`, `Community 1922`, `Community 1925`, `Dependências apps/web`, `UI kit nogmaOS`, `Avatar: Avatar.jsx`, `Tag: Tag.jsx`, `Alert: Alert.jsx`, `Checkbox: Checkbox.jsx`, `Select: Select.jsx`, `Button: Button.jsx`, `IconButton: IconButton.jsx`, `Badge: Badge.jsx`, `Card: Card.jsx`, `Obras: tabela e página`, `Dialog: Dialog.jsx`, `Progress: Progress.jsx`, `Tooltip: Tooltip.jsx`, `Input: Input.jsx`, `RadioGroup: RadioGroup.jsx`, `Switch: Switch.jsx`, `Textarea: Textarea.jsx`, `Tabs: Tabs.jsx`?**
+  _High betweenness centrality (0.019) - this node is a cross-community bridge._
+- **Why does `createClient()` connect `Rotas API e cron` to `Documentos: telas e formulário`, `Autorizados: actions e telas`, `Usuários: convite e papéis`, `reports: reports.ts`, `comandos: comandos.ts`, `Importar CSV de pagamentos`, `import pagamento: ImportarClient()`, `Auditoria: diff viewer`, `Webhooks de saída`, `08 infra deploy ci: playwright.config.ts`, `Fornecedores e planilha compartilhada`, `Interpretar SIM/NÃO`, `Exportação CSV/PDF (rotas)`, `Consumidor da fila`, `Perfil e preferências`, `Obras: tabela e página`, `painel: page.tsx`, `page: page.tsx`, `rate limit: actions.ts`, `IconButton: mobile-nav.tsx`, `actions: actions.ts`, `layout: layout.tsx`, `obra: obra.ts`, `pagamento: pagamento.ts`, `Community 251`, `Community 1917`, `Community 1918`?**
+  _High betweenness centrality (0.017) - this node is a cross-community bridge._
+- **Why does `Database` connect `Inbound WhatsApp e UAZAPI` to `Documentos: telas e formulário`, `Community 1924`, `Usuários: convite e papéis`, `Community 261`, `reports: reports.ts`, `Classificador Anthropic (visão)`, `comandos: comandos.ts`, `consumidor.test: Handler`, `Importar CSV de pagamentos`, `Auditoria: diff viewer`, `Fornecedores e planilha compartilhada`, `Interpretar SIM/NÃO`, `Exportação CSV/PDF (rotas)`, `page: GET()`, `busca: busca.ts`, `Rotas API e cron`, `Assistente de IA (laço)`, `Consumidor da fila`, `Automações: regras e registry`, `Perfil e preferências`, `Confirmações pendentes`, `Embeddings e RAG`, `Obras: tabela e página`, `E2E Playwright`, `painel: page.tsx`, `page: page.tsx`, `rate limit: actions.ts`, `documentos agrupados: documentos-agrupados.tsx`, `IconButton: mobile-nav.tsx`, `planilha: botao-imprimir.tsx`, `documentos: documentos.ts`, `actions: actions.ts`, `fornecedor: fornecedor.ts`, `registro: DependenciasDoAssistente`, `Community 1911`, `Community 1912`, `types: F-32 packages/db/src/types.ts sincronizad`, `Community 251`?**
+  _High betweenness centrality (0.016) - this node is a cross-community bridge._
+- **Are the 18 inferred relationships involving `estadoDoFormulario` (e.g. with `GruposPage()` and `EditarAutorizadoPage()`) actually correct?**
+  _`estadoDoFormulario` has 18 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `NG_PATHS`, `ButtonVariant`, `ButtonSize` to the rest of the system?**
-  _3573 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _3654 weakly-connected nodes found - possible documentation gaps or missing edges._

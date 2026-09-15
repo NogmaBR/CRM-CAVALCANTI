@@ -1,5 +1,6 @@
 'use client';
 
+import { CATEGORIAS, CATEGORIA_LABELS } from '@/lib/status-labels';
 import { Search, X } from 'lucide-react';
 import Form from 'next/form';
 import Link from 'next/link';
@@ -27,12 +28,14 @@ export function DocumentosToolbar({
   obras,
   tipo,
   obraId,
+  categoria,
   agrupar,
   busca,
 }: {
   obras: Option[];
   tipo: string;
   obraId: string;
+  categoria: string;
   agrupar: Agrupamento;
   busca: string;
 }) {
@@ -44,6 +47,7 @@ export function DocumentosToolbar({
     const p = new URLSearchParams();
     if (tipo) p.set('tipo', tipo);
     if (obraId) p.set('obra_id', obraId);
+    if (categoria) p.set('categoria', categoria);
     if (agrupar) p.set('agrupar', agrupar);
     const qs = p.toString();
     return qs ? `/documentos?${qs}` : '/documentos';
@@ -86,6 +90,23 @@ export function DocumentosToolbar({
           {obras.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="docs-toolbar__campo">
+        <span className="docs-toolbar__rotulo">Pasta</span>
+        <select
+          name="categoria"
+          className="docs-toolbar__select"
+          defaultValue={categoria}
+          onChange={submeterAoMudar}
+        >
+          <option value="">Todas</option>
+          {CATEGORIAS.map((c) => (
+            <option key={c} value={c}>
+              {CATEGORIA_LABELS[c].rotulo}
             </option>
           ))}
         </select>

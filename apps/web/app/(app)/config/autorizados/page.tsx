@@ -3,7 +3,15 @@ import { Button } from '@/components/nogma/Button';
 import { EmptyState } from '@/components/nogma/EmptyState';
 import { formatarTelefone } from '@/lib/schemas/autorizado';
 import { createClient } from '@/lib/supabase/server';
-import { Ban, Pencil, Plus, RotateCcw, ShieldCheck, TriangleAlert } from 'lucide-react';
+import {
+  Ban,
+  MessagesSquare,
+  Pencil,
+  Plus,
+  RotateCcw,
+  ShieldCheck,
+  TriangleAlert,
+} from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { alternarAtivoAutorizado } from './actions';
@@ -52,11 +60,18 @@ export default async function AutorizadosPage({
         title="Números autorizados"
         subtitle="Quem pode lançar pagamentos pelo WhatsApp"
         actions={
-          <Link href="/config/autorizados/novo" style={{ textDecoration: 'none' }}>
-            <Button variant="primary" leadingIcon={<Plus size={16} />}>
-              Autorizar número
-            </Button>
-          </Link>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <Link href="/config/autorizados/grupos" style={{ textDecoration: 'none' }}>
+              <Button variant="secondary" leadingIcon={<MessagesSquare size={16} />}>
+                Grupos
+              </Button>
+            </Link>
+            <Link href="/config/autorizados/novo" style={{ textDecoration: 'none' }}>
+              <Button variant="primary" leadingIcon={<Plus size={16} />}>
+                Autorizar número
+              </Button>
+            </Link>
+          </div>
         }
       />
 

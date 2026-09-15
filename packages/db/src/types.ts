@@ -368,6 +368,9 @@ export type Database = {
       };
       confirmacoes_pendentes: {
         Row: {
+          tipo: string;
+          opcoes: Json | null;
+          chat_id: string | null;
           created_at: string | null;
           id: string;
           mensagem_id: string;
@@ -381,6 +384,9 @@ export type Database = {
           resultado: string | null;
         };
         Insert: {
+          tipo?: string;
+          opcoes?: Json | null;
+          chat_id?: string | null;
           created_at?: string | null;
           id?: string;
           mensagem_id: string;
@@ -394,6 +400,9 @@ export type Database = {
           resultado?: string | null;
         };
         Update: {
+          tipo?: string;
+          opcoes?: Json | null;
+          chat_id?: string | null;
           created_at?: string | null;
           id?: string;
           mensagem_id?: string;
@@ -418,6 +427,13 @@ export type Database = {
       };
       documentos: {
         Row: {
+          categoria: Database['public']['Enums']['doc_categoria'];
+          origem: Database['public']['Enums']['doc_origem'];
+          caminho_origem: string | null;
+          origem_modificado_em: string | null;
+          texto_extraido: string | null;
+          texto_extraido_em: string | null;
+          conciliado_em: string | null;
           chave_acesso_nf: string | null;
           created_at: string | null;
           criado_por_user_id: string | null;
@@ -437,6 +453,13 @@ export type Database = {
           updated_at: string | null;
         };
         Insert: {
+          categoria?: Database['public']['Enums']['doc_categoria'];
+          origem?: Database['public']['Enums']['doc_origem'];
+          caminho_origem?: string | null;
+          origem_modificado_em?: string | null;
+          texto_extraido?: string | null;
+          texto_extraido_em?: string | null;
+          conciliado_em?: string | null;
           chave_acesso_nf?: string | null;
           created_at?: string | null;
           criado_por_user_id?: string | null;
@@ -456,6 +479,13 @@ export type Database = {
           updated_at?: string | null;
         };
         Update: {
+          categoria?: Database['public']['Enums']['doc_categoria'];
+          origem?: Database['public']['Enums']['doc_origem'];
+          caminho_origem?: string | null;
+          origem_modificado_em?: string | null;
+          texto_extraido?: string | null;
+          texto_extraido_em?: string | null;
+          conciliado_em?: string | null;
           chave_acesso_nf?: string | null;
           created_at?: string | null;
           criado_por_user_id?: string | null;
@@ -664,6 +694,9 @@ export type Database = {
       };
       mensagens_whats: {
         Row: {
+          chat_id: string | null;
+          grupo_id: string | null;
+          registro_id: string | null;
           autorizado_id: string | null;
           confianca_ia: number | null;
           created_at: string | null;
@@ -685,6 +718,9 @@ export type Database = {
           updated_at: string | null;
         };
         Insert: {
+          chat_id?: string | null;
+          grupo_id?: string | null;
+          registro_id?: string | null;
           autorizado_id?: string | null;
           confianca_ia?: number | null;
           created_at?: string | null;
@@ -706,6 +742,9 @@ export type Database = {
           updated_at?: string | null;
         };
         Update: {
+          chat_id?: string | null;
+          grupo_id?: string | null;
+          registro_id?: string | null;
           autorizado_id?: string | null;
           confianca_ia?: number | null;
           created_at?: string | null;
@@ -1016,6 +1055,127 @@ export type Database = {
         };
         Relationships: [];
       };
+      whatsapp_grupos: {
+        Row: {
+          ativo: boolean;
+          chat_id: string;
+          created_at: string | null;
+          deleted_at: string | null;
+          id: string;
+          nome: string;
+          obra_id: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          ativo?: boolean;
+          chat_id: string;
+          created_at?: string | null;
+          deleted_at?: string | null;
+          id?: string;
+          nome: string;
+          obra_id?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          ativo?: boolean;
+          chat_id?: string;
+          created_at?: string | null;
+          deleted_at?: string | null;
+          id?: string;
+          nome?: string;
+          obra_id?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'whatsapp_grupos_obra_id_fkey';
+            columns: ['obra_id'];
+            isOneToOne: false;
+            referencedRelation: 'obras';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      registros_obra: {
+        Row: {
+          autor_autorizado_id: string | null;
+          autor_user_id: string | null;
+          created_at: string | null;
+          data_registro: string;
+          deleted_at: string | null;
+          id: string;
+          mensagem_id: string | null;
+          midia_mime: string | null;
+          midia_storage_path: string | null;
+          obra_id: string;
+          origem: Database['public']['Enums']['doc_origem'];
+          resumo: string | null;
+          texto: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          autor_autorizado_id?: string | null;
+          autor_user_id?: string | null;
+          created_at?: string | null;
+          data_registro: string;
+          deleted_at?: string | null;
+          id?: string;
+          mensagem_id?: string | null;
+          midia_mime?: string | null;
+          midia_storage_path?: string | null;
+          obra_id: string;
+          origem?: Database['public']['Enums']['doc_origem'];
+          resumo?: string | null;
+          texto: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          autor_autorizado_id?: string | null;
+          autor_user_id?: string | null;
+          created_at?: string | null;
+          data_registro?: string;
+          deleted_at?: string | null;
+          id?: string;
+          mensagem_id?: string | null;
+          midia_mime?: string | null;
+          midia_storage_path?: string | null;
+          obra_id?: string;
+          origem?: Database['public']['Enums']['doc_origem'];
+          resumo?: string | null;
+          texto?: string;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'registros_obra_obra_id_fkey';
+            columns: ['obra_id'];
+            isOneToOne: false;
+            referencedRelation: 'obras';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'registros_obra_mensagem_id_fkey';
+            columns: ['mensagem_id'];
+            isOneToOne: false;
+            referencedRelation: 'mensagens_whats';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'registros_obra_autor_autorizado_id_fkey';
+            columns: ['autor_autorizado_id'];
+            isOneToOne: false;
+            referencedRelation: 'autorizados';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'registros_obra_autor_user_id_fkey';
+            columns: ['autor_user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['user_id'];
+          },
+        ];
+      };
       webhooks_outbound: {
         Row: {
           ativo: boolean;
@@ -1206,6 +1366,17 @@ export type Database = {
     Enums: {
       anexo_tipo: 'nota_fiscal' | 'comprovante' | 'contrato' | 'outro';
       documento_tipo: 'cnpj' | 'cpf';
+      doc_categoria:
+        | 'documentacao'
+        | 'nfs_pagamentos'
+        | 'proposta'
+        | 'projeto'
+        | 'projeto_aprovado'
+        | 'cronograma'
+        | 'fotos'
+        | 'orcamentos'
+        | 'outro';
+      doc_origem: 'painel' | 'whatsapp' | 'onedrive';
       msg_status: 'recebida' | 'processando' | 'classificada' | 'confirmada' | 'recusada' | 'erro';
       msg_tipo: 'texto' | 'imagem' | 'pdf' | 'audio';
       obra_status: 'ativa' | 'pausada' | 'concluida' | 'arquivada';

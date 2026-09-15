@@ -3,19 +3,28 @@ import { transcreverAudio } from '@/lib/ia/transcricao';
 import { logger } from '@/lib/log';
 import {
   type UazapiInbound,
+  destinoDaResposta,
+  ehChatDeGrupo,
   mapTipoToDb,
   normalizeTelefone,
   toIsoDate,
 } from '@/lib/schemas/uazapi';
 import { uploadDocumentBuffer } from '@/lib/storage/documents';
 import { interpretarComando } from '@/lib/whatsapp/comandos';
+import { interpretarEscolha } from '@/lib/whatsapp/escolha';
 import { ehPerguntaAoAssistente } from '@/lib/whatsapp/pergunta';
 import { interpretarResposta } from '@/lib/whatsapp/resposta';
 import type { Database } from '@nogma/db';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { classifyAndPersist } from './classify-and-persist';
 import { executarComando } from './comandos-whatsapp';
-import { aplicarConfirmacao, buscarConfirmacaoAberta, recusarConfirmacao } from './confirmacoes';
+import {
+  type PendenciaAberta,
+  aplicarConfirmacao,
+  aplicarEscolhaDeObra,
+  buscarConfirmacaoAberta,
+  recusarConfirmacao,
+} from './confirmacoes';
 import { baixarMidia, enviarTexto } from './uazapi';
 
 /**
@@ -45,9 +54,11 @@ const log = logger('inbound');
 
 export type AcaoInbound =
   | 'ignorada_nao_autorizada'
+  | 'ignorada_grupo_nao_autorizado'
   | 'duplicada'
   | 'confirmou_pendencia'
   | 'recusou_pendencia'
+  | 'escolheu_obra'
   | 'classificada'
   | 'comando'
   | 'pergunta'
@@ -74,6 +85,7 @@ const RESPOSTAS = {
     'Recebi sua confirmação, mas faltaram dados pra lançar automaticamente. ' +
     'O gestor vai revisar no painel.',
   recusado: 'Ok, cancelei esse lançamento. Se quiser, é só mandar de novo com os dados corretos.',
+  obraRecusada: 'Ok, deixei sem arquivar. O gestor pode arquivar pelo painel.',
   falhaTemporaria:
     'Não consegui processar sua mensagem agora. Ela ficou registrada; ' +
     'o gestor pode lançar pelo painel, ou você pode reenviar daqui a alguns minutos.',
@@ -83,7 +95,11 @@ export async function processarInbound(
   supabase: Client,
   payload: UazapiInbound,
 ): Promise<ResultadoInbound> {
+  // Num grupo, `from` é quem falou (o participante) e `chatId` é o grupo. A
+  // autorização é pela pessoa; a resposta vai para o chat de origem.
   const telefone = normalizeTelefone(payload.from);
+  const destino = destinoDaResposta(payload);
+  const emGrupo = Boolean(payload.isGroup || ehChatDeGrupo(payload.chatId));
 
   // ---------------------------------------------------------------------
   // 1. Autorização. Antes de qualquer escrita.
@@ -98,6 +114,19 @@ export async function processarInbound(
       dica: 'Cadastre o número em /config/autorizados para que ele possa lançar pagamentos.',
     });
     return { acao: 'ignorada_nao_autorizada' };
+  }
+
+  // Grupo também é lista fechada: pessoa autorizada num grupo desconhecido é
+  // ignorada em silêncio. O id vai para o log — é assim que o gestor descobre
+  // o que cadastrar em /config/autorizados (seção Grupos).
+  const grupo = emGrupo ? await buscarGrupo(supabase, payload.chatId ?? '') : null;
+  if (emGrupo && !grupo) {
+    log.aviso('ignorada_grupo_nao_autorizado', {
+      chat_id: payload.chatId,
+      telefone,
+      dica: 'Cadastre o grupo em /config/autorizados › Grupos para o agente agir nele.',
+    });
+    return { acao: 'ignorada_grupo_nao_autorizado' };
   }
 
   // ---------------------------------------------------------------------
@@ -133,25 +162,71 @@ export async function processarInbound(
   // significa nada, e é justamente o elo que faltava no fluxo.
   const interpretacao = interpretarResposta(textoEfetivo);
 
-  if (interpretacao !== 'outro') {
-    const pendencia = await buscarConfirmacaoAberta(supabase, telefone, JANELA_RESPOSTA_HORAS);
+  // A pendência aberta pode ser de pagamento (responde SIM/NÃO) ou de obra
+  // (responde o número). Só vale a pena buscar quando há texto para
+  // interpretar — foto sem legenda nunca é resposta.
+  const pendencia = textoEfetivo
+    ? await buscarConfirmacaoAberta(supabase, telefone, JANELA_RESPOSTA_HORAS)
+    : null;
 
-    if (pendencia) {
-      return resolverPendencia({
+  if (pendencia && pendencia.tipo === 'pagamento' && interpretacao !== 'outro') {
+    return resolverPendencia({
+      supabase,
+      pendencia,
+      interpretacao,
+      payload,
+      telefone,
+      destino,
+      grupoId: grupo?.id ?? null,
+      autorizadoId: autorizado.id,
+      textoEfetivo,
+      midia,
+      tipoDb,
+    });
+  }
+
+  if (pendencia && pendencia.tipo !== 'pagamento') {
+    const escolha = interpretarEscolha(textoEfetivo, pendencia.opcoes);
+    if (escolha) {
+      return resolverEscolhaDeObra({
         supabase,
         pendencia,
-        interpretacao,
+        obraId: escolha.id,
         payload,
         telefone,
+        destino,
+        grupoId: grupo?.id ?? null,
         autorizadoId: autorizado.id,
         textoEfetivo,
         midia,
         tipoDb,
       });
     }
-    // Sem pendência aberta, "ok" é só uma mensagem qualquer — segue o fluxo
-    // normal e provavelmente vira `nao_identificado`, que é o correto.
+    if (interpretacao === 'nao') {
+      await recusarConfirmacao(supabase, {
+        confirmacaoId: pendencia.id,
+        via: 'whatsapp',
+        respostaBruta: textoEfetivo ?? '(sem texto)',
+        motivo: 'Remetente não quis arquivar',
+      });
+      await gravarMensagem({
+        supabase,
+        payload,
+        telefone,
+        grupoId: grupo?.id ?? null,
+        autorizadoId: autorizado.id,
+        tipoDb,
+        midia,
+        status: 'recusada',
+      });
+      await enviarTexto(destino, RESPOSTAS.obraRecusada);
+      return { acao: 'recusou_pendencia' };
+    }
+    // Não era escolha nem recusa: segue como mensagem comum. A pergunta de
+    // obra continua aberta pelas 24 h.
   }
+  // Sem pendência aberta, "ok" é só uma mensagem qualquer — segue o fluxo
+  // normal e provavelmente vira `nao_identificado`, que é o correto.
 
   // ---------------------------------------------------------------------
   // 5. É um comando de consulta?
@@ -171,7 +246,7 @@ export async function processarInbound(
       log.erro('comando_falhou', { comando: comando.tipo, err });
       return 'Não consegui consultar isso agora. Tente de novo em instantes.';
     });
-    await enviarTexto(telefone, resposta);
+    await enviarTexto(destino, resposta);
     return { acao: 'comando', detalhe: comando.tipo };
   }
 
@@ -213,7 +288,7 @@ export async function processarInbound(
       // classificação — melhor a pergunta virar pendência no painel do que
       // a pessoa receber silêncio.
       if (resposta) {
-        await enviarTexto(telefone, resposta.texto);
+        await enviarTexto(destino, resposta.texto);
         return {
           acao: 'pergunta',
           detalhe: `${resposta.fontes.length} fonte(s), ${resposta.ferramentas.length} ferramenta(s)`,
@@ -229,6 +304,7 @@ export async function processarInbound(
     supabase,
     payload,
     telefone,
+    grupoId: grupo?.id ?? null,
     autorizadoId: autorizado.id,
     tipoDb,
     midia,
@@ -257,7 +333,7 @@ export async function processarInbound(
   // fecha o ciclo do lado dele (revisão adversarial do PR #22, G7).
   if (!classificacao.ok) {
     if (!(await jaRespondida(supabase, payload.id, 'falha_temporaria'))) {
-      await enviarTexto(telefone, RESPOSTAS.falhaTemporaria);
+      await enviarTexto(destino, RESPOSTAS.falhaTemporaria);
     }
     return { acao: 'erro', detalhe: 'classificação falhou; remetente avisado', mensagemId };
   }
@@ -268,7 +344,7 @@ export async function processarInbound(
   // Sem este envio o cliente nunca fica sabendo que precisa confirmar, e o
   // fluxo automático morre na primeira etapa.
   if ('ok' in classificacao && classificacao.ok && classificacao.confirmacao) {
-    const envio = await enviarTexto(telefone, classificacao.confirmacao.pergunta);
+    const envio = await enviarTexto(destino, classificacao.confirmacao.pergunta);
     if (envio.ok && envio.msgId) {
       await supabase
         .from('confirmacoes_pendentes')
@@ -277,25 +353,30 @@ export async function processarInbound(
     }
   }
 
-  return { acao: 'classificada', mensagemId };
+  // Documento ou registro de obra resolvido sem pergunta: avisa onde foi
+  // parar ("📁 Garibaldi › Fotos ✔"). Uma vez só, mesmo com retry.
+  if ('ok' in classificacao && classificacao.ok && classificacao.resposta) {
+    if (!(await jaRespondida(supabase, payload.id, `arquivado:${classificacao.kind}`))) {
+      await enviarTexto(destino, classificacao.resposta);
+    }
+  }
+
+  return { acao: 'classificada', mensagemId, detalhe: classificacao.kind };
 }
 
 // ---------------------------------------------------------------------------
 // Etapas
 // ---------------------------------------------------------------------------
 
-interface Pendencia {
-  id: string;
-  mensagemId: string;
-  perguntaEnviada: string;
-}
-
 interface ContextoResolucao {
   supabase: Client;
-  pendencia: Pendencia;
+  pendencia: PendenciaAberta;
   interpretacao: 'sim' | 'nao';
   payload: UazapiInbound;
   telefone: string;
+  /** Chat para onde a resposta vai (grupo ou o próprio remetente). */
+  destino: string;
+  grupoId: string | null;
   autorizadoId: string;
   textoEfetivo: string | null;
   midia: MidiaMaterializada;
@@ -310,7 +391,7 @@ interface ContextoResolucao {
  * cliente e não de um clique do gestor.
  */
 async function resolverPendencia(ctx: ContextoResolucao): Promise<ResultadoInbound> {
-  const { supabase, pendencia, interpretacao, telefone, textoEfetivo } = ctx;
+  const { supabase, pendencia, interpretacao, destino, textoEfetivo } = ctx;
   const respostaBruta = textoEfetivo ?? '(sem texto)';
 
   if (interpretacao === 'sim') {
@@ -333,11 +414,11 @@ async function resolverPendencia(ctx: ContextoResolucao): Promise<ResultadoInbou
       // extração não tinha valor ou obra. Avisamos em vez de silenciar —
       // senão ele acha que lançou e não lançou.
       log.aviso('confirmacao_sem_pagamento', { codigo: resultado.codigo });
-      await enviarTexto(telefone, RESPOSTAS.confirmadoSemPagamento);
+      await enviarTexto(destino, RESPOSTAS.confirmadoSemPagamento);
       return { acao: 'confirmou_pendencia', detalhe: resultado.codigo };
     }
 
-    await enviarTexto(telefone, RESPOSTAS.confirmado);
+    await enviarTexto(destino, RESPOSTAS.confirmado);
     return { acao: 'confirmou_pendencia', pagamentoId: resultado.pagamentoId };
   }
 
@@ -350,14 +431,44 @@ async function resolverPendencia(ctx: ContextoResolucao): Promise<ResultadoInbou
 
   await gravarMensagem({ ...ctx, status: 'recusada', autorizadoId: ctx.autorizadoId });
 
-  await enviarTexto(telefone, RESPOSTAS.recusado);
+  await enviarTexto(destino, RESPOSTAS.recusado);
   return { acao: 'recusou_pendencia' };
+}
+
+/**
+ * A pessoa respondeu o número (ou o nome) da obra: arquiva/registra lá e
+ * avisa. A mensagem da resposta é gravada como `confirmada` — é a prova de
+ * que o destino foi escolhido pelo remetente.
+ */
+async function resolverEscolhaDeObra(
+  ctx: Omit<ContextoResolucao, 'interpretacao'> & { obraId: string },
+): Promise<ResultadoInbound> {
+  const { supabase, pendencia, destino, textoEfetivo } = ctx;
+  const resultado = await aplicarEscolhaDeObra(supabase, {
+    confirmacaoId: pendencia.id,
+    obraId: ctx.obraId,
+    via: 'whatsapp',
+    respostaBruta: textoEfetivo ?? '(sem texto)',
+    userId: null,
+  });
+
+  await gravarMensagem({ ...ctx, status: resultado.ok ? 'confirmada' : 'recebida' });
+
+  if (!resultado.ok) {
+    log.aviso('escolha_de_obra_falhou', { codigo: resultado.codigo });
+    await enviarTexto(destino, RESPOSTAS.falhaTemporaria);
+    return { acao: 'escolheu_obra', detalhe: resultado.codigo };
+  }
+
+  await enviarTexto(destino, resultado.resposta);
+  return { acao: 'escolheu_obra', detalhe: pendencia.tipo };
 }
 
 interface ArgsGravar {
   supabase: Client;
   payload: UazapiInbound;
   telefone: string;
+  grupoId: string | null;
   autorizadoId: string;
   tipoDb: Database['public']['Enums']['msg_tipo'];
   midia: MidiaMaterializada;
@@ -375,6 +486,8 @@ async function gravarMensagem(
     .insert({
       msg_id_uazapi: payload.id,
       telefone_from: telefone,
+      chat_id: payload.chatId ?? null,
+      grupo_id: args.grupoId,
       autorizado_id: autorizadoId,
       tipo: tipoDb,
       texto_bruto: payload.text ?? null,
@@ -485,6 +598,28 @@ async function jaRespondida(supabase: Client, msgIdUazapi: string, acao: string)
   if (error.code === '23505') return true;
   log.aviso('dedupe_resposta_falhou', { erro: error.message });
   return false;
+}
+
+/**
+ * Grupo cadastrado e ativo. Lista fechada, como `autorizados`.
+ */
+async function buscarGrupo(
+  supabase: Client,
+  chatId: string,
+): Promise<{ id: string; obraId: string | null } | null> {
+  if (!chatId) return null;
+  const { data, error } = await supabase
+    .from('whatsapp_grupos')
+    .select('id, obra_id')
+    .eq('chat_id', chatId)
+    .eq('ativo', true)
+    .is('deleted_at', null)
+    .maybeSingle();
+  if (error) {
+    log.erro('consultar_grupos_falhou', { erro: error.message });
+    return null;
+  }
+  return data ? { id: data.id, obraId: data.obra_id } : null;
 }
 
 /**

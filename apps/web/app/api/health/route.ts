@@ -60,7 +60,9 @@ export async function GET(request: NextRequest) {
   const integracoes = {
     whatsapp: Boolean(process.env.UAZAPI_BASE_URL && process.env.UAZAPI_TOKEN),
     classificador:
-      (process.env.IA_PROVIDER ?? 'mock') === 'anthropic' && Boolean(process.env.ANTHROPIC_API_KEY),
+      ((process.env.IA_PROVIDER ?? 'mock') === 'openai' && Boolean(process.env.OPENAI_API_KEY)) ||
+      ((process.env.IA_PROVIDER ?? 'mock') === 'anthropic' &&
+        Boolean(process.env.ANTHROPIC_API_KEY)),
     transcricao:
       (process.env.IA_TRANSCRICAO_PROVIDER ?? 'none') === 'openai' &&
       Boolean(process.env.OPENAI_API_KEY),

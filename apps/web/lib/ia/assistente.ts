@@ -2,17 +2,16 @@ import 'server-only';
 import { logger } from '@/lib/log';
 import { buscar, fontesDe, montarContexto } from '@/lib/rag/busca';
 import { hojeBR } from '@/lib/util/datas';
-import Anthropic from '@anthropic-ai/sdk';
-import type {
-  ContentBlockParam,
-  Message,
-  MessageCreateParamsNonStreaming,
-  MessageParam,
-} from '@anthropic-ai/sdk/resources/messages/messages';
 import type { Database } from '@nogma/db';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { FERRAMENTAS_DE_OBRA } from './ferramentas/obras';
-import { type Ferramenta, executarFerramenta, paraAnthropic } from './ferramentas/registro';
+import { type Ferramenta, executarFerramenta } from './ferramentas/registro';
+import {
+  type CriarModelo,
+  type ResultadoDeFerramenta,
+  criarModeloPadrao,
+  modeloDisponivel,
+} from './modelo-ferramentas';
 import {
   SEM_CONTEXTO,
   SEM_EMBEDDINGS,
@@ -57,8 +56,6 @@ const log = logger('assistente');
 
 type Client = SupabaseClient<Database>;
 
-const MODELO_PADRAO = 'claude-opus-5';
-const MAX_TOKENS = 1024;
 /** Chamadas ao modelo por pergunta. Quatro dá "ferramenta → outra → redigir" com folga. */
 const MAX_RODADAS = 4;
 
@@ -87,14 +84,9 @@ export interface RespostaDoAssistente {
   conversationId?: string;
 }
 
-/** O pedaço do cliente da Anthropic que este módulo usa. Injetável em teste. */
-export interface ClienteDeMensagens {
-  create(params: MessageCreateParamsNonStreaming): Promise<Message>;
-}
-
 export interface DependenciasDoAssistente {
-  /** Substitui `new Anthropic(...)`. Se vier, o modelo é considerado disponível. */
-  criarCliente?: () => ClienteDeMensagens;
+  /** Substitui o adaptador do provider. Se vier, o modelo é considerado disponível. */
+  criarModelo?: CriarModelo;
   /** Substitui a allowlist padrão. */
   ferramentas?: readonly Ferramenta[];
   /** Data de hoje (AAAA-MM-DD), para o modelo resolver "este mês" em datas. */
@@ -102,7 +94,7 @@ export interface DependenciasDoAssistente {
 }
 
 export function assistenteDisponivel(): boolean {
-  return Boolean(process.env.ANTHROPIC_API_KEY) && (process.env.IA_PROVIDER ?? 'mock') !== 'mock';
+  return modeloDisponivel();
 }
 
 /**
@@ -124,7 +116,7 @@ export async function perguntar(
   deps: DependenciasDoAssistente = {},
 ): Promise<RespostaDoAssistente> {
   const ferramentas = deps.ferramentas ?? FERRAMENTAS_DE_OBRA;
-  const modeloDisponivel = deps.criarCliente ? true : assistenteDisponivel();
+  const temModelo = deps.criarModelo ? true : assistenteDisponivel();
 
   // 1. Busca por semelhança. Pode não estar configurada; isso já não impede
   //    a resposta — só tira o contexto.
@@ -136,7 +128,7 @@ export async function perguntar(
   const fontes = fontesDe(trechos);
 
   // 2. Sem modelo: devolve o que a busca achou, ou explica o que falta.
-  if (!modeloDisponivel) {
+  if (!temModelo) {
     if (trechos.length > 0) {
       const lista = trechos
         .slice(0, 3)
@@ -157,13 +149,10 @@ export async function perguntar(
   const contexto =
     trechos.length > 0 ? montarContexto(trechos) : '(nenhum lançamento parecido encontrado)';
   const hoje = deps.hoje ? deps.hoje() : hojeBR();
-  const client = deps.criarCliente
-    ? deps.criarCliente()
-    : new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }).messages;
+  const modelo = deps.criarModelo
+    ? deps.criarModelo({ sistema: SISTEMA, ferramentas })
+    : await criarModeloPadrao({ sistema: SISTEMA, ferramentas });
 
-  const mensagens: MessageParam[] = [
-    { role: 'user', content: montarPrompt(entrada.pergunta, contexto, hoje) },
-  ];
   const chamadas: ChamadaDeFerramenta[] = [];
   let tokensEntrada = 0;
   let tokensSaida = 0;
@@ -171,45 +160,23 @@ export async function perguntar(
   let concluiu = false;
 
   try {
+    let resposta = await modelo.perguntar(montarPrompt(entrada.pergunta, contexto, hoje));
     for (let rodada = 0; rodada < MAX_RODADAS; rodada++) {
-      const resposta = await client.create({
-        model: process.env.IA_MODEL ?? MODELO_PADRAO,
-        max_tokens: MAX_TOKENS,
-        system: SISTEMA,
-        // `effort: low`: a tarefa é decidir entre "tenho no contexto",
-        // "preciso de uma ferramenta" e "não sei" — e redigir curto. Esforço
-        // alto compraria latência no WhatsApp sem comprar precisão.
-        thinking: { type: 'adaptive' },
-        output_config: { effort: 'low' },
-        tools: paraAnthropic(ferramentas),
-        messages: mensagens,
-      });
+      tokensEntrada += resposta.tokensEntrada;
+      tokensSaida += resposta.tokensSaida;
 
-      tokensEntrada += resposta.usage?.input_tokens ?? 0;
-      tokensSaida += resposta.usage?.output_tokens ?? 0;
-
-      const usos = resposta.content.filter((b) => b.type === 'tool_use');
-
-      if (resposta.stop_reason !== 'tool_use' || usos.length === 0) {
-        texto = resposta.content
-          .filter((b): b is Extract<typeof b, { type: 'text' }> => b.type === 'text')
-          .map((b) => b.text)
-          .join('\n')
-          .trim();
+      if (resposta.usos.length === 0) {
+        texto = resposta.texto;
         concluiu = true;
         break;
       }
 
-      // O conteúdo inteiro volta como mensagem do assistente — inclusive os
-      // blocos de raciocínio, que a API exige de volta quando há tool_use.
-      mensagens.push({ role: 'assistant', content: resposta.content as ContentBlockParam[] });
-
-      const resultados: ContentBlockParam[] = [];
-      for (const uso of usos) {
-        const r = await executarFerramenta(supabase, ferramentas, uso.name, uso.input);
+      const resultados: ResultadoDeFerramenta[] = [];
+      for (const uso of resposta.usos) {
+        const r = await executarFerramenta(supabase, ferramentas, uso.nome, uso.argumentos);
         const registro: ChamadaDeFerramenta = {
-          ferramenta: uso.name,
-          argumentos: uso.input,
+          ferramenta: uso.nome,
+          argumentos: uso.argumentos,
           resultado: r.ok ? r.resultado : null,
           ok: r.ok,
           erro: r.ok ? null : r.erro,
@@ -217,19 +184,20 @@ export async function perguntar(
         };
         chamadas.push(registro);
         log[r.ok ? 'info' : 'aviso']('ferramenta', {
-          ferramenta: uso.name,
+          ferramenta: uso.nome,
           ok: r.ok,
           erro: registro.erro,
           duracao_ms: r.duracao_ms,
         });
         resultados.push({
-          type: 'tool_result',
-          tool_use_id: uso.id,
-          content: JSON.stringify(r.ok ? r.resultado : { ok: false, erro: r.erro }),
-          is_error: !r.ok,
+          id: uso.id,
+          conteudo: JSON.stringify(r.ok ? r.resultado : { ok: false, erro: r.erro }),
+          erro: !r.ok,
         });
       }
-      mensagens.push({ role: 'user', content: resultados });
+      // Última rodada: não há mais chamada para devolver os resultados.
+      if (rodada === MAX_RODADAS - 1) break;
+      resposta = await modelo.continuar(resultados);
     }
   } catch (err) {
     log.erro('modelo_falhou', { err, rodadas: chamadas.length });

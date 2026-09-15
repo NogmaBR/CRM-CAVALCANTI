@@ -6,6 +6,7 @@ import type { Documento } from '@/lib/data/documentos';
 import type { Fornecedor } from '@/lib/data/fornecedores';
 import type { Obra } from '@/lib/data/obras';
 import { ANEXO_TIPO_LABELS, type AnexoTipo, formatBytes } from '@/lib/schemas/documento';
+import { CATEGORIA_LABELS } from '@/lib/status-labels';
 import type { ColumnDef } from '@tanstack/react-table';
 import { FileText, Image as ImageIcon, Pencil } from 'lucide-react';
 import Link from 'next/link';
@@ -70,6 +71,18 @@ export function DocumentosTable({
           if (isArq) return <Badge variant="neutral">Arquivado</Badge>;
           const t = row.original.tipo as AnexoTipo;
           return <Badge variant={TIPO_VARIANT[t]}>{ANEXO_TIPO_LABELS[t]}</Badge>;
+        },
+      },
+      {
+        accessorKey: 'categoria',
+        header: 'Pasta',
+        cell: ({ row }) => {
+          const c = CATEGORIA_LABELS[row.original.categoria];
+          return (
+            <span style={{ whiteSpace: 'nowrap' }}>
+              <span aria-hidden="true">{c.icone}</span> {c.rotulo}
+            </span>
+          );
         },
       },
       {

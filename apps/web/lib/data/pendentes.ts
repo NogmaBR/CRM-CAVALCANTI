@@ -1,7 +1,9 @@
 import 'server-only';
 import { type DadosExtraidos, lerDadosExtraidos } from '@/lib/schemas/dados-extraidos';
+import { type TipoPendencia, lerOpcoes, lerTipoPendencia } from '@/lib/services/confirmacoes';
 import { createClient } from '@/lib/supabase/server';
 import { hojeBR } from '@/lib/util/datas';
+import type { Opcao } from '@/lib/whatsapp/escolha';
 import type { Database } from '@nogma/db';
 
 export type ConfirmacaoPendente = Database['public']['Tables']['confirmacoes_pendentes']['Row'];
@@ -15,6 +17,9 @@ export interface PendenteItem {
   mensagem_id: string;
   pergunta_enviada: string;
   created_at: string | null;
+  /** Pagamento (confirma/recusa) ou pergunta de obra (escolhe a obra). */
+  tipo_pendencia: TipoPendencia;
+  opcoes: Opcao[];
   // campos de mensagens_whats
   telefone_from: string;
   tipo: Database['public']['Enums']['msg_tipo'];
@@ -38,6 +43,8 @@ export async function listPendentes(): Promise<PendenteItem[]> {
        mensagem_id,
        pergunta_enviada,
        created_at,
+       tipo,
+       opcoes,
        mensagens_whats!confirmacoes_pendentes_mensagem_id_fkey (
          telefone_from,
          tipo,
@@ -104,6 +111,8 @@ export async function listPendentes(): Promise<PendenteItem[]> {
         mensagem_id: row.mensagem_id,
         pergunta_enviada: row.pergunta_enviada,
         created_at: row.created_at,
+        tipo_pendencia: lerTipoPendencia(row.tipo),
+        opcoes: lerOpcoes(row.opcoes),
         telefone_from: msg.telefone_from,
         tipo: msg.tipo,
         midia_mime: msg.midia_mime,

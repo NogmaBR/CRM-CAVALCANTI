@@ -12,6 +12,7 @@ export interface ListDocumentosFilters {
   pagamento_id?: string;
   fornecedor_id?: string;
   tipo?: 'nota_fiscal' | 'comprovante' | 'contrato' | 'outro';
+  categoria?: Database['public']['Enums']['doc_categoria'];
   includeArchived?: boolean;
   onlyArchived?: boolean;
 }
@@ -30,6 +31,7 @@ export async function listDocumentos(filters: ListDocumentosFilters = {}): Promi
   if (filters.pagamento_id) query = query.eq('pagamento_id', filters.pagamento_id);
   if (filters.fornecedor_id) query = query.eq('fornecedor_id', filters.fornecedor_id);
   if (filters.tipo) query = query.eq('tipo', filters.tipo);
+  if (filters.categoria) query = query.eq('categoria', filters.categoria);
 
   if (filters.q && filters.q.trim().length > 0) {
     const q = sanitizeSearchQuery(filters.q);

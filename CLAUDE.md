@@ -4,7 +4,7 @@
 > **Mantenha-o atualizado**: ao terminar um trabalho relevante, atualize a §7 (estado)
 > e acrescente em §8 (armadilhas) qualquer erro novo que você cometeu.
 >
-> Última atualização: **2026-09-12**, após a rodada do time gstack (PR #22; #20 e #21 mergeados).
+> Última atualização: **2026-09-15**, com o acervo do OneDrive e o agente no grupo em PR (não mergear antes de 16/09 12h).
 
 ---
 
@@ -158,8 +158,7 @@ aqui — não invente uma integração.
 | Vercel produção | ✅ no ar | Deploy automático a partir da `main` |
 | GitHub | ✅ ligado | `gh` autenticado com escopo `workflow` |
 | **UAZAPI (WhatsApp)** | ❌ **sem credencial** | Código pronto. Sem `UAZAPI_BASE_URL`/`UAZAPI_TOKEN` o CRM recebe e registra, mas **nunca responde** — o ciclo de confirmação não fecha |
-| **Classificador IA** | ⚠️ **modo mock** | `IA_PROVIDER=mock`. Com `anthropic` + `ANTHROPIC_API_KEY` vira real (`claude-opus-5`) |
-| **Transcrição de áudio** | ❌ desligada | `IA_TRANSCRICAO_PROVIDER=none`. Com `openai` + `OPENAI_API_KEY` liga |
+| **IA (OpenAI)** | 🟡 chave na Vercel, `IA_PROVIDER` ainda `mock` | Decisão 2026-09-15: **tudo OpenAI** (`gpt-5.4-mini`: classificador com visão, visão do acervo, assistente; `gpt-4o-mini-transcribe`; `text-embedding-3-small`). `OPENAI_API_KEY`, `IA_TRANSCRICAO_PROVIDER` e `IA_EMBEDDINGS_PROVIDER` já estão na Vercel; `IA_PROVIDER=openai` só depois do merge do PR #28 (`scripts/configurar-ia-vercel.mjs --com-provider --redeploy`). Anthropic ficou como provider alternativo, sem chave |
 | n8n | ❌ não provisionado | Opcional; o CRM faz tudo sozinho agora |
 | CI (`ci.yml`) | ✅ verde (PR #14) | typecheck, vitest, build, lint do diff. Sem segredo. É o check que vale |
 | CI E2E (Playwright) | ⏸ só por dispatch | Precisa de staging Supabase (Fase 15) que nunca existiu. Saiu do gatilho de PR no PR #14 para parar de pintar tudo de vermelho |
@@ -557,6 +556,69 @@ Regras novas:
   (SECURITY INVOKER, uma viagem).
 - Auditoria é paginada (`listAuditLogPaginado`, 50 por página) e mostra frase humana.
 
+**Acervo do OneDrive e agente no grupo (2026-09-15, branch
+`feat/acervo-onedrive-e-agente-grupo`, PR aberto — NÃO mergear antes da demo).** Spec em
+`docs/superpowers/specs/2026-09-15-acervo-onedrive-e-agente-grupo-design.md`, ações
+humanas na §12 de `SO-FALTA-VOCE.md`. O que muda de regra para quem for mexer:
+- **`documentos.categoria`** (enum `doc_categoria`) é a PASTA da obra na estrutura do
+  cliente (`documentacao`, `nfs_pagamentos`, `proposta`, `projeto`, `projeto_aprovado`,
+  `cronograma`, `orcamentos`, `fotos`, `outro`); `tipo` continua sendo o que o arquivo É.
+  Rótulos em `CATEGORIA_LABELS` (`lib/status-labels.ts`); pasta→categoria em
+  `lib/acervo/categoria.ts`, **copiado em JS** em `scripts/lib/importar-onedrive-core.mjs`
+  (mudou um, muda o outro; os dois têm teste).
+- `documentos.origem` (`painel`/`whatsapp`/`onedrive`), `caminho_origem` (chave de
+  sincronia do importador, único parcial), `texto_extraido(_em)`, `conciliado_em`.
+  **`texto_extraido_em` é marcado sempre** (mesmo sem texto): a fila é `IS NULL`.
+- **O link do OneDrive não abre por API sem login** (pasta pessoal migrada para
+  SharePoint: 401 na API de shares; o classificador barrou extrair token da página).
+  O caminho é ZIP baixado pelo usuário → `scripts/importar-onedrive.mjs <zip|pasta>`
+  (`--ensaio`, `--criar-obras`, `--processar`). Casamento pasta→obra em camadas: nome
+  exato > apelido > pasta cadastrada — em produção `Garibaldi` é nome de uma obra E a
+  pasta antiga de `G&C Aura Legano`.
+- **`/api/cron/acervo`** (extrair → indexar → conciliar) é agendado pelo `pg_cron`
+  (`acervo-processar`, a cada 20 min, só quando há pendência) — o `vercel.json` já tem os
+  2 crons do Hobby. Extração: `unpdf` para PDF com texto; imagem/scan só com
+  `IA_PROVIDER=anthropic` (`lib/acervo/visao.ts`). Conciliação (`lib/acervo/conciliar.ts`):
+  mesma obra + valor ±R$0,01 + data ±7 dias + **um** candidato; nunca cria pagamento.
+- **Grupo no webhook:** `lib/webhooks/adaptar-uazapi.ts` traduz o payload v2
+  (`message.chatid/sender/isGroup/messageType`) para o canônico antes do Zod — escrito
+  pela documentação, **conferir com o primeiro payload real** (`formaDoPayload` loga).
+  `from` = participante, `chatId` = grupo; resposta vai para `destinoDaResposta()`.
+  Grupo precisa estar em `whatsapp_grupos` (tela `/config/autorizados/grupos`), senão
+  `ignorada_grupo_nao_autorizado` com o id no log. Rate limit continua por remetente.
+- **Classificador ganhou `documento_obra` e `registro_obra`** (+`extracted.categoria`,
+  `extracted.resumo`, `contexto.grupoObraId`, apelidos no contexto). Regra "pagamento
+  vence": qualquer coisa com valor é pagamento. Mock: mídia sem valor e sem cheiro de
+  nota/comprovante → `documento_obra` (imagem → `fotos`, PDF sem pista → `outro`);
+  texto sem valor, 4+ palavras, sem `?` → `registro_obra`.
+- `classifyAndPersist` arquiva (`lib/services/arquivar.ts`, idempotente por mensagem e
+  por hash) e devolve `resposta` ("📁 Obra › Pasta ✔"); sem obra abre pendência
+  `tipo = obra_documento|obra_registro` com `opcoes` numeradas. `interpretarEscolha`
+  (`lib/whatsapp/escolha.ts`) é conservador como o parser de SIM. `aplicarConfirmacao`
+  recusa pendência de obra (`tipo_diferente`); o caminho é `aplicarEscolhaDeObra`.
+- `registros_obra` = diário; indexado no RAG como `origem='registro'`; arquivos como
+  `origem='documento'` (`lib/rag/documentos.ts`).
+- **`test/fake-supabase.ts`**: Supabase em memória (filtros, únicos com 23505, join
+  simples por FK) — é como `inbound-whatsapp.test.ts` e `arquivar.test.ts` testam
+  serviço sem banco. Use antes de mockar `from()` à mão.
+- `busca_global` devolve `documentos`; a paleta ⌘K mostra o grupo "Documentos".
+- **IA 100% OpenAI (2026-09-15, mesmo PR).** `lib/ia/openai.ts` (fetch, sem SDK;
+  `chatCompletions` não lança), `openai-classifier.ts` (`json_schema` estrito escrito à
+  mão — o teste garante que as chaves batem com o Zod), `classificador-comum.ts` (prompt,
+  schema, `montarSaida`, `carregarMidia` — compartilhado com o Anthropic),
+  `modelo-ferramentas.ts` (interface neutra do assistente) + `openai-modelo.ts` /
+  `anthropic-modelo.ts`, `acervo/visao.ts` só OpenAI. Provado contra a API
+  (`lib/ia/openai.real.test.ts`, gated por `TESTE_REAL=1`): texto, foto de Pix (leu
+  R$ 1.100 e a data), PDF, visão, áudio via TTS→transcrição. `gpt-5.x` aceita
+  `reasoning_effort`; `gpt-4.x` não — `chatCompletions` remove sozinho.
+- **Importador aceita TUDO** (vídeo, DWG, sem extensão, qualquer tamanho; upload em
+  stream) — pedido do cliente. O teto passa a ser o do bucket/plano do Supabase
+  (`preparar-acervo.mjs` sobe o limite ao máximo que o plano aceita e lista o que não
+  subiu). O bucket `documents` tinha 10 MB e lista fechada de MIME.
+- **O classificador do Claude Code barra escrita de configuração em produção** (aplicar
+  migration, alterar bucket) mas não barrou criar env var na Vercel nem ler a API. Por
+  isso `preparar-acervo.mjs` existe: uma linha para o usuário rodar com `!`.
+
 ### O que falta — e é ação humana, não código
 
 1. **Repositório é público.** Vai virar privado quando a Vercel for paga
@@ -614,6 +676,20 @@ Regras novas:
   morreu com `syntax error near unexpected token '('` no PR #7. Lista de arquivos vai
   em arquivo, uma por linha, e entra por `xargs -d '\n'`. Vale para `sed`, `grep -l`,
   qualquer coisa que expanda `$VAR` com esses caminhos.
+
+- **Write e heredoc convertem `\u0300` e `\u2019` em caracteres literais** dentro
+  de regex (aconteceu em `categoria.ts` e no `.mjs`). O arquivo funciona, mas fica
+  ilegível e o Biome acusa `noMisleadingCharacterClass`. Use `\p{Diacritic}` (padrão
+  do repo) e, para outros escapes, um script Python em arquivo que grave `\\uXXXX`.
+  Aconteceu de novo ao escrever ESTA linha por heredoc.
+- **Grep com comentários filtrados engana o patch.** Montei âncoras de `replace` a
+  partir de um `grep -v '^\s*//'` e nada casou porque o arquivo real tem os comentários.
+  Antes de escrever um patch por string, `sed -n` no trecho exato.
+- **Fixture curta demais vira falso negativo.** `'texto do pdf'` (12 chars) caiu no
+  limiar de "PDF escaneado" (20) e o teste acusou a implementação. Fixture de teste
+  respeita o limiar que ela mesma testa.
+- **Ids em teste que passam por Zod `.uuid()` precisam ser UUID de verdade** — `'o-gari'`
+  quebra `temDadosParaLancar` em silêncio (o campo some no `lerDadosExtraidos`).
 
 ### Git e GitHub
 
