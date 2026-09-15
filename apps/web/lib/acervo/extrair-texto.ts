@@ -91,9 +91,16 @@ export interface DepsExtracao {
   baixar: (storagePath: string) => Promise<Uint8Array | null>;
 }
 
-async function lerPdfComUnpdf(bytes: Uint8Array): Promise<string> {
+/**
+ * Exportada para o teste que prova o detalhe abaixo com o `unpdf` de verdade.
+ * O pdfjs **transfere** o ArrayBuffer que recebe (fica "detached"): sem a
+ * cópia, um PDF escaneado chegava à visão com buffer vazio e estourava
+ * `ArrayBuffer.prototype.slice on a detached ArrayBuffer` — foi o "erros 1"
+ * de várias rodadas da carga inicial.
+ */
+export async function lerPdfComUnpdf(bytes: Uint8Array): Promise<string> {
   const { extractText } = await import('unpdf');
-  const { text } = await extractText(bytes, { mergePages: true });
+  const { text } = await extractText(new Uint8Array(bytes), { mergePages: true });
   return text;
 }
 

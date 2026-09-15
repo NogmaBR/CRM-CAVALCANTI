@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { type DepsExtracao, extrairTextoDe, extrairTextoPendentes } from './extrair-texto';
+import {
+  type DepsExtracao,
+  extrairTextoDe,
+  extrairTextoPendentes,
+  lerPdfComUnpdf,
+} from './extrair-texto';
 
 /**
  * A orquestração é o que dá para testar sem rede: qual leitor é chamado para
@@ -109,6 +114,26 @@ describe('extrairTextoDe', () => {
       }),
     });
     expect(await extrairTextoDe(bytes, 'application/pdf', d)).toBe('texto pela visão');
+  });
+});
+
+describe('lerPdfComUnpdf (unpdf de verdade)', () => {
+  it('não deixa o buffer do chamador "detached" — a visão ainda precisa dele', async () => {
+    const pdf = new TextEncoder().encode(
+      [
+        '%PDF-1.4',
+        '1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj',
+        '2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj',
+        '3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] >> endobj',
+        'trailer << /Root 1 0 R >>',
+        '%%EOF',
+      ].join('\n'),
+    );
+    const texto = await lerPdfComUnpdf(pdf);
+    expect(texto.trim()).toBe('');
+    expect(pdf.buffer.byteLength).toBeGreaterThan(0);
+    // e o que a visão faz com ele continua possível
+    expect(() => pdf.buffer.slice(0, 4)).not.toThrow();
   });
 });
 
