@@ -4,7 +4,7 @@
 > **Mantenha-o atualizado**: ao terminar um trabalho relevante, atualize a §7 (estado)
 > e acrescente em §8 (armadilhas) qualquer erro novo que você cometeu.
 >
-> Última atualização: **2026-09-15**, com o acervo do OneDrive e o agente no grupo em PR (não mergear antes de 16/09 12h).
+> Última atualização: **2026-09-15**, com o acervo do OneDrive e o agente no grupo **em produção** (PRs #28, #29 e o de leitura de planilha/Word).
 
 ---
 
@@ -158,7 +158,7 @@ aqui — não invente uma integração.
 | Vercel produção | ✅ no ar | Deploy automático a partir da `main` |
 | GitHub | ✅ ligado | `gh` autenticado com escopo `workflow` |
 | **UAZAPI (WhatsApp)** | ❌ **sem credencial** | Código pronto. Sem `UAZAPI_BASE_URL`/`UAZAPI_TOKEN` o CRM recebe e registra, mas **nunca responde** — o ciclo de confirmação não fecha |
-| **IA (OpenAI)** | 🟡 chave na Vercel, `IA_PROVIDER` ainda `mock` | Decisão 2026-09-15: **tudo OpenAI** (`gpt-5.4-mini`: classificador com visão, visão do acervo, assistente; `gpt-4o-mini-transcribe`; `text-embedding-3-small`). `OPENAI_API_KEY`, `IA_TRANSCRICAO_PROVIDER` e `IA_EMBEDDINGS_PROVIDER` já estão na Vercel; `IA_PROVIDER=openai` só depois do merge do PR #28 (`scripts/configurar-ia-vercel.mjs --com-provider --redeploy`). Anthropic ficou como provider alternativo, sem chave |
+| **IA (OpenAI)** | ✅ ligada em produção (`IA_PROVIDER=openai`, 2026-09-15) | **Tudo OpenAI** (`gpt-5.4-mini`: classificador com visão, visão do acervo, assistente; `gpt-4o-mini-transcribe`; `text-embedding-3-small`). Health mostra `classificador/transcricao/busca: true`. A chave foi colada no chat pelo usuário — recomendada rotação (`scripts/configurar-ia-vercel.mjs --redeploy` regrava). Anthropic ficou como provider alternativo, sem chave |
 | n8n | ❌ não provisionado | Opcional; o CRM faz tudo sozinho agora |
 | CI (`ci.yml`) | ✅ verde (PR #14) | typecheck, vitest, build, lint do diff. Sem segredo. É o check que vale |
 | CI E2E (Playwright) | ⏸ só por dispatch | Precisa de staging Supabase (Fase 15) que nunca existiu. Saiu do gatilho de PR no PR #14 para parar de pintar tudo de vermelho |
@@ -556,8 +556,8 @@ Regras novas:
   (SECURITY INVOKER, uma viagem).
 - Auditoria é paginada (`listAuditLogPaginado`, 50 por página) e mostra frase humana.
 
-**Acervo do OneDrive e agente no grupo (2026-09-15, branch
-`feat/acervo-onedrive-e-agente-grupo`, PR aberto — NÃO mergear antes da demo).** Spec em
+**Acervo do OneDrive e agente no grupo (2026-09-15, PRs #28 `95e0442` e #29 `b2957d7`,
+em produção — o usuário reverteu a decisão de esperar a demo).** Spec em
 `docs/superpowers/specs/2026-09-15-acervo-onedrive-e-agente-grupo-design.md`, ações
 humanas na §12 de `SO-FALTA-VOCE.md`. O que muda de regra para quem for mexer:
 - **`documentos.categoria`** (enum `doc_categoria`) é a PASTA da obra na estrutura do
@@ -577,9 +577,14 @@ humanas na §12 de `SO-FALTA-VOCE.md`. O que muda de regra para quem for mexer:
   pasta antiga de `G&C Aura Legano`.
 - **`/api/cron/acervo`** (extrair → indexar → conciliar) é agendado pelo `pg_cron`
   (`acervo-processar`, a cada 20 min, só quando há pendência) — o `vercel.json` já tem os
-  2 crons do Hobby. Extração: `unpdf` para PDF com texto; imagem/scan só com
-  `IA_PROVIDER=anthropic` (`lib/acervo/visao.ts`). Conciliação (`lib/acervo/conciliar.ts`):
-  mesma obra + valor ±R$0,01 + data ±7 dias + **um** candidato; nunca cria pagamento.
+  2 crons do Hobby. Extração (`lib/acervo/extrair-texto.ts`): `unpdf` para PDF com
+  texto; **xls/xlsx/docx por `lib/acervo/office.ts`** (SheetJS do CDN oficial + mammoth —
+  o controle financeiro de cada obra é uma planilha); imagem/scan pela visão OpenAI
+  (`lib/acervo/visao.ts`); arquivo sem extensão é farejado pela assinatura. Teto de
+  download 50 MB (= bucket); a visão aceita 19 MB de imagem e 30 MB de PDF (limites da
+  OpenAI, `MAX_BYTES_*_OPENAI`) — os da Anthropic (4,5/20) continuam só para ela.
+  Conciliação (`lib/acervo/conciliar.ts`): mesma obra + valor ±R$0,01 + data ±7 dias +
+  **um** candidato; nunca cria pagamento.
 - **Grupo no webhook:** `lib/webhooks/adaptar-uazapi.ts` traduz o payload v2
   (`message.chatid/sender/isGroup/messageType`) para o canônico antes do Zod — escrito
   pela documentação, **conferir com o primeiro payload real** (`formaDoPayload` loga).
@@ -618,6 +623,20 @@ humanas na §12 de `SO-FALTA-VOCE.md`. O que muda de regra para quem for mexer:
 - **O classificador do Claude Code barra escrita de configuração em produção** (aplicar
   migration, alterar bucket) mas não barrou criar env var na Vercel nem ler a API. Por
   isso `preparar-acervo.mjs` existe: uma linha para o usuário rodar com `!`.
+- **Estado da carga (2026-09-15, verificado no banco):** 318 documentos do OneDrive em
+  produção (Casa EJ 155, Garibaldi 75, INOX Piratini 86, Aguirre 2; 411 MB), todos com
+  `texto_extraido_em`, 320 no RAG com embedding. **7 arquivos não subiram** (bucket do
+  plano free = 50 MB): 4 `.MOV`, 1 `.mp4` e 2 PDFs — zip/xz não reduz nada (0,2–3 %);
+  os 2 PDFs viraram "(versão leve)" (pypdf+PIL, JPEG q85, 51→20 e 105→21 MB) com
+  `origem='painel'` para o importador não os apagar; vídeo só com ffmpeg ou Supabase Pro.
+- **Os 80 pagamentos do banco são fictícios** (protótipo: jan–mar/2026, valores redondos).
+  As 211 notas/comprovantes reais vão de 04/2025 a 07/2026 — a conciliação vinculou 1
+  (coincidência plausível) e está certa em deixar 210 em "Documentos sem pagamento".
+  Lançar os reais a partir das notas (a extração já tem valor, data, tipo e nº da NF) e
+  apagar os 80 é decisão do usuário, não código.
+- A extração/RAG/conciliação da carga inicial rodou por `next start -p 3101` local
+  apontando para produção (a Vercel mata em 60 s); daqui em diante o `pg_cron` dá conta,
+  20 documentos por rodada.
 
 ### O que falta — e é ação humana, não código
 
@@ -628,7 +647,7 @@ humanas na §12 de `SO-FALTA-VOCE.md`. O que muda de regra para quem for mexer:
    **Ao rotacionar, regrave o secret `BACKUP_DB_URL` no GitHub** — senão o backup
    semanal para de funcionar.
 3. **Credenciais UAZAPI** — sem elas o WhatsApp não fecha o ciclo.
-4. **`ANTHROPIC_API_KEY`** — para sair do classificador mock.
+4. **Rotacionar a `OPENAI_API_KEY`** (foi colada no chat) e cadastrar o grupo em `/config/autorizados/grupos`.
 5. **Cadastrar a equipe em `/config/autorizados`** — sem isso, toda mensagem é ignorada.
 6. **Restore de teste do backup** num projeto descartável (`docs/RUNBOOK-BACKUP.md`).
    Até existir um registrado, o backup é hipótese.
@@ -688,6 +707,13 @@ humanas na §12 de `SO-FALTA-VOCE.md`. O que muda de regra para quem for mexer:
 - **Fixture curta demais vira falso negativo.** `'texto do pdf'` (12 chars) caiu no
   limiar de "PDF escaneado" (20) e o teste acusou a implementação. Fixture de teste
   respeita o limiar que ela mesma testa.
+- **SheetJS lê qualquer byte como CSV.** `read(new Uint8Array([1,2,3]))` devolve uma
+  "Sheet1" com lixo em vez de lançar; `lerPlanilha` confere a assinatura (zip/OLE2)
+  antes. E `jszip`/`xlsx` precisam estar em `package.json` do `apps/web` — o pnpm não
+  deixa importar dependência transitiva.
+- **Limite de mídia não é um só.** 4,5 MB/imagem era o teto da Anthropic e barrava os
+  renders do cliente (5–7 MB) na visão da OpenAI, que aceita 20 MB. Cada provider tem a
+  sua constante.
 - **Ids em teste que passam por Zod `.uuid()` precisam ser UUID de verdade** — `'o-gari'`
   quebra `temDadosParaLancar` em silêncio (o campo some no `lerDadosExtraidos`).
 
