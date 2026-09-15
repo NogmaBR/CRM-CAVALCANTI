@@ -376,16 +376,16 @@ export async function buscarConfirmacaoAberta(
     id: linha.id,
     mensagemId: linha.mensagem_id,
     perguntaEnviada: linha.pergunta_enviada,
-    tipo: tipoValido(linha.tipo),
+    tipo: lerTipoPendencia(linha.tipo),
     opcoes: lerOpcoes(linha.opcoes),
   };
 }
 
-function tipoValido(t: unknown): TipoPendencia {
+export function lerTipoPendencia(t: unknown): TipoPendencia {
   return t === 'obra_documento' || t === 'obra_registro' ? t : 'pagamento';
 }
 
-function lerOpcoes(v: unknown): Opcao[] {
+export function lerOpcoes(v: unknown): Opcao[] {
   if (!Array.isArray(v)) return [];
   return v
     .filter(
@@ -433,7 +433,7 @@ export async function aplicarEscolhaDeObra(
   if (!confirmacao) {
     return { ok: false, codigo: 'nao_encontrada', motivo: 'Pendência não encontrada.' };
   }
-  const tipo = tipoValido(confirmacao.tipo);
+  const tipo = lerTipoPendencia(confirmacao.tipo);
   if (tipo === 'pagamento') {
     return {
       ok: false,

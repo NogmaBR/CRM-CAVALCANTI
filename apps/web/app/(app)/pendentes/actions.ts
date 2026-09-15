@@ -1,7 +1,12 @@
 'use server';
 
-import { aplicarConfirmacao, recusarConfirmacao } from '@/lib/services/confirmacoes';
+import {
+  aplicarConfirmacao,
+  aplicarEscolhaDeObra,
+  recusarConfirmacao,
+} from '@/lib/services/confirmacoes';
 import { createClient } from '@/lib/supabase/server';
+import { pareceUuid } from '@/lib/util/uuid';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
@@ -55,6 +60,43 @@ export async function confirmarPendencia(formData: FormData) {
       resultado.jaEstavaResolvida
         ? 'Esta pendência já havia sido resolvida — nada foi duplicado.'
         : 'Pagamento criado com sucesso.',
+    )}`,
+  );
+}
+
+/**
+ * Pergunta de obra ("de qual obra é esse arquivo?") resolvida pelo gestor:
+ * arquiva/registra na obra escolhida e fecha a pendência. Mesma função que
+ * o "2" no WhatsApp chama — o painel é só outro caminho para a mesma regra.
+ */
+export async function escolherObraPendencia(formData: FormData) {
+  const confirmacaoId = String(formData.get('confirmacao_id') ?? '').trim();
+  const obraId = String(formData.get('obra_id') ?? '').trim();
+  if (!confirmacaoId) comErro('ID de confirmação ausente.');
+  if (!pareceUuid(obraId)) comErro('Escolha a obra.');
+
+  const supabase = await createClient();
+  const { data: userData } = await supabase.auth.getUser();
+
+  const resultado = await aplicarEscolhaDeObra(supabase, {
+    confirmacaoId,
+    obraId,
+    via: 'painel',
+    respostaBruta: 'obra escolhida via painel',
+    userId: userData.user?.id ?? null,
+  });
+
+  if (!resultado.ok) comErro(resultado.motivo);
+
+  revalidarTudo();
+  revalidatePath('/documentos');
+  revalidatePath(`/obras/${obraId}`);
+
+  redirect(
+    `${BASE_PATH}?success=${encodeURIComponent(
+      resultado.jaEstavaResolvida
+        ? 'Esta pendência já havia sido resolvida — nada foi duplicado.'
+        : resultado.resposta,
     )}`,
   );
 }
