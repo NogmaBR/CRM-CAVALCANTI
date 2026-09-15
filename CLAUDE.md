@@ -643,8 +643,9 @@ humanas na §12 de `SO-FALTA-VOCE.md`. O que muda de regra para quem for mexer:
   (fora do Git). Ensaio de 2026-09-15: 250 lançamentos (Casa EJ 97 = R$ 264.070,39;
   Garibaldi 67 = R$ 134.231,05; INOX 86 = R$ 292.180,36 — somas iguais às planilhas),
   200/211 notas ligam, 11 ficam para o gestor (valor do comprovante ≠ valor da planilha).
-  **O classificador barra o `--aplicar` (escrita em massa em produção)**: é o usuário
-  que roda, com `!`. "EM ABERTO" vira `aguardando`; linha numerada sem VALOR (ADM
+  **O classificador barra o `--aplicar` (escrita em massa em produção)**: o usuário rodou
+  em 2026-09-15 — conferido no banco: 250 vivos, 80 arquivados, 200 notas ligadas, 11
+  soltas, RAG com 622/622 indexados. "EM ABERTO" vira `aguardando`; linha numerada sem VALOR (ADM
   mensal em Garibaldi) não é lançamento.
 - A extração/RAG/conciliação da carga inicial rodou por `next start -p 3101` local
   apontando para produção (a Vercel mata em 60 s); daqui em diante o `pg_cron` dá conta,

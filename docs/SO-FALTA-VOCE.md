@@ -663,7 +663,7 @@ pagamento", com os candidatos listados no fim do CSV.
 - [x] Migration aplicada e conferida no catálogo (2026-09-15)
 - [x] Apelidos aplicados (10 obras) e Aguirre criada (2026-09-15)
 - [x] Import feito: 318 documentos; `/obras/<id>` › Pastas com contagens (2026-09-15)
-- [ ] Pagamentos reais lançados (12.6)
+- [x] Pagamentos reais lançados (12.6, 2026-09-15: 250 lançamentos, 200 notas ligadas, RAG reindexado)
 - [ ] Grupo cadastrado; uma foto no grupo respondida com `📁 … ✔`
 
 ---
