@@ -66,7 +66,14 @@ export interface DepsClassificador {
 }
 
 const SaidaSchema = z.object({
-  kind: z.enum(['pagamento_completo', 'pagamento_parcial', 'documento_apenas', 'nao_identificado']),
+  kind: z.enum([
+    'pagamento_completo',
+    'pagamento_parcial',
+    'documento_apenas',
+    'documento_obra',
+    'registro_obra',
+    'nao_identificado',
+  ]),
   confidence: z.number().min(0).max(1),
   valor: z.number().nullable(),
   data_pagamento: z.string().nullable(),
@@ -76,18 +83,37 @@ const SaidaSchema = z.object({
   tipo_documento: z.enum(['nota_fiscal', 'comprovante', 'contrato', 'outro']).nullable(),
   numero_nf: z.string().nullable(),
   descricao: z.string().nullable(),
+  // Só para documento_obra: a pasta da obra em que o arquivo mora.
+  categoria: z
+    .enum([
+      'documentacao',
+      'nfs_pagamentos',
+      'proposta',
+      'projeto',
+      'projeto_aprovado',
+      'cronograma',
+      'fotos',
+      'orcamentos',
+      'outro',
+    ])
+    .nullable(),
+  // Só para registro_obra: uma linha para o diário.
+  resumo: z.string().nullable(),
   raciocinio: z.string(),
   pergunta_confirmacao: z.string().nullable(),
 });
 
 type Saida = z.infer<typeof SaidaSchema>;
 
-const INSTRUCOES = `Você extrai lançamentos financeiros de mensagens que a equipe de uma construtora manda por WhatsApp.
+const INSTRUCOES = `Você organiza as mensagens que a equipe de uma construtora manda num grupo de WhatsApp: lançamentos financeiros, arquivos de obra e informações do dia a dia.
 
 As mensagens são informais, ditadas ou digitadas no canteiro de obra. Exemplos reais do domínio:
-- "paguei 1200 de areia pro Zé da obra do Recreio"
-- "segue a nota do material" (com uma foto anexada)
-- "bom dia" (não é lançamento)
+- "paguei 1200 de areia pro Zé da obra do Recreio" (pagamento)
+- "segue a nota do material" com uma foto anexada (pagamento: nota fiscal)
+- foto do andamento da laje, com ou sem legenda (documento_obra, pasta fotos)
+- PDF "Proposta comercial revisada" (documento_obra, pasta proposta)
+- áudio "hoje a equipe terminou o contrapiso da Garibaldi, amanhã começa o reboco" (registro_obra)
+- "bom dia" (nao_identificado)
 
 Quando houver uma foto ou PDF anexado, ele costuma ser a nota fiscal, o comprovante de pagamento ou o contrato. Leia o documento: valor total, data, número da nota, nome do fornecedor e a obra (quando aparecer no endereço ou na descrição). O texto da mensagem, quando existir, complementa ou corrige o que está no documento.
 
@@ -95,11 +121,14 @@ Regras:
 1. valor sempre em reais, como número. "1.200,50" -> 1200.5. "1200 conto" -> 1200. Nunca invente valor.
 2. data_pagamento em YYYY-MM-DD. "ontem"/"hoje" resolvem contra a data informada no contexto. Sem data explícita, deixe null.
 3. obra_id e fornecedor_id DEVEM ser um dos UUIDs listados no contexto. Se o nome citado não bate com nenhum da lista, deixe o id null — e, no caso de fornecedor, escreva o nome citado em fornecedor_nome_novo.
-4. kind:
+4. kind — PAGAMENTO VENCE: se há valor e a mensagem trata de pagar/pagou/comprovante/nota, é pagamento, mesmo com anexo.
    - pagamento_completo: tem valor E obra identificada com segurança.
    - pagamento_parcial: fala de pagamento mas falta valor ou obra.
-   - documento_apenas: é NF/comprovante/contrato sem contexto de pagamento.
+   - documento_apenas: é NF/comprovante de um pagamento, sem valor legível.
+   - documento_obra: arquivo que NÃO é nota nem comprovante: foto do andamento, projeto, planta, proposta, orçamento de fornecedor (cotação, não pagamento), cronograma, contrato, alvará, laudo. Preencha categoria com a pasta: documentacao (contratos, alvarás, laudos, documentos oficiais), proposta, projeto, projeto_aprovado (aprovado na prefeitura), cronograma, orcamentos (cotações), fotos, outro.
+   - registro_obra: informação do dia a dia da obra sem valor a lançar (andamento, equipe, problema, decisão, combinado com cliente ou fornecedor). Preencha resumo com uma linha de até 80 caracteres.
    - nao_identificado: saudação, conversa, ou nada operacional.
+   Obra: cite obra_id quando a mensagem menciona a obra por nome ou apelido. Se o contexto informar a obra do grupo e a mensagem não citar outra, use a do grupo.
 5. confidence reflete o quanto você tem certeza da EXTRAÇÃO inteira, não de um campo. Abaixo de 0.85 o sistema pede confirmação humana — use isso a seu favor: na dúvida, seja conservador.
 6. pergunta_confirmacao: uma frase curta, em português coloquial, que será enviada de volta no WhatsApp pedindo confirmação. Deve repetir os dados extraídos pra pessoa conferir e terminar pedindo SIM. Null quando kind = nao_identificado.
 7. raciocinio: uma frase explicando a decisão, para o gestor que revisa no painel.
@@ -127,9 +156,12 @@ export class AnthropicClassifier implements Classifier {
     const contexto = [
       `Data de hoje: ${hoje}`,
       '',
-      'Obras ativas (use o UUID exato):',
+      'Obras ativas (use o UUID exato; entre parênteses, como a equipe chama):',
       ...(input.contexto.obrasAtivas.length > 0
-        ? input.contexto.obrasAtivas.map((o) => `- ${o.id} — ${o.nome}`)
+        ? input.contexto.obrasAtivas.map(
+            (o) =>
+              `- ${o.id} — ${o.nome}${o.apelidos?.length ? ` (${o.apelidos.join(', ')})` : ''}`,
+          )
         : ['- (nenhuma obra ativa cadastrada)']),
       '',
       'Fornecedores conhecidos (use o UUID exato):',
@@ -138,6 +170,9 @@ export class AnthropicClassifier implements Classifier {
         : ['- (nenhum fornecedor cadastrado)']),
       '',
       `Telefone do remetente: ${input.telefone}`,
+      input.contexto.grupoObraId
+        ? `Obra do grupo de origem (default quando a mensagem não cita outra): ${input.contexto.grupoObraId}`
+        : 'Mensagem sem grupo dedicado a uma obra.',
       input.midiaMime ? `Anexo recebido, tipo: ${input.midiaMime}` : 'Sem anexo.',
       '',
       'Mensagem:',
@@ -302,6 +337,14 @@ export function montarSaida(saida: Saida, input: ClassifierInput): ClassifierOut
   if (saida.tipo_documento) extracted.tipo_documento = saida.tipo_documento;
   if (saida.numero_nf) extracted.numero_nf = saida.numero_nf;
   if (saida.descricao) extracted.descricao = saida.descricao;
+  if (saida.kind === 'documento_obra') extracted.categoria = saida.categoria ?? 'outro';
+  if (saida.kind === 'registro_obra' && saida.resumo) extracted.resumo = saida.resumo.slice(0, 80);
+  // Sem obra citada, a do grupo vale — o modelo às vezes deixa null mesmo com
+  // o contexto dizendo qual é.
+  if (!extracted.obra_id && input.contexto.grupoObraId) {
+    const doGrupo = input.contexto.obrasAtivas.find((o) => o.id === input.contexto.grupoObraId);
+    if (doGrupo) extracted.obra_id = doGrupo.id;
+  }
 
   // Um id descartado significa que a extração é menos confiável do que o
   // modelo achou. Rebaixamos abaixo do limiar de auto-aprovação em vez de
