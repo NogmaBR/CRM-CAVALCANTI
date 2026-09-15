@@ -3,6 +3,7 @@ import { comContexto, logger } from '@/lib/log';
 import { UazapiInboundSchema, normalizeTelefone } from '@/lib/schemas/uazapi';
 import { LIMITES, ipDaRequest, resposta429, verificarLimite } from '@/lib/security/rate-limit';
 import { processarInbound } from '@/lib/services/inbound-whatsapp';
+import { adaptarPayloadUazapi } from '@/lib/webhooks/adaptar-uazapi';
 import { formaDoPayload } from '@/lib/webhooks/forma-payload';
 import { verifyHmacSignature } from '@/lib/webhooks/hmac';
 import type { Database } from '@nogma/db';
@@ -68,7 +69,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'invalid json' }, { status: 400 });
   }
 
-  const parsed = UazapiInboundSchema.safeParse(json);
+  // O provider real embrulha a mensagem em `{ event, instance, message }`;
+  // o adaptador traz para a forma canônica das fixtures. Evento que não é
+  // mensagem recebida (status de conexão, eco do que a própria instância
+  // enviou) vira 200 sem processamento: um 4xx faria o provider reenviar.
+  const adaptado = adaptarPayloadUazapi(json);
+  if (adaptado === null) {
+    log.info('evento_ignorado', { forma: formaDoPayload(json) });
+    return NextResponse.json({ ok: true, acao: 'evento_ignorado' });
+  }
+
+  const parsed = UazapiInboundSchema.safeParse(adaptado);
   if (!parsed.success) {
     const first = parsed.error.issues[0];
     // Forma do payload (chaves e tipos), nunca valores: é o que permite
