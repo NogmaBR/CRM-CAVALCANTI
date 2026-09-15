@@ -37,6 +37,7 @@ import { createReadStream } from 'node:fs';
 import { mkdtemp, open, readdir, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { Readable } from 'node:stream';
 import {
   localizarRaizDasObras,
   magicConfere,
@@ -93,16 +94,19 @@ async function rest(metodo, caminho, corpo, extra = {}) {
   return texto ? JSON.parse(texto) : null;
 }
 
-async function subirParaStorage(caminhoStorage, buffer, mime) {
+async function subirParaStorage(caminhoStorage, abs, mime, tamanho) {
+  // Corpo em stream: vídeo de 150 MB não passa pela memória inteiro.
   const r = await fetch(`${URL}/storage/v1/object/documents/${caminhoStorage}`, {
     method: 'POST',
     headers: {
       apikey: KEY,
       Authorization: `Bearer ${KEY}`,
       'Content-Type': mime,
+      'Content-Length': String(tamanho),
       'x-upsert': 'true',
     },
-    body: buffer,
+    body: Readable.toWeb(createReadStream(abs)),
+    duplex: 'half',
   });
   if (!r.ok)
     throw new Error(
@@ -121,6 +125,11 @@ function caminhoStorage(obraId, documentoId, nome) {
 // ---------------------------------------------------------------------------
 async function extrairZip(zip) {
   const destino = await mkdtemp(path.join(tmpdir(), 'crm-acervo-'));
+  await extrairZipEm(zip, destino);
+  return destino;
+}
+
+async function extrairZipEm(zip, destino) {
   const ps = spawnSync(
     'powershell.exe',
     [
@@ -135,7 +144,6 @@ async function extrairZip(zip) {
     const un = spawnSync('unzip', ['-q', zip, '-d', destino], { stdio: 'inherit' });
     if (un.status !== 0) throw new Error('Não consegui extrair o ZIP (nem PowerShell nem unzip).');
   }
-  return destino;
 }
 
 async function listarArquivos(raiz) {
@@ -183,7 +191,20 @@ async function principal() {
     console.log('Extraindo ZIP para pasta temporária…');
     temporaria = await extrairZip(base);
     base = temporaria;
-  } else if (!st.isDirectory()) {
+  } else if (st.isDirectory()) {
+    // Pasta com um ZIP por obra (é como o OneDrive baixa quando se seleciona
+    // várias pastas): extrai todos numa temporária só e varre de lá.
+    const zips = (await readdir(base)).filter((n) => /\.zip$/iu.test(n));
+    if (zips.length > 0) {
+      console.log(`Extraindo ${zips.length} ZIP(s) para pasta temporária…`);
+      temporaria = await mkdtemp(path.join(tmpdir(), 'crm-acervo-'));
+      for (const z of zips) {
+        console.log(`  ${z}`);
+        await extrairZipEm(path.join(base, z), temporaria);
+      }
+      base = temporaria;
+    }
+  } else {
     throw new Error(`${entrada} não é pasta nem .zip`);
   }
 
@@ -204,21 +225,16 @@ async function principal() {
       const s = await stat(abs);
       const nome = path.basename(abs);
       const mime = mimeDaExtensao(nome);
-      let magicOk = true;
-      if (mime && s.size <= 20 * 1024 * 1024) {
-        magicOk = magicConfere(mime, await primeirosBytes(abs));
-      }
+      const magicOk = magicConfere(mime, await primeirosBytes(abs));
       arquivos.push({
         abs,
         caminhoRel: rel,
         tamanho: s.size,
         mtime: s.mtime.toISOString(),
         magicOk,
-        // hash só do que pode subir (evita ler ZIP de 20 MB de vídeo à toa)
-        hash:
-          mime && magicOk && s.size <= 20 * 1024 * 1024
-            ? await sha256Arquivo(abs)
-            : `nao-suportado:${rel}`,
+        // Tudo sobe, sem teto de tamanho (pedido do cliente): o hash é
+        // calculado em stream, então um vídeo de 150 MB não vai para a memória.
+        hash: magicOk ? await sha256Arquivo(abs) : `nao-confere:${rel}`,
       });
     }
 
@@ -291,6 +307,7 @@ async function principal() {
     // 4. Criar
     let criados = 0;
     let falhas = 0;
+    const falhados = [];
     const porArq = new Map(arquivos.map((a) => [a.caminhoRel, a]));
     for (const c of plano.criar) {
       const obraId = c.obraId ?? idPorObraNova.get(c.obraNome);
@@ -320,10 +337,7 @@ async function principal() {
           { Prefer: 'return=representation' },
         );
         const destino = caminhoStorage(obraId, novo.id, c.nome);
-        const fh = await open(abs, 'r');
-        const buffer = await fh.readFile();
-        await fh.close();
-        await subirParaStorage(destino, buffer, c.mime);
+        await subirParaStorage(destino, abs, c.mime, c.tamanho);
         await rest('PATCH', `documentos?id=eq.${novo.id}`, { storage_path: destino });
         criados += 1;
         if (criados % 25 === 0) console.log(`  …${criados}/${plano.criar.length}`);
@@ -332,8 +346,16 @@ async function principal() {
         // 23505 no hash: o mesmo arquivo já existe com outra origem (ex.: veio
         // pelo WhatsApp). Não é erro — é o dedupe funcionando.
         if (err.status === 409) console.log(`  já existia (hash): ${c.caminho}`);
-        else console.error(`  falhou ${c.caminho}: ${err.message}`);
+        else {
+          const mb = Math.round(c.tamanho / 1048576);
+          console.error(`  falhou ${c.caminho} (${mb} MB): ${err.message}`);
+          falhados.push({ caminho: c.caminho, mb });
+        }
       }
+    }
+    if (falhados.length) {
+      console.log('\nNão subiram (o limite por arquivo é do plano do Supabase):');
+      for (const f of falhados) console.log(`  ${f.mb} MB  ${f.caminho}`);
     }
     console.log(`\nCriados: ${criados}  Falhas: ${falhas}`);
 

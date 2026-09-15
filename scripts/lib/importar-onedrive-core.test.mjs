@@ -58,12 +58,17 @@ describe('arquivos', () => {
     assert.equal(ehLixo('nota.pdf'), false);
     assert.equal(mimeDaExtensao('a.PDF'), 'application/pdf');
     assert.equal(mimeDaExtensao('a.jpeg'), 'image/jpeg');
-    assert.equal(mimeDaExtensao('a.dwg'), null);
-    assert.equal(mimeDaExtensao('semextensao'), null);
+    assert.equal(mimeDaExtensao('a.dwg'), 'image/vnd.dwg');
+    assert.equal(mimeDaExtensao('a.MOV'), 'video/quicktime');
+    assert.equal(mimeDaExtensao('semextensao'), 'application/octet-stream');
+    assert.equal(mimeDaExtensao('a.xyz'), 'application/octet-stream');
   });
   it('magic bytes', () => {
     assert.equal(magicConfere('application/pdf', Buffer.from('%PDF-1.4')), true);
     assert.equal(magicConfere('application/pdf', Buffer.from('<html>')), false);
+    // Tipo sem assinatura conhecida passa: só é guardado, nunca interpretado.
+    assert.equal(magicConfere('video/quicktime', Buffer.from('qualquer coisa')), true);
+    assert.equal(magicConfere('application/octet-stream', Buffer.from('qualquer coisa')), true);
     assert.equal(magicConfere('image/jpeg', Buffer.from([0xff, 0xd8, 0xff, 0xe0])), true);
     assert.equal(magicConfere('image/png', Buffer.from([0x89, 0x50, 0x4e, 0x47])), true);
     assert.equal(
@@ -115,7 +120,7 @@ describe('localizarRaizDasObras', () => {
 });
 
 describe('planejar', () => {
-  it('cria com obra, categoria e tipo; ignora lixo, tipo estranho e raiz', () => {
+  it('cria com obra, categoria e tipo; guarda vídeo, DWG e arquivo grande; ignora lixo e raiz', () => {
     const plano = planejar({
       arquivos: [
         arq('Garibaldi/NFs/NF 10.pdf'),
@@ -130,7 +135,10 @@ describe('planejar', () => {
       obras: OBRAS,
       documentosExistentes: [],
     });
-    assert.equal(plano.criar.length, 3);
+    // 3 documentos + planta.dwg + enorme.pdf: o cliente quer TUDO do Drive.
+    assert.equal(plano.criar.length, 5);
+    assert.equal(plano.criar.find((c) => c.nome === 'planta.dwg').mime, 'image/vnd.dwg');
+    assert.equal(plano.criar.find((c) => c.nome === 'enorme.pdf').tamanho, 21 * 1024 * 1024);
     const nf = plano.criar.find((c) => c.nome === 'NF 10.pdf');
     assert.deepEqual(
       { obraId: nf.obraId, categoria: nf.categoria, tipo: nf.tipo, mime: nf.mime },
@@ -141,9 +149,7 @@ describe('planejar', () => {
     assert.deepEqual(plano.ignorar.map((i) => i.motivo).sort(), [
       'conteudo_nao_confere',
       'fora_de_obra',
-      'grande',
       'lixo',
-      'tipo_nao_suportado',
     ]);
   });
 

@@ -82,7 +82,12 @@ export function ehLixo(nome) {
   return LIXO.has(n) || n.startsWith('~$') || n.startsWith('._') || n.startsWith('.');
 }
 
-/** Só o que o CRM sabe guardar e abrir. Fora daqui vira "não suportado". */
+/**
+ * MIME pela extensão. O cliente quer TUDO do Drive dentro do CRM — vídeo,
+ * DWG, arquivo sem extensão — então o que não está aqui sobe como
+ * `application/octet-stream`. O que o CRM sabe LER (PDF, imagem) é outra
+ * lista, em `lib/acervo/extrair-texto.ts`.
+ */
 export const MIME_POR_EXTENSAO = {
   pdf: 'application/pdf',
   jpg: 'image/jpeg',
@@ -93,21 +98,39 @@ export const MIME_POR_EXTENSAO = {
   xls: 'application/vnd.ms-excel',
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   doc: 'application/msword',
+  mp4: 'video/mp4',
+  mov: 'video/quicktime',
+  avi: 'video/x-msvideo',
+  m4v: 'video/x-m4v',
+  mp3: 'audio/mpeg',
+  m4a: 'audio/mp4',
+  ogg: 'audio/ogg',
+  opus: 'audio/opus',
+  wav: 'audio/wav',
+  dwg: 'image/vnd.dwg',
+  dxf: 'image/vnd.dxf',
+  txt: 'text/plain',
+  csv: 'text/csv',
+  zip: 'application/zip',
+  rar: 'application/vnd.rar',
+  heic: 'image/heic',
+  gif: 'image/gif',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
 };
+
+export const MIME_GENERICO = 'application/octet-stream';
 
 export function mimeDaExtensao(nome) {
   const m = String(nome).match(/\.([a-z0-9]{2,5})$/iu);
-  if (!m) return null;
-  return MIME_POR_EXTENSAO[m[1].toLowerCase()] ?? null;
+  if (!m) return MIME_GENERICO;
+  return MIME_POR_EXTENSAO[m[1].toLowerCase()] ?? MIME_GENERICO;
 }
 
-/** Mesmo teto do download de mídia do WhatsApp (`LIMITE_MIDIA_BYTES`). */
-export const LIMITE_BYTES = 20 * 1024 * 1024;
-
 /**
- * Magic bytes dos tipos aceitos. XLSX/DOCX são ZIP (`PK`); XLS/DOC antigos são
- * OLE (`D0 CF 11 E0`). Conferir aqui é defesa em profundidade sobre a
- * extensão — um `.pdf` que é HTML não entra.
+ * Magic bytes dos tipos que o CRM LÊ (PDF, imagem, Office). Conferir aqui é
+ * defesa em profundidade sobre a extensão — um `.pdf` que é HTML não entra
+ * como PDF. Tipo sem assinatura conhecida (vídeo, DWG, genérico) passa: o
+ * arquivo só é guardado, nunca interpretado.
  */
 export function magicConfere(mime, primeirosBytes) {
   const b = primeirosBytes;
@@ -138,7 +161,7 @@ export function magicConfere(mime, primeirosBytes) {
     case 'application/msword':
       return b[0] === 0xd0 && b[1] === 0xcf && b[2] === 0x11 && b[3] === 0xe0;
     default:
-      return false;
+      return true;
   }
 }
 
@@ -267,16 +290,8 @@ export function planejar({ arquivos, obras, documentosExistentes, criarObras = f
       continue;
     }
     const mime = mimeDaExtensao(nome);
-    if (!mime) {
-      plano.ignorar.push({ caminho: arq.caminhoRel, motivo: 'tipo_nao_suportado' });
-      continue;
-    }
     if (arq.magicOk === false) {
       plano.ignorar.push({ caminho: arq.caminhoRel, motivo: 'conteudo_nao_confere' });
-      continue;
-    }
-    if (arq.tamanho > LIMITE_BYTES) {
-      plano.ignorar.push({ caminho: arq.caminhoRel, motivo: 'grande' });
       continue;
     }
 
