@@ -72,7 +72,7 @@ const INTEGRACOES = [
     vars: [
       { nome: 'IA_TRANSCRICAO_PROVIDER', obrigatoria: true, esperado: 'openai', padrao: 'none' },
       { nome: 'OPENAI_API_KEY', obrigatoria: true },
-      { nome: 'OPENAI_TRANSCRICAO_MODEL', obrigatoria: false, padrao: 'whisper-1' },
+      { nome: 'OPENAI_TRANSCRICAO_MODEL', obrigatoria: false, padrao: 'gpt-4o-mini-transcribe' },
     ],
   },
   {

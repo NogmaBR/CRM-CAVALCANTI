@@ -646,6 +646,18 @@ humanas na §12 de `SO-FALTA-VOCE.md`. O que muda de regra para quem for mexer:
   **O classificador barra o `--aplicar` (escrita em massa em produção)**: é o usuário
   que roda, com `!`. "EM ABERTO" vira `aguardando`; linha numerada sem VALOR (ADM
   mensal em Garibaldi) não é lançamento.
+- **Só o acervo vale (decisão do usuário, 2026-09-15).** `scripts/arquivar-dados-do-prototipo.mjs`
+  (ensaio/`--aplicar`; núcleo `scripts/lib/prototipo-core.mjs`) arquiva as 7 obras sem
+  pasta (Casas Rotterdam, FAIHome, G&C Aura Legano, NSIY 4/7, Reservas do Lago, WRB
+  House), 4 fornecedores fictícios (FerroForte, Hidraulica Total, Leroy Merlin,
+  Votorantim) e 5 categorias genéricas; nas obras reais grava só o que o alvará/ART/
+  propostas provam (Casa EJ = Carolina Malinski Coelho, Estrada Caminho do Meio 2259,
+  Viamão, obra nova 135,09 m², ART 31/10/2025→31/10/2026; INOX = reforma em Canoas,
+  cliente CNPJ 06.747.085/0001-52; Garibaldi = conclusão de prédio). **Orçamento fica
+  null nas 4** — nenhum documento traz o valor contratual; sem isso `orcamento-em-risco`
+  não dispara (correto). Telefones dos fornecedores ficam null (os do protótipo eram
+  inventados; a cobrança por WhatsApp pula quem não tem telefone). CNPJ vem das NFs do
+  próprio fornecedor (o CNPJ que aparece em 3+ fornecedores é destinatário, não emitente).
 - A extração/RAG/conciliação da carga inicial rodou por `next start -p 3101` local
   apontando para produção (a Vercel mata em 60 s); daqui em diante o `pg_cron` dá conta,
   20 documentos por rodada.
