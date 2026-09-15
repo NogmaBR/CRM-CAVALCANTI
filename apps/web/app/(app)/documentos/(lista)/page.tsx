@@ -3,6 +3,7 @@ import { Button } from '@/components/nogma/Button';
 import { type Documento, listDocumentos } from '@/lib/data/documentos';
 import { listFornecedores } from '@/lib/data/fornecedores';
 import { listObras } from '@/lib/data/obras';
+import { CATEGORIAS, type DocCategoria } from '@/lib/status-labels';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { DocumentosAgrupados } from '../documentos-agrupados';
@@ -26,11 +27,20 @@ type Tipo = 'nota_fiscal' | 'comprovante' | 'contrato' | 'outro';
 export default async function DocumentosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tipo?: string; obra_id?: string; agrupar?: string; q?: string }>;
+  searchParams: Promise<{
+    tipo?: string;
+    obra_id?: string;
+    categoria?: string;
+    agrupar?: string;
+    q?: string;
+  }>;
 }) {
   const params = await searchParams;
   const tipo = params.tipo ?? '';
   const obraId = params.obra_id ?? '';
+  const categoria = (CATEGORIAS as readonly string[]).includes(params.categoria ?? '')
+    ? (params.categoria as DocCategoria)
+    : '';
   const busca = (params.q ?? '').trim();
   const agrupar =
     params.agrupar === 'fornecedor' || params.agrupar === 'obra' ? params.agrupar : '';
@@ -50,6 +60,7 @@ export default async function DocumentosPage({
     listDocumentos({
       tipo: tipoFilter,
       obra_id: obraId || undefined,
+      categoria: categoria || undefined,
       onlyArchived: isArquivado,
     }),
     listObras({ includeArchived: true }),
@@ -58,7 +69,7 @@ export default async function DocumentosPage({
 
   const buildHref = (overrides: Partial<Record<string, string>>) => {
     const p = new URLSearchParams();
-    const merged = { tipo, obra_id: obraId, agrupar, q: busca, ...overrides };
+    const merged = { tipo, obra_id: obraId, categoria, agrupar, q: busca, ...overrides };
     for (const [k, v] of Object.entries(merged)) {
       if (v && typeof v === 'string' && v.length > 0) p.set(k, v);
     }
@@ -131,6 +142,7 @@ export default async function DocumentosPage({
           obras={obras.map((o) => ({ value: o.id, label: o.nome }))}
           tipo={tipo}
           obraId={obraId}
+          categoria={categoria}
           agrupar={agrupar}
           busca={busca}
         />
@@ -143,7 +155,7 @@ export default async function DocumentosPage({
               documentos={filtrados}
               obras={obras}
               fornecedores={fornecedores}
-              filtrando={busca !== '' || obraId !== ''}
+              filtrando={busca !== '' || obraId !== '' || categoria !== ''}
             />
           )}
         </div>

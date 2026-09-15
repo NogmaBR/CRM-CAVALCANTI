@@ -5,6 +5,7 @@ import type { Fornecedor } from '@/lib/data/fornecedores';
 import type { Obra } from '@/lib/data/obras';
 import type { Pagamento } from '@/lib/data/pagamentos';
 import { ALLOWED_MIMES, ANEXO_TIPO_LABELS } from '@/lib/schemas/documento';
+import { CATEGORIAS, CATEGORIA_LABELS } from '@/lib/status-labels';
 import { Paperclip } from 'lucide-react';
 import Link from 'next/link';
 import '../_shared/form-layout.css';
@@ -44,6 +45,7 @@ export function DocumentoForm({
   const pagamentoDefault = v.pagamento_id ?? initial?.pagamento_id ?? defaultPagamentoId ?? '';
   const fornecedorDefault = v.fornecedor_id ?? initial?.fornecedor_id ?? '';
   const tipoDefault = v.tipo ?? initial?.tipo ?? 'nota_fiscal';
+  const categoriaDefault = v.categoria ?? initial?.categoria ?? 'nfs_pagamentos';
   const erroCurto = error ? error.replace(/^[^:]+:\s*/u, '') : undefined;
   const erroDe = (name: string) => (campo === name ? erroCurto : undefined);
   const invalido = (name: string) => (campo === name ? true : undefined);
@@ -148,6 +150,24 @@ export function DocumentoForm({
                   </option>
                 ),
               )}
+            </select>
+          </div>
+          <div className="form-layout__field">
+            <label className="form-layout__label" htmlFor="doc-categoria">
+              Pasta
+            </label>
+            <select
+              id="doc-categoria"
+              name="categoria"
+              defaultValue={categoriaDefault}
+              className="form-layout__select"
+              aria-invalid={invalido('categoria')}
+            >
+              {CATEGORIAS.map((c) => (
+                <option key={c} value={c}>
+                  {CATEGORIA_LABELS[c].rotulo}
+                </option>
+              ))}
             </select>
           </div>
           <div className="form-layout__field">
