@@ -337,7 +337,14 @@ async function principal() {
           { Prefer: 'return=representation' },
         );
         const destino = caminhoStorage(obraId, novo.id, c.nome);
-        await subirParaStorage(destino, abs, c.mime, c.tamanho);
+        try {
+          await subirParaStorage(destino, abs, c.mime, c.tamanho);
+        } catch (err) {
+          // Sem o objeto, a linha não pode ficar: o dedupe por hash acharia o
+          // documento "já importado" e o rerun nunca tentaria de novo.
+          await rest('DELETE', `documentos?id=eq.${novo.id}`).catch(() => {});
+          throw err;
+        }
         await rest('PATCH', `documentos?id=eq.${novo.id}`, { storage_path: destino });
         criados += 1;
         if (criados % 25 === 0) console.log(`  …${criados}/${plano.criar.length}`);
