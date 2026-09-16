@@ -646,7 +646,7 @@ humanas na §12 de `SO-FALTA-VOCE.md`. O que muda de regra para quem for mexer:
   **O classificador barra o `--aplicar` (escrita em massa em produção)**: é o usuário
   que roda, com `!`. "EM ABERTO" vira `aguardando`; linha numerada sem VALOR (ADM
   mensal em Garibaldi) não é lançamento.
-- **Só o acervo vale (decisão do usuário, 2026-09-15).** `scripts/arquivar-dados-do-prototipo.mjs`
+- **Só o acervo vale (decisão do usuário, 2026-09-15; aplicado e conferido no banco no mesmo dia: 4 obras vivas, 7 arquivadas, 37 fornecedores, 19 categorias, RAG 611/611).** `scripts/arquivar-dados-do-prototipo.mjs`
   (ensaio/`--aplicar`; núcleo `scripts/lib/prototipo-core.mjs`) arquiva as 7 obras sem
   pasta (Casas Rotterdam, FAIHome, G&C Aura Legano, NSIY 4/7, Reservas do Lago, WRB
   House), 4 fornecedores fictícios (FerroForte, Hidraulica Total, Leroy Merlin,

@@ -681,7 +681,7 @@ arquivadas do RAG.
 - [x] Apelidos aplicados (10 obras) e Aguirre criada (2026-09-15)
 - [x] Import feito: 318 documentos; `/obras/<id>` › Pastas com contagens (2026-09-15)
 - [ ] Pagamentos reais lançados (12.6)
-- [ ] Protótipo arquivado (12.7)
+- [x] Protótipo arquivado (12.7, 2026-09-15: 4 obras vivas, 37 fornecedores, 19 categorias, RAG 611/611)
 - [ ] Grupo cadastrado; uma foto no grupo respondida com `📁 … ✔`
 
 ---
