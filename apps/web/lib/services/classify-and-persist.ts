@@ -3,6 +3,7 @@ import { type Classifier, type ClassifierInput, getClassifier } from '@/lib/ia/c
 import { logger } from '@/lib/log';
 import { CATEGORIAS, type DocCategoria } from '@/lib/status-labels';
 import { hojeBR } from '@/lib/util/datas';
+import { formatarValorBR } from '@/lib/util/moeda';
 import { type Opcao, formatarOpcoes } from '@/lib/whatsapp/escolha';
 import type { Database } from '@nogma/db';
 import type { Json } from '@nogma/db/types';
@@ -335,6 +336,37 @@ export async function classifyAndPersist(mensagemId: string): Promise<
     };
   }
 
+  // Pagamento com valor mas sem obra (comprovante de Pix não diz a obra; o
+  // grupo não é dedicado): perguntar "confirma?" leva a um SIM que não lança
+  // nada — foi o teste 2 de 16/09. Pergunta-se a obra, numerada; o número
+  // confirma E lança. Sem obras ativas cai na pergunta comum.
+  const semObra = out.extracted.valor != null && !out.extracted.obra_id;
+  const opcoesDeObra: Opcao[] = semObra
+    ? obrasAtivas
+        .slice(0, 10)
+        .map((o, i) => ({ n: i + 1, id: o.id, nome: o.nome, apelidos: o.apelidos }))
+    : [];
+  if (opcoesDeObra.length > 0) {
+    const fornecedor =
+      (out.extracted.fornecedor_id &&
+        input.contexto.fornecedoresConhecidos.find((f) => f.id === out.extracted.fornecedor_id)
+          ?.nome) ||
+      out.extracted.fornecedor_nome_novo;
+    const partes = [`R$ ${formatarValorBR(out.extracted.valor as number)}`];
+    if (out.extracted.descricao) partes.push(out.extracted.descricao);
+    if (fornecedor) partes.push(`para ${fornecedor}`);
+    if (out.extracted.data_pagamento) partes.push(`em ${dataBR(out.extracted.data_pagamento)}`);
+    const pergunta = `${partes.join(' — ')}.\nDe qual obra é esse pagamento?\n${formatarOpcoes(opcoesDeObra)}\nResponda com o número para lançar, ou NÃO para cancelar.`;
+    return abrirPendencia(supabase, {
+      mensagemId,
+      pergunta,
+      out,
+      tipo: 'pagamento',
+      opcoes: opcoesDeObra,
+      chatId: msg.chat_id,
+    });
+  }
+
   // Caso default: confirmação pendente
   const pergunta =
     out.perguntaConfirmacao ??
@@ -347,6 +379,12 @@ export async function classifyAndPersist(mensagemId: string): Promise<
     tipo: 'pagamento',
     chatId: msg.chat_id,
   });
+}
+
+/** `2026-09-15` → `15/09/2026`. */
+function dataBR(iso: string): string {
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/u);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
 }
 
 function categoriaValida(c: string | undefined): DocCategoria {

@@ -10,6 +10,7 @@ import { CATEGORIAS, type DocCategoria } from '@/lib/status-labels';
 import { hojeBR } from '@/lib/util/datas';
 import type { Opcao } from '@/lib/whatsapp/escolha';
 import type { Database } from '@nogma/db';
+import type { Json } from '@nogma/db/types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   arquivarDocumentoDeObra,
@@ -265,6 +266,56 @@ async function obterOuCriarPagamento(
  * aprovou" de "o classificador quebrou", que são coisas diferentes tanto pro
  * relatório quanto pra quem vai investigar uma falha.
  */
+/**
+ * A pessoa respondeu o número da obra a uma pendência de pagamento que veio
+ * sem obra: grava `obra_id` nos dados extraídos da mensagem original. Quem
+ * chama segue com `aplicarConfirmacao` — o número é a confirmação.
+ */
+export async function definirObraDaPendencia(
+  supabase: Client,
+  args: { confirmacaoId: string; obraId: string },
+): Promise<
+  | { ok: true }
+  | { ok: false; codigo: 'nao_encontrada' | 'ja_resolvida' | 'erro_banco'; motivo: string }
+> {
+  const { data: confirmacao } = await supabase
+    .from('confirmacoes_pendentes')
+    .select('id, mensagem_id, resolvida')
+    .eq('id', args.confirmacaoId)
+    .maybeSingle();
+  if (!confirmacao) {
+    return { ok: false, codigo: 'nao_encontrada', motivo: 'Confirmação não encontrada.' };
+  }
+  if (confirmacao.resolvida) {
+    return { ok: false, codigo: 'ja_resolvida', motivo: 'Esta pendência já foi resolvida.' };
+  }
+  const { data: mensagem } = await supabase
+    .from('mensagens_whats')
+    .select('id, dados_extraidos')
+    .eq('id', confirmacao.mensagem_id)
+    .maybeSingle();
+  if (!mensagem) {
+    return { ok: false, codigo: 'nao_encontrada', motivo: 'Mensagem original não encontrada.' };
+  }
+  const atuais =
+    mensagem.dados_extraidos && typeof mensagem.dados_extraidos === 'object'
+      ? (mensagem.dados_extraidos as Record<string, unknown>)
+      : {};
+  const { data: linhas, error } = await supabase
+    .from('mensagens_whats')
+    .update({ dados_extraidos: { ...atuais, obra_id: args.obraId } as Json })
+    .eq('id', mensagem.id)
+    .select('id');
+  if (error || !linhas || linhas.length !== 1) {
+    return {
+      ok: false,
+      codigo: 'erro_banco',
+      motivo: error?.message ?? 'nenhuma linha atualizada',
+    };
+  }
+  return { ok: true };
+}
+
 export async function recusarConfirmacao(
   supabase: Client,
   ctx: ContextoResolucao & { motivo?: string },

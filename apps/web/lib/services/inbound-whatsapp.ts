@@ -24,6 +24,7 @@ import {
   aplicarConfirmacao,
   aplicarEscolhaDeObra,
   buscarConfirmacaoAberta,
+  definirObraDaPendencia,
   recusarConfirmacao,
 } from './confirmacoes';
 import { baixarMidia, enviarTexto, obterLinkDaMidia } from './uazapi';
@@ -86,6 +87,7 @@ const RESPOSTAS = {
     'Recebi sua confirmação, mas faltaram dados pra lançar automaticamente. ' +
     'O gestor vai revisar no painel.',
   recusado: 'Ok, cancelei esse lançamento. Se quiser, é só mandar de novo com os dados corretos.',
+  faltaObra: 'Falta a obra: responda só o número dela na lista acima (ou NÃO para cancelar).',
   obraRecusada: 'Ok, deixei sem arquivar. O gestor pode arquivar pelo painel.',
   falhaTemporaria:
     'Não consegui processar sua mensagem agora. Ela ficou registrada; ' +
@@ -169,6 +171,52 @@ export async function processarInbound(
   const pendencia = textoEfetivo
     ? await buscarConfirmacaoAberta(supabase, telefone, JANELA_RESPOSTA_HORAS)
     : null;
+
+  // Pendência de pagamento que perguntou a obra (veio sem obra): o número
+  // escolhe a obra e confirma de uma vez. "sim" sozinho não basta — falta a
+  // obra, e a resposta diz isso em vez de "o gestor vai revisar".
+  if (pendencia && pendencia.tipo === 'pagamento' && pendencia.opcoes.length > 0) {
+    const escolha = interpretarEscolha(textoEfetivo, pendencia.opcoes);
+    if (escolha) {
+      const definida = await definirObraDaPendencia(supabase, {
+        confirmacaoId: pendencia.id,
+        obraId: escolha.id,
+      });
+      if (!definida.ok) {
+        log.aviso('obra_da_pendencia_nao_definida', { codigo: definida.codigo });
+        await enviarTexto(destino, RESPOSTAS.falhaTemporaria);
+        return { acao: 'confirmou_pendencia', detalhe: definida.codigo };
+      }
+      return resolverPendencia({
+        supabase,
+        pendencia,
+        interpretacao: 'sim',
+        payload,
+        telefone,
+        destino,
+        grupoId: grupo?.id ?? null,
+        autorizadoId: autorizado.id,
+        textoEfetivo,
+        midia,
+        tipoDb,
+        rotuloObra: escolha.nome,
+      });
+    }
+    if (interpretacao === 'sim') {
+      await gravarMensagem({
+        supabase,
+        payload,
+        telefone,
+        grupoId: grupo?.id ?? null,
+        autorizadoId: autorizado.id,
+        midia,
+        tipoDb,
+        status: 'recebida',
+      });
+      await enviarTexto(destino, RESPOSTAS.faltaObra);
+      return { acao: 'confirmou_pendencia', detalhe: 'falta_obra' };
+    }
+  }
 
   if (pendencia && pendencia.tipo === 'pagamento' && interpretacao !== 'outro') {
     return resolverPendencia({
@@ -382,6 +430,8 @@ interface ContextoResolucao {
   textoEfetivo: string | null;
   midia: MidiaMaterializada;
   tipoDb: Database['public']['Enums']['msg_tipo'];
+  /** Quando a confirmação veio pelo número da obra: entra na resposta. */
+  rotuloObra?: string;
 }
 
 /**
@@ -419,7 +469,10 @@ async function resolverPendencia(ctx: ContextoResolucao): Promise<ResultadoInbou
       return { acao: 'confirmou_pendencia', detalhe: resultado.codigo };
     }
 
-    await enviarTexto(destino, RESPOSTAS.confirmado);
+    await enviarTexto(
+      destino,
+      ctx.rotuloObra ? `Lançado em ${ctx.rotuloObra} ✅ Obrigado!` : RESPOSTAS.confirmado,
+    );
     return { acao: 'confirmou_pendencia', pagamentoId: resultado.pagamentoId };
   }
 
