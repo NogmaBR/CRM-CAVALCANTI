@@ -1055,6 +1055,48 @@ export type Database = {
         };
         Relationships: [];
       };
+      webhook_eventos: {
+        Row: {
+          acao: string;
+          autenticacao: string;
+          chat_id: string | null;
+          detalhe: string | null;
+          evento: string | null;
+          id: string;
+          is_group: boolean | null;
+          msg_id: string | null;
+          recebido_em: string;
+          remetente: string | null;
+          tipo: string | null;
+        };
+        Insert: {
+          acao: string;
+          autenticacao: string;
+          chat_id?: string | null;
+          detalhe?: string | null;
+          evento?: string | null;
+          id?: string;
+          is_group?: boolean | null;
+          msg_id?: string | null;
+          recebido_em?: string;
+          remetente?: string | null;
+          tipo?: string | null;
+        };
+        Update: {
+          acao?: string;
+          autenticacao?: string;
+          chat_id?: string | null;
+          detalhe?: string | null;
+          evento?: string | null;
+          id?: string;
+          is_group?: boolean | null;
+          msg_id?: string | null;
+          recebido_em?: string;
+          remetente?: string | null;
+          tipo?: string | null;
+        };
+        Relationships: [];
+      };
       whatsapp_grupos: {
         Row: {
           ativo: boolean;

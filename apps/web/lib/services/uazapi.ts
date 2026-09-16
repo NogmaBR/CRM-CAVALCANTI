@@ -107,6 +107,35 @@ export async function enviarTexto(destino: string, texto: string): Promise<Resul
   }
 }
 
+/**
+ * Pede ao provider um link público para a mídia de uma mensagem
+ * (`POST /message/download`, OpenAPI de docs.uazapi.com). O webhook v2 traz
+ * `fileURL` só como referência interna em alguns casos; quando não é uma URL
+ * http, é por aqui que se chega ao arquivo. `null` sem credencial ou quando o
+ * provider não devolve link — o chamador degrada como já degradava.
+ */
+export async function obterLinkDaMidia(messageId: string): Promise<string | null> {
+  const cfg = config();
+  if (!cfg || !messageId) return null;
+  try {
+    const res = await fetch(`${cfg.baseUrl}/message/download`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', token: cfg.token },
+      body: JSON.stringify({ id: messageId, return_link: true, return_base64: false }),
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!res.ok) {
+      log.aviso('link_midia_falhou', { status: res.status });
+      return null;
+    }
+    const j = (await res.json()) as { fileURL?: unknown };
+    return typeof j.fileURL === 'string' && /^https?:\/\//u.test(j.fileURL) ? j.fileURL : null;
+  } catch (err) {
+    log.aviso('link_midia_falhou', { err });
+    return null;
+  }
+}
+
 export type ResultadoMidia =
   | { ok: true; bytes: Uint8Array; mime: string }
   | {

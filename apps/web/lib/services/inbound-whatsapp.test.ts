@@ -25,6 +25,7 @@ const classifyAndPersist = vi.fn();
 vi.mock('./uazapi', () => ({
   enviarTexto: (...a: [string, string]) => enviarTexto(...a),
   baixarMidia: vi.fn(async () => ({ ok: false, motivo: 'nao_configurado' })),
+  obterLinkDaMidia: vi.fn(async () => null),
 }));
 vi.mock('./classify-and-persist', () => ({
   classifyAndPersist: (...a: [string]) => classifyAndPersist(...a),

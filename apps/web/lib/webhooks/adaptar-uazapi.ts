@@ -17,11 +17,29 @@
  * `chatId` — sem o adaptador, uma mensagem de grupo seria autorizada pelo
  * id do grupo (nunca cadastrado) e ignorada.
  *
+ * ## O dono do número também manda mensagem
+ *
+ * No grupo do cliente, o número da instância é o do próprio Cavalcanti — e
+ * ele é quem mais manda foto de nota. Essas mensagens chegam com
+ * `fromMe: true`. O que NÃO pode entrar é o eco do que o CRM mesmo enviou
+ * pela API (`wasSentByApi: true`), senão a resposta "confirma?" vira
+ * mensagem nova e o laço não acaba. Regra: `fromMe` só passa quando o
+ * provider diz explicitamente `wasSentByApi: false`; sem o campo, descarta —
+ * o custo de errar é um laço infinito.
+ *
+ * ## LID
+ *
+ * O WhatsApp passou a identificar participantes de grupo por LID
+ * (`…@lid`) em vez do telefone. O provider resolve para `sender_pn` quando
+ * consegue; é ele que serve para autorizar. Sem `sender_pn`, fica o `sender`
+ * e a autorização por telefone não casa — o log mostra `from` terminando
+ * em `@lid`.
+ *
  * ## Conferir no primeiro contato real
  *
- * Escrito pela documentação pública do provider, sem payload real para
- * comparar. Se o Zod recusar, o webhook loga `formaDoPayload` (chaves e
- * tipos, nunca valores): é por ele que se ajusta este mapa.
+ * Escrito pela documentação pública do provider (OpenAPI de docs.uazapi.com,
+ * schema `Message`). Se o Zod recusar, o webhook loga `formaDoPayload`
+ * (chaves e tipos, nunca valores): é por ele que se ajusta este mapa.
  */
 
 type Tipo = 'text' | 'image' | 'document' | 'audio' | 'video' | 'sticker' | 'location';
@@ -99,12 +117,17 @@ export function adaptarPayloadUazapi(raw: unknown): unknown {
   }
 
   const msg = m as Record<string, unknown>;
-  if (msg.fromMe === true) return null;
+  if (msg.fromMe === true && msg.wasSentByApi !== false) return null;
 
   const id =
     str(msg.messageid) ?? str(msg.id) ?? str(msg.key && (msg.key as Record<string, unknown>).id);
   const chatId = str(msg.chatid) ?? str(msg.chatId) ?? str(msg.remoteJid);
-  const sender = str(msg.sender) ?? str(msg.participant) ?? chatId;
+  const sender =
+    str(msg.sender_pn) ??
+    str(msg.sender) ??
+    str(msg.participant) ??
+    (msg.fromMe === true ? str(r.owner) : undefined) ??
+    chatId;
   if (!id || !sender) return raw;
 
   const isGroup =
