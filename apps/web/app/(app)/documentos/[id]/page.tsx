@@ -1,16 +1,19 @@
+import { VisualizadorDeArquivo } from '@/components/arquivos/visualizador';
 import { TopBar } from '@/components/layout/topbar';
 import { Badge, type BadgeVariant } from '@/components/nogma/Badge';
 import { Button } from '@/components/nogma/Button';
+import { urlDoArquivo } from '@/lib/arquivos/tipo-visual';
 import { getDocumento } from '@/lib/data/documentos';
 import { listFornecedores } from '@/lib/data/fornecedores';
 import { listObras } from '@/lib/data/obras';
 import { listPagamentos } from '@/lib/data/pagamentos';
 import { ANEXO_TIPO_LABELS, type AnexoTipo, formatBytes } from '@/lib/schemas/documento';
+import { CATEGORIA_LABELS, DOC_ORIGEM_LABEL } from '@/lib/status-labels';
 import { Archive, ArrowLeft, Download, Pencil, RotateCcw } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Row, Section } from '../../_shared/detail-primitives';
-import { archiveDocumento, downloadDocumento, restoreDocumento } from '../actions';
+import { archiveDocumento, restoreDocumento } from '../actions';
 import '../../_shared/detail-layout.css';
 
 export const metadata = { title: 'Documento' };
@@ -62,6 +65,8 @@ export default async function DocumentoDetailPage({
 
   const isArquivado = documento.deleted_at != null;
   const tipo = documento.tipo as AnexoTipo;
+  const temArquivo = !!documento.storage_path && documento.storage_path !== 'pending';
+  const pasta = documento.categoria ? CATEGORIA_LABELS[documento.categoria] : null;
 
   return (
     <>
@@ -74,12 +79,14 @@ export default async function DocumentoDetailPage({
               <ArrowLeft size={15} aria-hidden="true" />
               Voltar
             </Link>
-            <form action={downloadDocumento} style={{ display: 'inline' }}>
-              <input type="hidden" name="id" value={documento.id} />
-              <Button type="submit" variant="primary" leadingIcon={<Download size={14} />}>
-                Download
+            <a
+              href={urlDoArquivo('documento', documento.id, 'baixar')}
+              style={{ textDecoration: 'none' }}
+            >
+              <Button variant="primary" leadingIcon={<Download size={14} />}>
+                Baixar
               </Button>
-            </form>
+            </a>
             <Link href={`/documentos/${documento.id}/editar`} style={{ textDecoration: 'none' }}>
               <Button variant="secondary" leadingIcon={<Pencil size={14} />}>
                 Editar
@@ -120,15 +127,42 @@ export default async function DocumentoDetailPage({
           <span className="detail-layout__tipo">{documento.mime_type}</span>
         </div>
 
+        {/* O arquivo em si — antes dos metadados. É o que a pessoa veio ver. */}
+        <section className="detail-layout__section detail-layout__visualizador">
+          {temArquivo ? (
+            <VisualizadorDeArquivo
+              origem="documento"
+              id={documento.id}
+              mime={documento.mime_type}
+              nome={documento.nome_arquivo}
+              tamanho={documento.tamanho_bytes}
+              textoExtraido={documento.texto_extraido}
+            />
+          ) : (
+            <p className="detail-layout__aviso">
+              O arquivo ainda não terminou de subir. Se isto persistir, envie de novo.
+            </p>
+          )}
+        </section>
+
         <div className="detail-layout__grid">
           <Section title="Arquivo">
             <Row label="Nome" value={documento.nome_arquivo} strong />
-            <Row label="Tipo MIME" value={documento.mime_type} />
+            <Row label="Tipo" value={documento.mime_type} />
             <Row label="Tamanho" value={formatBytes(documento.tamanho_bytes)} />
+            <Row
+              label="Origem"
+              value={
+                documento.caminho_origem
+                  ? `${DOC_ORIGEM_LABEL[documento.origem]} · ${documento.caminho_origem}`
+                  : DOC_ORIGEM_LABEL[documento.origem]
+              }
+            />
           </Section>
 
           <Section title="Classificação">
-            <Row label="Categoria" value={ANEXO_TIPO_LABELS[tipo]} />
+            <Row label="O que é" value={ANEXO_TIPO_LABELS[tipo]} />
+            <Row label="Pasta da obra" value={pasta ? `${pasta.icone} ${pasta.rotulo}` : '—'} />
             <Row label="Número NF" value={documento.numero_nf ?? '—'} />
             <Row label="Chave acesso NF" value={documento.chave_acesso_nf ?? '—'} />
           </Section>
@@ -161,7 +195,17 @@ export default async function DocumentoDetailPage({
             {documento.deleted_at ? (
               <Row label="Arquivado em" value={formatDateTime(documento.deleted_at)} />
             ) : null}
-            <Row label="Storage path" value={documento.storage_path} />
+            <Row
+              label="Texto lido em"
+              value={
+                documento.texto_extraido_em
+                  ? formatDateTime(documento.texto_extraido_em)
+                  : 'ainda não'
+              }
+            />
+            {documento.conciliado_em ? (
+              <Row label="Ligado ao pagamento em" value={formatDateTime(documento.conciliado_em)} />
+            ) : null}
           </Section>
         </div>
       </div>

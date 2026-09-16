@@ -1,5 +1,7 @@
+import { AnexoDaMensagem } from '@/components/arquivos/anexo-da-mensagem';
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
+import { rotuloDoMime } from '@/lib/arquivos/tipo-visual';
 import { getDocumentosSemPagamento } from '@/lib/data/acervo';
 import {
   LIMITE_SEM_DOCUMENTO,
@@ -201,13 +203,20 @@ export default async function PendentesPage({
                     {item.midia_mime ? (
                       <span className="pendente-card__badge">
                         <Paperclip size={11} />
-                        Anexo: {item.midia_mime}
+                        Anexo: {rotuloDoMime(item.midia_mime)}
                       </span>
                     ) : null}
                   </div>
 
                   {/* Body */}
                   <div className="pendente-card__body">
+                    {item.tem_midia ? (
+                      <AnexoDaMensagem
+                        mensagemId={item.mensagem_id}
+                        mime={item.midia_mime}
+                        legenda={item.texto_bruto}
+                      />
+                    ) : null}
                     {item.texto_bruto ? (
                       <div className="pendente-card__texto">{item.texto_bruto}</div>
                     ) : null}
@@ -474,6 +483,13 @@ function CardPendenciaDeObra({ item }: { item: PendenteItem }) {
       </div>
 
       <div className="pendente-card__body">
+        {item.tem_midia ? (
+          <AnexoDaMensagem
+            mensagemId={item.mensagem_id}
+            mime={item.midia_mime}
+            legenda={item.texto_bruto}
+          />
+        ) : null}
         {item.texto_bruto ? <div className="pendente-card__texto">{item.texto_bruto}</div> : null}
         <div className="pendente-card__extracted">
           <div className="pendente-extracted__field pendente-extracted__value--wide">

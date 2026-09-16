@@ -1,6 +1,5 @@
 'use server';
 
-import { getDocumento } from '@/lib/data/documentos';
 import { logger } from '@/lib/log';
 import {
   DocumentoMetaCreateSchema,
@@ -12,7 +11,6 @@ import { mapDbError, mapDbErrorWithContext } from '@/lib/schemas/errors';
 import { serviceClient } from '@/lib/storage/documents';
 import {
   deleteDocumentFile,
-  getSignedUrl,
   makeStoragePath,
   sha256Hex,
   uploadDocumentBuffer,
@@ -301,33 +299,4 @@ export async function restoreDocumento(formData: FormData) {
   revalidatePath('/documentos');
   revalidatePath(`/documentos/${id}`);
   redirect(`/documentos/${id}`);
-}
-
-/**
- * Server action: gera signed URL 60s TTL e redirect. Ownership via getDocumento
- * (RLS já cobre — user autenticado só vê docs que RLS permite).
- */
-export async function downloadDocumento(formData: FormData) {
-  const id = String(formData.get('id') ?? '').trim();
-  if (!id) redirect('/documentos?error=ID%20inv%C3%A1lido');
-
-  const doc = await getDocumento(id);
-  if (!doc) redirect('/documentos?error=Documento%20n%C3%A3o%20encontrado');
-  if (doc.deleted_at != null) {
-    redirect(
-      `/documentos/${id}?error=${encodeURIComponent('Documento arquivado. Restaure antes de baixar.')}`,
-    );
-  }
-  if (!doc.storage_path || doc.storage_path === 'pending') {
-    redirect(`/documentos/${id}?error=Arquivo%20n%C3%A3o%20dispon%C3%ADvel`);
-  }
-
-  let url: string;
-  try {
-    url = await getSignedUrl(doc.storage_path, 60);
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Falha ao gerar URL';
-    redirect(`/documentos/${id}?error=${encodeURIComponent(msg)}`);
-  }
-  redirect(url);
 }

@@ -28,10 +28,10 @@
 .detail-layout__success {
   padding: 12px 14px;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--success, #2FA36B) 12%, transparent);
-  color: var(--success, #2FA36B);
+  background: color-mix(in srgb, var(--success, #2fa36b) 12%, transparent);
+  color: var(--success, #2fa36b);
   font-size: 13px;
-  border: 1px solid color-mix(in srgb, var(--success, #2FA36B) 30%, transparent);
+  border: 1px solid color-mix(in srgb, var(--success, #2fa36b) 30%, transparent);
   margin-bottom: 20px;
 }
 
@@ -114,4 +114,15 @@
     grid-template-columns: 1fr;
     gap: 2px;
   }
+}
+
+/* Bloco do arquivo na página do documento: largura toda, acima da grade. */
+.detail-layout__visualizador {
+  margin-bottom: 16px;
+}
+
+.detail-layout__aviso {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
 }

@@ -1420,7 +1420,7 @@ export type Database = {
         | 'outro';
       doc_origem: 'painel' | 'whatsapp' | 'onedrive';
       msg_status: 'recebida' | 'processando' | 'classificada' | 'confirmada' | 'recusada' | 'erro';
-      msg_tipo: 'texto' | 'imagem' | 'pdf' | 'audio';
+      msg_tipo: 'texto' | 'imagem' | 'pdf' | 'audio' | 'video' | 'arquivo';
       obra_status: 'ativa' | 'pausada' | 'concluida' | 'arquivada';
       obra_tipo: 'nova' | 'reforma';
       origem_fornecedor: 'manual' | 'auto_detectado';
@@ -1559,7 +1559,7 @@ export const Constants = {
       anexo_tipo: ['nota_fiscal', 'comprovante', 'contrato', 'outro'],
       documento_tipo: ['cnpj', 'cpf'],
       msg_status: ['recebida', 'processando', 'classificada', 'confirmada', 'erro'],
-      msg_tipo: ['texto', 'imagem', 'pdf', 'audio'],
+      msg_tipo: ['texto', 'imagem', 'pdf', 'audio', 'video', 'arquivo'],
       obra_status: ['ativa', 'pausada', 'concluida', 'arquivada'],
       obra_tipo: ['nova', 'reforma'],
       origem_fornecedor: ['manual', 'auto_detectado'],

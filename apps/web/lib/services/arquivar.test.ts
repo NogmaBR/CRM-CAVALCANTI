@@ -140,7 +140,8 @@ describe('arquivarDocumentoDeObra', () => {
     expect(
       await arquivarDocumentoDeObra(
         cliente(f),
-        { ...base, storagePath: 'x', mime: 'video/mp4' },
+        // Vídeo passou a ser guardado (2026-09-16); só executável fica de fora.
+        { ...base, storagePath: 'x', mime: 'application/x-msdownload' },
         deps(),
       ),
     ).toEqual({

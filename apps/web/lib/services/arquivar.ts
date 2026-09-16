@@ -1,4 +1,5 @@
 import 'server-only';
+import { mimeArquivavel } from '@/lib/arquivos/mime-arquivavel';
 import { logger } from '@/lib/log';
 import { CATEGORIA_LABELS, type DocCategoria } from '@/lib/status-labels';
 import {
@@ -45,8 +46,6 @@ const depsPadrao: DepsArquivar = {
   subir: uploadDocumentBuffer,
 };
 
-const MIMES_DOCUMENTO = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
-
 export type ResultadoArquivar =
   | { ok: true; documentoId: string; jaExistia: boolean }
   | { ok: false; motivo: 'sem_midia' | 'mime_nao_suportado' | 'midia_nao_lida' | 'erro_insert' };
@@ -67,7 +66,10 @@ export async function arquivarDocumentoDeObra(
 ): Promise<ResultadoArquivar> {
   if (!args.storagePath) return { ok: false, motivo: 'sem_midia' };
   const mime = args.mime?.split(';')[0]?.trim().toLowerCase() ?? '';
-  if (!MIMES_DOCUMENTO.has(mime)) return { ok: false, motivo: 'mime_nao_suportado' };
+  // Tudo que a equipe manda fica guardado (vídeo, planilha, Word, DWG…); só
+  // executável fica de fora. Era uma lista fechada de 4 MIMEs e o vídeo de
+  // canteiro se perdia em silêncio.
+  if (!mimeArquivavel(mime)) return { ok: false, motivo: 'mime_nao_suportado' };
 
   // Já arquivado por esta mensagem (retry, corrida)? Devolve o mesmo.
   const { data: msg } = await supabase

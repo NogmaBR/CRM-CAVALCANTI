@@ -1,13 +1,16 @@
+import { GradeDeArquivos } from '@/components/arquivos/grade';
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
+import { EmptyState } from '@/components/nogma/EmptyState';
 import { type Documento, listDocumentos } from '@/lib/data/documentos';
 import { listFornecedores } from '@/lib/data/fornecedores';
 import { listObras } from '@/lib/data/obras';
 import { CATEGORIAS, type DocCategoria } from '@/lib/status-labels';
-import { Plus } from 'lucide-react';
+import { Image as ImageIcon, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { DocumentosAgrupados } from '../documentos-agrupados';
 import { DocumentosTable } from '../documentos-table';
+import type { Visao } from '../documentos-toolbar';
 import { DocumentosToolbar } from '../documentos-toolbar';
 import '../documentos.css';
 
@@ -32,6 +35,7 @@ export default async function DocumentosPage({
     obra_id?: string;
     categoria?: string;
     agrupar?: string;
+    visao?: string;
     q?: string;
   }>;
 }) {
@@ -44,6 +48,14 @@ export default async function DocumentosPage({
   const busca = (params.q ?? '').trim();
   const agrupar =
     params.agrupar === 'fornecedor' || params.agrupar === 'obra' ? params.agrupar : '';
+  // A pasta Fotos abre em grade por padrão: é para OLHAR, não para ler nomes.
+  // Qualquer outra pasta abre em lista; `visao` na URL manda nos dois casos.
+  const visao: Visao =
+    params.visao === 'grade' || params.visao === 'lista'
+      ? params.visao
+      : categoria === 'fotos'
+        ? 'grade'
+        : 'lista';
 
   const isArquivado = tipo === 'arquivado';
   const tipoFilter: Tipo | undefined = isArquivado
@@ -69,7 +81,15 @@ export default async function DocumentosPage({
 
   const buildHref = (overrides: Partial<Record<string, string>>) => {
     const p = new URLSearchParams();
-    const merged = { tipo, obra_id: obraId, categoria, agrupar, q: busca, ...overrides };
+    const merged = {
+      tipo,
+      obra_id: obraId,
+      categoria,
+      agrupar,
+      visao: params.visao ?? '',
+      q: busca,
+      ...overrides,
+    };
     for (const [k, v] of Object.entries(merged)) {
       if (v && typeof v === 'string' && v.length > 0) p.set(k, v);
     }
@@ -144,11 +164,35 @@ export default async function DocumentosPage({
           obraId={obraId}
           categoria={categoria}
           agrupar={agrupar}
+          visao={visao}
           busca={busca}
         />
 
         <div className="docs-lista">
-          {agrupar ? (
+          {visao === 'grade' ? (
+            filtrados.length === 0 ? (
+              <EmptyState
+                icon={<ImageIcon size={22} aria-hidden="true" />}
+                title="Nenhum arquivo aqui"
+                compact
+              >
+                Fotos e vídeos mandados no grupo do WhatsApp aparecem nesta grade.
+              </EmptyState>
+            ) : (
+              <GradeDeArquivos
+                rotulo="Documentos em grade"
+                itens={filtrados.map((d) => ({
+                  id: d.id,
+                  mime: d.mime_type,
+                  nome: d.nome_arquivo,
+                  legenda: d.created_at
+                    ? `${d.nome_arquivo} · ${new Date(d.created_at).toLocaleDateString('pt-BR')}`
+                    : d.nome_arquivo,
+                  href: `/documentos/${d.id}`,
+                }))}
+              />
+            )
+          ) : agrupar ? (
             <DocumentosAgrupados documentos={filtrados} por={agrupar} />
           ) : (
             <DocumentosTable

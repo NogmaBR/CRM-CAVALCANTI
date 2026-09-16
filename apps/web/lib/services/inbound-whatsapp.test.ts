@@ -1,7 +1,7 @@
 import { fakeSupabase } from '@/test/fake-supabase';
 import type { Database } from '@nogma/db';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
  * O agente no grupo, ponta a ponta sobre o Supabase fake.
@@ -21,10 +21,17 @@ const enviarTexto = vi.fn(async (_destino: string, _texto: string) => ({
   msgId: 'env-1',
 }));
 const classifyAndPersist = vi.fn();
+const baixarMidia = vi.fn(
+  async (_url: string | null | undefined): Promise<unknown> => ({
+    ok: false,
+    motivo: 'nao_configurado',
+  }),
+);
+const uploadDocumentBuffer = vi.fn(async (_p: string, _b: ArrayBuffer, _m: string) => {});
 
 vi.mock('./uazapi', () => ({
   enviarTexto: (...a: [string, string]) => enviarTexto(...a),
-  baixarMidia: vi.fn(async () => ({ ok: false, motivo: 'nao_configurado' })),
+  baixarMidia: (...a: [string | null | undefined]) => baixarMidia(...a),
   obterLinkDaMidia: vi.fn(async () => null),
 }));
 vi.mock('./classify-and-persist', () => ({
@@ -34,7 +41,7 @@ vi.mock('@/lib/ia/transcricao', () => ({
   transcreverAudio: vi.fn(async () => ({ ok: false, motivo: 'desativado' })),
 }));
 vi.mock('@/lib/storage/documents', () => ({
-  uploadDocumentBuffer: vi.fn(async () => {}),
+  uploadDocumentBuffer: (...a: [string, ArrayBuffer, string]) => uploadDocumentBuffer(...a),
   downloadDocumentBytes: vi.fn(async () => new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1])),
   makeStoragePath: (o: string, d: string, n: string) => `${o}/${d}/${n}`,
   sha256Hex: () => 'hash-fixo',
@@ -112,6 +119,13 @@ async function inbound() {
 }
 
 describe('agente no grupo', () => {
+  // O primeiro `import('./inbound-whatsapp')` compila o grafo inteiro do
+  // serviço; com a suíte toda rodando isso passava de 5 s e o primeiro teste
+  // estourava sozinho. Paga-se o custo aqui, com folga.
+  beforeAll(async () => {
+    await inbound();
+  }, 30_000);
+
   beforeEach(() => {
     enviarTexto.mockClear();
     classifyAndPersist.mockReset();
@@ -389,5 +403,42 @@ describe('agente no grupo', () => {
       msg({ chatId: undefined, isGroup: false, text: 'hoje terminou a laje da Gari' }) as never,
     );
     expect(enviarTexto).toHaveBeenCalledWith(FERNANDO, '📝 Anotado em Garibaldi ✔');
+  });
+
+  it('vídeo no grupo: baixa, guarda com nome legível e tipo `video`, e vai para o classificador', async () => {
+    const f = db();
+    const processar = await inbound();
+    baixarMidia.mockResolvedValueOnce({
+      ok: true,
+      bytes: new Uint8Array([0, 0, 0, 0x18, 0x66, 0x74, 0x79, 0x70]),
+      mime: 'video/mp4',
+    });
+    classifyAndPersist.mockResolvedValue({
+      ok: true,
+      status: 'confirmada',
+      confianca: 0.9,
+      kind: 'documento_obra',
+      resposta: '📁 Garibaldi › Fotos ✔',
+    });
+
+    const video = msg({
+      type: 'video',
+      text: 'laje da Gari hoje',
+      timestamp: 1789234320, // 2026-09-15 17:32 UTC → 14:32 em Brasília
+      media: { url: 'https://midia.uazapi.test/v.mp4', mimetype: 'video/mp4' },
+    });
+    const r = await processar(cliente(f), video as never);
+    expect(r.acao).toBe('classificada');
+
+    const [path, , mime] = uploadDocumentBuffer.mock.calls.at(-1) ?? [];
+    expect(mime).toBe('video/mp4');
+    expect(String(path)).toMatch(
+      /^whatsapp\/wa-[a-z0-9]+\/2026-09-\d{2}_\d{2}h\d{2}_video_fernando\.mp4$/u,
+    );
+    expect(f.linhas('mensagens_whats')[0]).toMatchObject({
+      tipo: 'video',
+      midia_mime: 'video/mp4',
+      midia_storage_path: path,
+    });
   });
 });

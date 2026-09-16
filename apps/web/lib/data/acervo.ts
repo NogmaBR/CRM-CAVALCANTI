@@ -37,6 +37,33 @@ export async function getPastasDaObra(obraId: string): Promise<PastaDaObra[]> {
   }));
 }
 
+export interface FotoDaObra {
+  id: string;
+  nome_arquivo: string;
+  mime_type: string;
+  created_at: string | null;
+}
+
+/**
+ * As últimas fotos (e vídeos) da obra, para a faixa no topo do acervo. É a
+ * pasta `fotos`, mais recente primeiro — o que a equipe mandou hoje no grupo.
+ */
+export async function getUltimasFotosDaObra(obraId: string, limite = 8): Promise<FotoDaObra[]> {
+  if (!pareceUuid(obraId)) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('documentos')
+    .select('id, nome_arquivo, mime_type, created_at')
+    .eq('obra_id', obraId)
+    .eq('categoria', 'fotos')
+    .is('deleted_at', null)
+    .neq('storage_path', 'pending')
+    .order('created_at', { ascending: false })
+    .limit(limite);
+  if (error) throw new Error(`Falha ao listar fotos: ${error.message}`);
+  return data ?? [];
+}
+
 export interface RegistroComAutor extends RegistroObra {
   autor_nome: string | null;
 }

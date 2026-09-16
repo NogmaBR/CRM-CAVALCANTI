@@ -121,3 +121,18 @@
 .whatsapp-filter-tab:hover {
   color: var(--text-primary);
 }
+
+/* Mensagem com anexo: miniatura na primeira coluna, clicável para abrir. */
+.wa-item--com-anexo {
+  grid-template-columns: auto 1fr auto;
+}
+
+@media (max-width: 640px) {
+  .wa-item--com-anexo {
+    grid-template-columns: auto 1fr;
+  }
+
+  .wa-item--com-anexo .wa-item__meta {
+    grid-column: 1 / -1;
+  }
+}

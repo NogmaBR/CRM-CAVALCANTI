@@ -28,9 +28,8 @@ import type { Classifier, ClassifierInput, ClassifierOutput } from './classifier
 export class MockClassifier implements Classifier {
   async classify(input: ClassifierInput): Promise<ClassifierOutput> {
     const { texto, midiaMime, contexto } = input;
-    const ehMidia = Boolean(
-      midiaMime && (midiaMime.startsWith('image/') || midiaMime === 'application/pdf'),
-    );
+    // Qualquer anexo conta: vídeo, planilha e Word também são guardados.
+    const ehMidia = Boolean(midiaMime?.trim());
 
     // Regex simples pra valor em reais: "R$ 1.234,56" ou "1234,56" ou "R$ 500".
     //
@@ -72,7 +71,11 @@ export class MockClassifier implements Classifier {
       }
       const porPista = categoriaDaPasta(pista);
       const categoria =
-        porPista !== 'outro' ? porPista : midiaMime?.startsWith('image/') ? 'fotos' : 'outro';
+        porPista !== 'outro'
+          ? porPista
+          : midiaMime?.startsWith('image/') || midiaMime?.startsWith('video/')
+            ? 'fotos'
+            : 'outro';
       return {
         kind: 'documento_obra',
         confidence: 0.6,

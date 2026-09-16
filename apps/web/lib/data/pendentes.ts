@@ -24,6 +24,8 @@ export interface PendenteItem {
   telefone_from: string;
   tipo: Database['public']['Enums']['msg_tipo'];
   midia_mime: string | null;
+  /** Há arquivo no Storage para mostrar (`/api/arquivos/mensagem/<mensagem_id>`). */
+  tem_midia: boolean;
   texto_bruto: string | null;
   recebida_em: string;
   dados_extraidos: DadosExtraidos | null;
@@ -49,6 +51,7 @@ export async function listPendentes(): Promise<PendenteItem[]> {
          telefone_from,
          tipo,
          midia_mime,
+         midia_storage_path,
          texto_bruto,
          texto_transcrito,
          recebida_em,
@@ -116,6 +119,7 @@ export async function listPendentes(): Promise<PendenteItem[]> {
         telefone_from: msg.telefone_from,
         tipo: msg.tipo,
         midia_mime: msg.midia_mime,
+        tem_midia: !!msg.midia_storage_path,
         // Áudio chega com `texto_bruto` nulo: o que o gestor precisa ler é a
         // transcrição. Sem isto o card pedia confirmação de um texto vazio.
         texto_bruto: msg.texto_bruto ?? msg.texto_transcrito ?? null,

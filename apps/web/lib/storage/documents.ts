@@ -66,11 +66,34 @@ export async function deleteDocumentFile(path: string): Promise<void> {
   if (error) throw new Error(`Falha ao deletar: ${error.message}`);
 }
 
-/** Gera signed URL válida por ttlSeconds (default 60s). */
-export async function getSignedUrl(path: string, ttlSeconds = 60): Promise<string> {
+/**
+ * Gera signed URL válida por ttlSeconds (default 60s). `download` com o nome
+ * do arquivo faz o Storage responder `Content-Disposition: attachment` — é a
+ * diferença entre "abrir na página" e "baixar".
+ */
+export async function getSignedUrl(
+  path: string,
+  ttlSeconds = 60,
+  opcoes: { download?: string } = {},
+): Promise<string> {
   const supabase = serviceClient();
-  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, ttlSeconds);
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUrl(path, ttlSeconds, opcoes.download ? { download: opcoes.download } : undefined);
   if (error || !data?.signedUrl)
     throw new Error(`Falha ao gerar URL: ${error?.message ?? 'sem URL'}`);
   return data.signedUrl;
+}
+
+/** O objeto existe no bucket? (`list` na pasta, filtrando pelo nome — o Storage não tem HEAD.) */
+export async function existeObjeto(path: string): Promise<boolean> {
+  const supabase = serviceClient();
+  const barra = path.lastIndexOf('/');
+  const pasta = barra >= 0 ? path.slice(0, barra) : '';
+  const nome = barra >= 0 ? path.slice(barra + 1) : path;
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .list(pasta, { limit: 1, search: nome });
+  if (error || !data) return false;
+  return data.some((o) => o.name === nome);
 }
