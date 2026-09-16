@@ -814,6 +814,56 @@ nos fornecedores (`/fornecedores`) — hoje todos estão vazios de propósito.
 
 ---
 
+## 14. Ver a mídia dentro do CRM (16/09) — o que é seu depois do merge
+
+O PR "ver a mídia no CRM" faz foto, PDF, vídeo e áudio abrirem **dentro do site** (página
+do documento, pendentes, WhatsApp, pagamento, obra) e faz o WhatsApp guardar **qualquer
+arquivo** (vídeo, planilha, Word…), com nome legível. Duas coisas dependem de você.
+
+### 14.1 — Aplicar a migration (uma linha, depois do merge)
+
+```bash
+! node --env-file=.env.local scripts/apply-migration.mjs 20260916200000_msg_tipo_video_arquivo.sql
+```
+
+**Como conferir:** no SQL do Supabase, `select unnest(enum_range(null::msg_tipo));` tem que
+listar `texto, imagem, pdf, audio, video, arquivo`. Sem a migration, um vídeo mandado no
+grupo dá erro de enum ao gravar a mensagem (o log mostra `invalid input value for enum
+msg_tipo: "video"`) — foto, PDF e áudio continuam funcionando.
+
+### 14.2 — Ligar o login por e-mail no Supabase Auth (achado do teste)
+
+Ao testar com sessão de verdade, o Auth respondeu **"Email logins are disabled"**: o provedor
+de e-mail está desligado no projeto (`external_email_enabled=false`). Quem já está logado
+continua entrando (o refresh não passa pelo provedor); quem abrir `/login` numa aba nova
+**não consegue entrar**. Não é código: é configuração do projeto.
+
+```bash
+! node --env-file=.env.local scripts/habilitar-login-email.mjs            # só mostra
+! node --env-file=.env.local scripts/habilitar-login-email.mjs --aplicar  # liga
+```
+
+`disable_signup` continua `true` — ligar o provedor não reabre cadastro público.
+**Como conferir:** aba anônima → `/login` → entrar com seu usuário.
+
+### 14.3 — O que ver depois de deployar (READY + 1 min)
+
+| Onde | O que tem que aparecer |
+|---|---|
+| `/documentos/<id de uma NF>` | O PDF aberto na página, botões Abrir em nova aba / Baixar, "Texto lido do arquivo" dobrado |
+| `/documentos?categoria=fotos` | Grade de miniaturas (a pasta Fotos abre em grade sozinha; "Ver como" troca) |
+| `/pagamentos/<id com comprovante>` | Seção **Documentos** com a miniatura do comprovante |
+| `/obras/INOX Piratini` | Faixa **Últimas fotos** acima das pastas |
+| `/pendentes` (quando houver) | A foto da nota ao lado da pergunta, não só `image/jpeg` |
+| Grupo Teste: mandar um vídeo curto | Resposta `📁 Obra › Fotos ✔`; o vídeo roda em `/documentos/<id>` |
+| Grupo Teste: mandar uma planilha `.xlsx` | Vira documento na pasta Outro (ou a que a legenda disser), com botão Baixar |
+
+A primeira vez que uma miniatura é pedida ela é gerada (`sharp`, ~0,1–0,5 s por foto) e
+guardada em `miniaturas/` no bucket; da segunda em diante é instantânea. As 124 imagens
+do acervo geram sob demanda — não precisa rodar nada.
+
+---
+
 ## Se algo der errado, olhe aqui primeiro
 
 | Sintoma | Onde olhar |
@@ -830,3 +880,6 @@ nos fornecedores (`/fornecedores`) — hoje todos estão vazios de propósito.
 | Mensagem de grupo não responde | `/config/autorizados/grupos` — grupo fora da lista é ignorado; o id está no log |
 | Importador diz `column caminho_origem does not exist` | Migration `20260915120000` não aplicada (item 12.2) |
 | Documento sem texto em `/documentos` | Extração roda a cada 20 min; imagem/scan exige `ANTHROPIC_API_KEY` |
+| `/login` diz "Email logins are disabled" | Provedor de e-mail desligado no Auth — item 14.2 |
+| Foto/PDF não abre na página (404 na rota `/api/arquivos`) | O arquivo ficou `pending` (upload não terminou) ou a RLS não deixa este usuário ver a obra |
+| Vídeo no grupo dá `invalid input value for enum msg_tipo` | Migration `20260916200000` não aplicada — item 14.1 |

@@ -4,7 +4,7 @@
 > **Mantenha-o atualizado**: ao terminar um trabalho relevante, atualize a §7 (estado)
 > e acrescente em §8 (armadilhas) qualquer erro novo que você cometeu.
 >
-> Última atualização: **2026-09-15**, com o acervo do OneDrive e o agente no grupo **em produção** (PRs #28, #29 e o de leitura de planilha/Word).
+> Última atualização: **2026-09-16**, com a fase de testes do WhatsApp (1–7 ok) e a mídia visível dentro do CRM (PR `feat/ver-midia-no-crm`).
 
 ---
 
@@ -157,7 +157,7 @@ aqui — não invente uma integração.
 | Supabase (banco, auth, storage) | ✅ ligado | Todas as migrations aplicadas |
 | Vercel produção | ✅ no ar | Deploy automático a partir da `main` |
 | GitHub | ✅ ligado | `gh` autenticado com escopo `workflow` |
-| **UAZAPI (WhatsApp)** | ❌ **sem credencial** — fase de teste planejada (§13 do SO-FALTA-VOCE) | `scripts/configurar-whatsapp.mjs --webhook --vercel` liga uma instância (grava webhook certo + env na Vercel + redeploy); `/config/whatsapp` diagnostica. **O UAZAPI não assina o webhook**: a prova de origem é o token da instância no corpo (`lib/webhooks/autenticar-uazapi.ts`), ou HMAC em `x-signature` |
+| **UAZAPI (WhatsApp)** | 🟡 **instância de TESTE ligada** (número do usuário, 2026-09-16; testes 1–7 ok) — troca para o número do Cavalcanti é a §13.5 do SO-FALTA-VOCE | `scripts/configurar-whatsapp.mjs --webhook --vercel` liga uma instância (grava webhook certo + env na Vercel + redeploy); `/config/whatsapp` diagnostica. **O UAZAPI não assina o webhook**: a prova de origem é o token da instância no corpo (`lib/webhooks/autenticar-uazapi.ts`), ou HMAC em `x-signature` |
 | **IA (OpenAI)** | ✅ ligada em produção (`IA_PROVIDER=openai`, 2026-09-15) | **Tudo OpenAI** (`gpt-5.4-mini`: classificador com visão, visão do acervo, assistente; `gpt-4o-mini-transcribe`; `text-embedding-3-small`). Health mostra `classificador/transcricao/busca: true`. **Decisão do usuário (2026-09-15): a chave fica como está, sem rotação** — não volte a sugerir. Anthropic ficou como provider alternativo, sem chave |
 | n8n | ❌ não provisionado | Opcional; o CRM faz tudo sozinho agora |
 | CI (`ci.yml`) | ✅ verde (PR #14) | typecheck, vitest, build, lint do diff. Sem segredo. É o check que vale |
@@ -676,6 +676,45 @@ humanas na §12 de `SO-FALTA-VOCE.md`. O que muda de regra para quem for mexer:
   apontando para produção (a Vercel mata em 60 s); daqui em diante o `pg_cron` dá conta,
   20 documentos por rodada.
 
+**Ver a mídia dentro do CRM (2026-09-16, PR `feat/ver-midia-no-crm`; plano em
+`docs/superpowers/plans/2026-09-16-visualizar-midia-no-crm.md`, ações humanas na §14 de
+`SO-FALTA-VOCE.md`).** Antes, toda tela mostrava só `Anexo: image/jpeg` e o único caminho
+era um redirect de 60 s para o Supabase. Regras para quem for mexer:
+- **`/api/arquivos/<documento|mensagem|registro>/<id>`** é a porta única para arquivo
+  (`?baixar=1` = attachment, `?miniatura=1` = JPEG 480 px gerado sob demanda com `sharp` e
+  guardado em `miniaturas/<origem>/<id>.jpg` no bucket). A linha é lida com a SESSÃO do
+  usuário (RLS decide; inexistente e invisível dão o mesmo 404), a URL assinada (300 s) é
+  do service role, e a resposta é **302 com `no-store`** — nunca streaming pelo nosso
+  domínio, porque `X-Frame-Options: DENY` vale para toda rota e mataria o `<iframe>` do PDF.
+  Não entra na lista pública do middleware (sem sessão → `/login`). `lib/arquivos/` tem as
+  partes puras (`resolver`, `tipo-visual`, `mime-arquivavel`) e `miniatura.ts` (sharp).
+- **`components/arquivos/`**: `VisualizadorDeArquivo` (imagem com lightbox `<dialog>`,
+  PDF em iframe, `<video>`, `<audio>`, "outro" com ícone + Baixar; `compacto` para dentro
+  de cartão), `Miniatura`, `GradeDeArquivos`, `AnexoDaMensagem`. Usados em
+  `/documentos/[id]` (arquivo no topo + texto lido), `/documentos` (visão `grade`, padrão
+  na pasta `fotos`; miniatura na tabela e no agrupado), `/pendentes` e `/whatsapp` (o anexo
+  da mensagem), `/pagamentos/[id]` (seção Documentos + mídia da mensagem de origem),
+  `/obras/[id]` (faixa Últimas fotos; áudio do diário). `downloadDocumento` (action) saiu.
+- **WhatsApp guarda qualquer arquivo**: `mimeArquivavel()` substitui a lista fechada de 4
+  MIMEs em `arquivar.ts` e `anexar-midia.ts` (só executável/script/html fica de fora);
+  `msg_tipo` ganhou `video` e `arquivo` (migration `20260916200000`, **aplicar**);
+  `mapTipoToDb(tipo, mime)` lê o MIME (`document` só é `pdf` se for PDF; figurinha é
+  imagem); `montarSaida` e o mock mandam vídeo para a pasta `fotos`. Nome do arquivo:
+  `lib/whatsapp/nome-arquivo.ts` → `AAAA-MM-DD_HHhMM_<foto|video|audio|documento>_<remetente>.<ext>`
+  (Brasília; documento com nome declarado mantém o nome sanitizado).
+- **Provado localmente contra produção** (`next start -p 3107` + sessão por magic link do
+  admin): 302 → 200 na imagem, miniatura gerada (7,5 MB → 17 KB em 124 ms) e reaproveitada,
+  `?baixar=1` com `Content-Disposition: attachment`, 404 em id/origem inválidos, 307 →
+  `/login` sem sessão; screenshots desktop/mobile das cinco telas; lightbox abre e fecha
+  com Esc. O Supabase não manda `X-Frame-Options` nem `Content-Disposition` na URL assinada,
+  então o PDF renderiza no iframe (o headless shell do Playwright não tem visor de PDF —
+  não julgue por ele).
+- **Achado: `external_email_enabled=false` no Supabase Auth** — `signInWithPassword` responde
+  "Email logins are disabled"; quem já tem sessão continua, login novo não entra.
+  `scripts/habilitar-login-email.mjs [--aplicar]` (ação do usuário, §14.2). Para testes
+  com sessão sem o provedor: `auth.admin.generateLink({type:'magiclink'})` +
+  `verifyOtp({token_hash, type:'magiclink'})` funciona.
+
 ### O que falta — e é ação humana, não código
 
 1. **Repositório é público.** Vai virar privado quando a Vercel for paga
@@ -786,6 +825,22 @@ humanas na §12 de `SO-FALTA-VOCE.md`. O que muda de regra para quem for mexer:
   sua constante.
 - **Ids em teste que passam por Zod `.uuid()` precisam ser UUID de verdade** — `'o-gari'`
   quebra `temDadosParaLancar` em silêncio (o campo some no `lerDadosExtraidos`).
+- **Porta ocupada mente.** `next start -p 3102` falhou com `EADDRINUSE` (um servidor velho
+  de outra sessão), o comando seguiu, e eu testei a rota nova contra o build ANTIGO — 404
+  que parecia bug meu. Antes de testar em porta local, `tail` do log do `next start` e
+  confira `Ready`; na dúvida, porta nova.
+- **Teste que afirma a regra antiga.** `arquivar.test.ts` exigia `video/mp4` →
+  `mime_nao_suportado`; ao abrir a lista de MIMEs o teste "quebrou". Era o teste que estava
+  do lado errado — troquei o exemplo por `application/x-msdownload`, que continua recusado.
+- **Primeiro teste do arquivo paga o import.** `inbound-whatsapp.test.ts` estourava 5 s só
+  no primeiro `it` quando a suíte inteira rodava (o `import('./inbound-whatsapp')` compila
+  o grafo todo). `beforeAll(async () => { await inbound(); }, 30_000)` resolve; não aumente
+  o timeout do teste.
+- **Headless shell não renderiza PDF.** O iframe do PDF sai preto no screenshot do
+  Playwright e o PDF está perfeito no Chrome. Confira os headers da URL assinada
+  (`X-Frame-Options`/`Content-Disposition` ausentes) em vez de julgar pela imagem.
+- **`waitUntil: 'networkidle'` não serve para grade de miniaturas**: 9 gerações de miniatura
+  em paralelo passam de 30 s na primeira visita. Use `load` + `document.images` completas.
 
 ### Git e GitHub
 
