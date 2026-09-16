@@ -48,6 +48,36 @@ describe.skipIf(!REAL)('OpenAI de verdade', () => {
     expect(out.extracted.obra_id).toBe(OBRAS[0]?.id);
   }, 60_000);
 
+  it('texto: o incidente de 16/09 — "Mathias Velho" resolve para Mathias Velho, com categoria', async () => {
+    const forn = [
+      { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', nome: 'Mathias Velho' },
+      { id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', nome: 'Maximiliano' },
+      { id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', nome: 'MD Soluções Hidráulicas' },
+    ];
+    const cats = [
+      { id: 'c1c1c1c1-c1c1-4c1c-8c1c-c1c1c1c1c1c1', nome: 'Estrutura (vigas, pilares e lajes)' },
+      { id: 'c2c2c2c2-c2c2-4c2c-8c2c-c2c2c2c2c2c2', nome: 'Reboco' },
+      { id: 'c3c3c3c3-c3c3-4c3c-8c3c-c3c3c3c3c3c3', nome: 'Limpeza' },
+    ];
+    const c = new OpenAIClassifier({ baixarMidia: async () => null });
+    const out = await c.classify(
+      input({
+        texto: 'paguei 1200 de cimento pro Mathias Velho na Garibaldi hoje',
+        contexto: {
+          obrasAtivas: OBRAS,
+          fornecedoresConhecidos: forn,
+          categorias: cats,
+          grupoObraId: null,
+        },
+      }),
+    );
+    console.log('incidente →', out.kind, out.extracted);
+    expect(out.kind).toBe('pagamento_completo');
+    expect(out.extracted.obra_id).toBe(OBRAS[0]?.id);
+    expect(out.extracted.fornecedor_id).toBe(forn[0]?.id);
+    expect(out.extracted.fornecedor_nome_novo).toBeUndefined();
+  }, 60_000);
+
   it('texto: registro de obra', async () => {
     const c = new OpenAIClassifier({ baixarMidia: async () => null });
     const out = await c.classify(

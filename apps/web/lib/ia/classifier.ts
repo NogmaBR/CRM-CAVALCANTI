@@ -36,6 +36,8 @@ export interface ClassifierInput {
   contexto: {
     obrasAtivas: Array<{ id: string; nome: string; apelidos?: string[] }>;
     fornecedoresConhecidos: Array<{ id: string; nome: string; apelidos?: string[] }>;
+    /** Plano de contas (categorias vivas). Opcional: sem ele o pagamento entra sem categoria. */
+    categorias?: Array<{ id: string; nome: string }>;
     /**
      * Obra do grupo de WhatsApp de onde a mensagem veio, quando o grupo é
      * dedicado a uma obra. É o default quando a mensagem não cita nenhuma.
@@ -53,6 +55,7 @@ export interface ClassifierOutput {
     obra_id?: string; // se casou 1:1 com contexto.obrasAtivas
     fornecedor_id?: string; // se casou com contexto.fornecedoresConhecidos
     fornecedor_nome_novo?: string; // se detectou fornecedor mas não bateu com conhecidos
+    categoria_id?: string; // se casou com contexto.categorias
     tipo_documento?: 'nota_fiscal' | 'comprovante' | 'contrato' | 'outro';
     numero_nf?: string;
     descricao?: string;

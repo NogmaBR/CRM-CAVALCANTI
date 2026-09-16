@@ -749,6 +749,13 @@ humanas na §12 de `SO-FALTA-VOCE.md`. O que muda de regra para quem for mexer:
   "Sheet1" com lixo em vez de lançar; `lerPlanilha` confere a assinatura (zip/OLE2)
   antes. E `jszip`/`xlsx` precisam estar em `package.json` do `apps/web` — o pnpm não
   deixa importar dependência transitiva.
+- **Modelo de linguagem copia UUID mal.** No primeiro pagamento real pelo grupo (16/09) o
+  classificador leu "Mathias Velho" certo, escreveu Mathias Velho na pergunta de
+  confirmação — e devolveu o UUID de Maximiliano. UUID válido, fornecedor errado; a
+  barreira de "id inexistente" não pega. O modelo agora devolve **nomes** (`obra_nome`,
+  `fornecedor_nome`, `categoria_nome`) e `lib/ia/resolver-nomes.ts` casa com o cadastro
+  (exato/apelido, depois parecido único; ambíguo = não resolve). O contexto do prompt não
+  tem mais UUID. Provado contra a OpenAI real (`openai.real.test.ts`, caso do incidente).
 - **O WhatsApp esconde o nono dígito.** O JID de "(73) 99848-9747" chega como
   `557398489747` (12 dígitos); o cadastro tem 13. Comparar dígito a dígito reprovou os
   dois números no primeiro contato real (16/09, 10 eventos `ignorada_nao_autorizada`).
