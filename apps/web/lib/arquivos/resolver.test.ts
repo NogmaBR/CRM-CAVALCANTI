@@ -14,17 +14,29 @@ describe('resolverArquivo', () => {
 
   it('documento com upload pendente ou sem caminho não tem arquivo', () => {
     expect(
-      resolverArquivo('documento', { storage_path: 'pending', mime_type: 'image/png', nome_arquivo: 'x' }),
+      resolverArquivo('documento', {
+        storage_path: 'pending',
+        mime_type: 'image/png',
+        nome_arquivo: 'x',
+      }),
     ).toBeNull();
-    expect(resolverArquivo('documento', { storage_path: null, mime_type: null, nome_arquivo: null })).toBeNull();
+    expect(
+      resolverArquivo('documento', { storage_path: null, mime_type: null, nome_arquivo: null }),
+    ).toBeNull();
   });
 
   it('mensagem e registro: nome vem do fim do caminho', () => {
     expect(
-      resolverArquivo('mensagem', { midia_storage_path: 'whatsapp/abc/foto.jpeg', midia_mime: 'image/jpeg' }),
+      resolverArquivo('mensagem', {
+        midia_storage_path: 'whatsapp/abc/foto.jpeg',
+        midia_mime: 'image/jpeg',
+      }),
     ).toEqual({ path: 'whatsapp/abc/foto.jpeg', mime: 'image/jpeg', nome: 'foto.jpeg' });
     expect(
-      resolverArquivo('registro', { midia_storage_path: 'whatsapp/abc/audio.ogg', midia_mime: 'audio/ogg; codecs=opus' }),
+      resolverArquivo('registro', {
+        midia_storage_path: 'whatsapp/abc/audio.ogg',
+        midia_mime: 'audio/ogg; codecs=opus',
+      }),
     ).toEqual({ path: 'whatsapp/abc/audio.ogg', mime: 'audio/ogg', nome: 'audio.ogg' });
   });
 

@@ -84,7 +84,9 @@ export async function GET(
   const q = request.nextUrl.searchParams;
   try {
     if (q.get('baixar') === '1') {
-      return redirecionar(await getSignedUrl(arquivo.path, TTL_SEGUNDOS, { download: arquivo.nome }));
+      return redirecionar(
+        await getSignedUrl(arquivo.path, TTL_SEGUNDOS, { download: arquivo.nome }),
+      );
     }
     if (q.get('miniatura') === '1' && arquivo.mime.startsWith('image/')) {
       const alvo = caminhoDaMiniatura(origem, id);
@@ -92,7 +94,10 @@ export async function GET(
         const bytes = await downloadDocumentBytes(arquivo.path);
         const mini = bytes ? await gerarMiniatura(bytes, arquivo.mime) : null;
         if (!mini) return redirecionar(await getSignedUrl(arquivo.path, TTL_SEGUNDOS));
-        const buffer = mini.buffer.slice(mini.byteOffset, mini.byteOffset + mini.byteLength) as ArrayBuffer;
+        const buffer = mini.buffer.slice(
+          mini.byteOffset,
+          mini.byteOffset + mini.byteLength,
+        ) as ArrayBuffer;
         try {
           await uploadDocumentBuffer(alvo, buffer, 'image/jpeg');
         } catch (err) {

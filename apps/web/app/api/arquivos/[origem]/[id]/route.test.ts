@@ -74,7 +74,11 @@ describe('GET /api/arquivos/[origem]/[id]', () => {
 
   it('302 para a URL assinada do arquivo, sem cache', async () => {
     linha.mockResolvedValue({
-      data: { storage_path: 'obra/doc/nf.pdf', mime_type: 'application/pdf', nome_arquivo: 'nf.pdf' },
+      data: {
+        storage_path: 'obra/doc/nf.pdf',
+        mime_type: 'application/pdf',
+        nome_arquivo: 'nf.pdf',
+      },
       error: null,
     });
     const res = await chamar('documento', ID);
@@ -85,7 +89,11 @@ describe('GET /api/arquivos/[origem]/[id]', () => {
 
   it('?baixar=1 pede a URL com o nome do arquivo (attachment)', async () => {
     linha.mockResolvedValue({
-      data: { storage_path: 'obra/doc/nf.pdf', mime_type: 'application/pdf', nome_arquivo: 'NF 123.pdf' },
+      data: {
+        storage_path: 'obra/doc/nf.pdf',
+        mime_type: 'application/pdf',
+        nome_arquivo: 'NF 123.pdf',
+      },
       error: null,
     });
     const res = await chamar('documento', ID, '?baixar=1');
@@ -119,7 +127,11 @@ describe('GET /api/arquivos/[origem]/[id]', () => {
 
   it('?miniatura=1 em PDF devolve o original; imagem que o sharp não lê também', async () => {
     linha.mockResolvedValue({
-      data: { storage_path: 'obra/doc/nf.pdf', mime_type: 'application/pdf', nome_arquivo: 'nf.pdf' },
+      data: {
+        storage_path: 'obra/doc/nf.pdf',
+        mime_type: 'application/pdf',
+        nome_arquivo: 'nf.pdf',
+      },
       error: null,
     });
     const pdf = await chamar('documento', ID, '?miniatura=1');
@@ -127,7 +139,11 @@ describe('GET /api/arquivos/[origem]/[id]', () => {
     expect(gerarMiniatura).not.toHaveBeenCalled();
 
     linha.mockResolvedValue({
-      data: { storage_path: 'obra/doc/foto.jpg', mime_type: 'image/jpeg', nome_arquivo: 'foto.jpg' },
+      data: {
+        storage_path: 'obra/doc/foto.jpg',
+        mime_type: 'image/jpeg',
+        nome_arquivo: 'foto.jpg',
+      },
       error: null,
     });
     gerarMiniatura.mockResolvedValueOnce(null as never);

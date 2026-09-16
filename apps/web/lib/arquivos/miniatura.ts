@@ -23,7 +23,12 @@ export async function gerarMiniatura(bytes: Uint8Array, mime: string): Promise<B
     const { default: sharp } = await import('sharp');
     return await sharp(bytes, { failOn: 'none' })
       .rotate() // respeita a orientação EXIF da foto de celular
-      .resize({ width: LARGURA_MINIATURA, height: LARGURA_MINIATURA, fit: 'inside', withoutEnlargement: true })
+      .resize({
+        width: LARGURA_MINIATURA,
+        height: LARGURA_MINIATURA,
+        fit: 'inside',
+        withoutEnlargement: true,
+      })
       .jpeg({ quality: 80, mozjpeg: true })
       .toBuffer();
   } catch (err) {

@@ -69,7 +69,11 @@ export function resolverArquivo(origem: OrigemArquivo, linha: unknown): ArquivoR
     const d = linha as LinhaDocumento;
     if (!d.storage_path || d.storage_path === 'pending') return null;
     const mime = limparMime(d.mime_type);
-    return { path: d.storage_path, mime, nome: d.nome_arquivo?.trim() || nomeDoCaminho(d.storage_path, mime) };
+    return {
+      path: d.storage_path,
+      mime,
+      nome: d.nome_arquivo?.trim() || nomeDoCaminho(d.storage_path, mime),
+    };
   }
 
   const m = linha as LinhaComMidia;
