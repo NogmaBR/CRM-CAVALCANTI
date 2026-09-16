@@ -96,7 +96,7 @@ export async function classifyAndPersist(mensagemId: string): Promise<
 
   await supabase.from('mensagens_whats').update({ status: 'processando' }).eq('id', mensagemId);
 
-  const [obrasRes, fornRes, grupoRes] = await Promise.all([
+  const [obrasRes, fornRes, catRes, grupoRes] = await Promise.all([
     supabase
       .from('obras')
       .select('id, nome, apelidos')
@@ -104,6 +104,7 @@ export async function classifyAndPersist(mensagemId: string): Promise<
       .eq('status', 'ativa')
       .order('nome', { ascending: true }),
     supabase.from('fornecedores').select('id, nome').is('deleted_at', null),
+    supabase.from('categorias').select('id, nome').is('deleted_at', null).order('nome'),
     msg.grupo_id
       ? supabase.from('whatsapp_grupos').select('obra_id').eq('id', msg.grupo_id).maybeSingle()
       : Promise.resolve({ data: null as { obra_id: string | null } | null }),
@@ -125,6 +126,7 @@ export async function classifyAndPersist(mensagemId: string): Promise<
     contexto: {
       obrasAtivas,
       fornecedoresConhecidos: (fornRes.data ?? []).map((f) => ({ id: f.id, nome: f.nome })),
+      categorias: (catRes.data ?? []).map((c) => ({ id: c.id, nome: c.nome })),
       grupoObraId: grupoRes.data?.obra_id ?? null,
     },
   };

@@ -223,6 +223,7 @@ async function obterOuCriarPagamento(
     .insert({
       obra_id: dados.obra_id,
       fornecedor_id: dados.fornecedor_id ?? null,
+      categoria_id: dados.categoria_id ?? null,
       valor: dados.valor,
       data_pagamento: dados.data_pagamento ?? hoje,
       origem: 'whatsapp',

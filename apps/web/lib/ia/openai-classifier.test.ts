@@ -49,9 +49,9 @@ const SAIDA_BASE = {
   confidence: 0.7,
   valor: 1200,
   data_pagamento: null,
-  obra_id: '11111111-1111-4111-8111-111111111111',
-  fornecedor_id: null,
-  fornecedor_nome_novo: 'Zé',
+  obra_nome: 'Gari',
+  fornecedor_nome: 'Zé',
+  categoria_nome: null,
   tipo_documento: null,
   numero_nf: null,
   descricao: 'areia',
@@ -134,19 +134,52 @@ describe('OpenAIClassifier.classify', () => {
     expect(chamar).toHaveBeenCalledTimes(1);
   });
 
-  it('id de obra inexistente é descartado e a confiança cai', async () => {
+  it('obra citada que não existe fica sem id e a confiança cai', async () => {
     const chamar = vi.fn(async () =>
-      respostaOk({
-        ...SAIDA_BASE,
-        obra_id: '99999999-9999-4999-8999-999999999999',
-        confidence: 0.95,
-      }),
+      respostaOk({ ...SAIDA_BASE, obra_nome: 'Obra Beta', confidence: 0.95 }),
     );
     const out = await new OpenAIClassifier({ chamar, baixarMidia: async () => null }).classify(
       input(),
     );
     expect(out.extracted.obra_id).toBeUndefined();
     expect(out.confidence).toBeLessThanOrEqual(0.5);
+  });
+
+  it('fornecedor é resolvido pelo NOME em código: "Mathias Velho" nunca vira Maximiliano', async () => {
+    const forn = [
+      { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', nome: 'Mathias Velho' },
+      { id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', nome: 'Maximiliano' },
+    ];
+    const chamar = vi.fn(async () =>
+      respostaOk({ ...SAIDA_BASE, fornecedor_nome: 'Mathias Velho', categoria_nome: 'Estrutura' }),
+    );
+    const out = await new OpenAIClassifier({ chamar, baixarMidia: async () => null }).classify(
+      input({
+        contexto: {
+          obrasAtivas: OBRAS,
+          fornecedoresConhecidos: forn,
+          categorias: [
+            {
+              id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+              nome: 'Estrutura (vigas, pilares e lajes)',
+            },
+          ],
+          grupoObraId: null,
+        },
+      }),
+    );
+    expect(out.extracted.fornecedor_id).toBe(forn[0]?.id);
+    expect(out.extracted.fornecedor_nome_novo).toBeUndefined();
+    expect(out.extracted.categoria_id).toBe('cccccccc-cccc-4ccc-8ccc-cccccccccccc');
+  });
+
+  it('fornecedor desconhecido vira fornecedor_nome_novo', async () => {
+    const chamar = vi.fn(async () => respostaOk({ ...SAIDA_BASE, fornecedor_nome: 'Zé da Areia' }));
+    const out = await new OpenAIClassifier({ chamar, baixarMidia: async () => null }).classify(
+      input(),
+    );
+    expect(out.extracted.fornecedor_id).toBeUndefined();
+    expect(out.extracted.fornecedor_nome_novo).toBe('Zé da Areia');
   });
 
   it('anexo recusado (400) refaz só com texto', async () => {

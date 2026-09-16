@@ -22,6 +22,7 @@ export const DadosExtraidosSchema = z.object({
   obra_id: z.string().uuid().optional(),
   fornecedor_id: z.string().uuid().optional(),
   fornecedor_nome_novo: z.string().trim().min(1).max(200).optional(),
+  categoria_id: z.string().uuid().optional(),
   tipo_documento: z.enum(['nota_fiscal', 'comprovante', 'contrato', 'outro']).optional(),
   numero_nf: z.string().trim().min(1).max(60).optional(),
   descricao: z.string().trim().min(1).max(500).optional(),

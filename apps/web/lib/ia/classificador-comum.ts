@@ -1,3 +1,4 @@
+import { normalizarNome, resolverPorNome } from './resolver-nomes';
 import 'server-only';
 import { logger } from '@/lib/log';
 import { validateFileMagicBytes } from '@/lib/schemas/documento';
@@ -59,9 +60,11 @@ export const SaidaSchema = z.object({
   confidence: z.number().min(0).max(1),
   valor: z.number().nullable(),
   data_pagamento: z.string().nullable(),
-  obra_id: z.string().nullable(),
-  fornecedor_id: z.string().nullable(),
-  fornecedor_nome_novo: z.string().nullable(),
+  // Nomes, não ids: o modelo copia UUID mal (2026-09-16: leu "Mathias Velho"
+  // e devolveu o UUID de Maximiliano). Quem resolve nome → id é o código.
+  obra_nome: z.string().nullable(),
+  fornecedor_nome: z.string().nullable(),
+  categoria_nome: z.string().nullable(),
   tipo_documento: z.enum(['nota_fiscal', 'comprovante', 'contrato', 'outro']).nullable(),
   numero_nf: z.string().nullable(),
   descricao: z.string().nullable(),
@@ -102,7 +105,7 @@ Quando houver uma foto ou PDF anexado, ele costuma ser a nota fiscal, o comprova
 Regras:
 1. valor sempre em reais, como número. "1.200,50" -> 1200.5. "1200 conto" -> 1200. Nunca invente valor.
 2. data_pagamento em YYYY-MM-DD. "ontem"/"hoje" resolvem contra a data informada no contexto. Sem data explícita, deixe null.
-3. obra_id e fornecedor_id DEVEM ser um dos UUIDs listados no contexto. Se o nome citado não bate com nenhum da lista, deixe o id null — e, no caso de fornecedor, escreva o nome citado em fornecedor_nome_novo.
+3. obra_nome, fornecedor_nome e categoria_nome são NOMES, nunca ids. Quando reconhecer um da lista do contexto, copie o nome exatamente como está na lista. Se a mensagem cita um fornecedor que não está na lista, escreva o nome como veio na mensagem. Se não cita, null. categoria_nome só quando a mensagem deixa claro em que conta o gasto cai (ex.: "cimento" → Estrutura ou Material; "reboco" → Reboco; "limpeza" → Limpeza); na dúvida, null.
 4. kind — PAGAMENTO VENCE: se há valor e a mensagem trata de pagar/pagou/comprovante/nota, é pagamento, mesmo com anexo.
    - pagamento_completo: tem valor E obra identificada com segurança.
    - pagamento_parcial: fala de pagamento mas falta valor ou obra.
@@ -110,12 +113,18 @@ Regras:
    - documento_obra: arquivo que NÃO é nota nem comprovante: foto do andamento, projeto, planta, proposta, orçamento de fornecedor (cotação, não pagamento), cronograma, contrato, alvará, laudo. Preencha categoria com a pasta: documentacao (contratos, alvarás, laudos, documentos oficiais), proposta, projeto, projeto_aprovado (aprovado na prefeitura), cronograma, orcamentos (cotações), fotos, outro.
    - registro_obra: informação do dia a dia da obra sem valor a lançar (andamento, equipe, problema, decisão, combinado com cliente ou fornecedor). Preencha resumo com uma linha de até 80 caracteres.
    - nao_identificado: saudação, conversa, ou nada operacional.
-   Obra: cite obra_id quando a mensagem menciona a obra por nome ou apelido. Se o contexto informar a obra do grupo e a mensagem não citar outra, use a do grupo.
+   Obra: preencha obra_nome quando a mensagem menciona a obra por nome ou apelido. Se o contexto informar a obra do grupo e a mensagem não citar outra, use a do grupo.
 5. confidence reflete o quanto você tem certeza da EXTRAÇÃO inteira, não de um campo. Abaixo de 0.85 o sistema pede confirmação humana — use isso a seu favor: na dúvida, seja conservador.
 6. pergunta_confirmacao: uma frase curta, em português coloquial, que será enviada de volta no WhatsApp pedindo confirmação. Deve repetir os dados extraídos pra pessoa conferir e terminar pedindo SIM. Null quando kind = nao_identificado.
 7. raciocinio: uma frase explicando a decisão, para o gestor que revisa no painel.
 
 Nunca invente dados que não estão na mensagem. Faltou informação, o campo é null.`;
+
+function obraDoGrupo(input: ClassifierInput) {
+  return input.contexto.grupoObraId
+    ? input.contexto.obrasAtivas.find((o) => o.id === input.contexto.grupoObraId)
+    : undefined;
+}
 
 /** O contexto em texto que vai junto com a mensagem (e com a mídia). */
 export function montarContextoTexto(input: ClassifierInput): string {
@@ -123,21 +132,26 @@ export function montarContextoTexto(input: ClassifierInput): string {
   return [
     `Data de hoje: ${hoje}`,
     '',
-    'Obras ativas (use o UUID exato; entre parênteses, como a equipe chama):',
+    'Obras ativas (copie o nome exato; entre parênteses, como a equipe chama):',
     ...(input.contexto.obrasAtivas.length > 0
       ? input.contexto.obrasAtivas.map(
-          (o) => `- ${o.id} — ${o.nome}${o.apelidos?.length ? ` (${o.apelidos.join(', ')})` : ''}`,
+          (o) => `- ${o.nome}${o.apelidos?.length ? ` (${o.apelidos.join(', ')})` : ''}`,
         )
       : ['- (nenhuma obra ativa cadastrada)']),
     '',
-    'Fornecedores conhecidos (use o UUID exato):',
+    'Fornecedores conhecidos (copie o nome exato):',
     ...(input.contexto.fornecedoresConhecidos.length > 0
-      ? input.contexto.fornecedoresConhecidos.map((f) => `- ${f.id} — ${f.nome}`)
+      ? input.contexto.fornecedoresConhecidos.map((f) => `- ${f.nome}`)
       : ['- (nenhum fornecedor cadastrado)']),
     '',
+    'Categorias (plano de contas; copie o nome exato):',
+    ...(input.contexto.categorias?.length
+      ? input.contexto.categorias.map((c) => `- ${c.nome}`)
+      : ['- (nenhuma categoria cadastrada)']),
+    '',
     `Telefone do remetente: ${input.telefone}`,
-    input.contexto.grupoObraId
-      ? `Obra do grupo de origem (default quando a mensagem não cita outra): ${input.contexto.grupoObraId}`
+    obraDoGrupo(input)
+      ? `Obra do grupo de origem (default quando a mensagem não cita outra): ${obraDoGrupo(input)?.nome}`
       : 'Mensagem sem grupo dedicado a uma obra.',
     input.midiaMime ? `Anexo recebido, tipo: ${input.midiaMime}` : 'Sem anexo.',
     '',
@@ -188,22 +202,20 @@ export async function carregarMidia(
  * vira linha no banco", e é a parte que dá pra verificar sem chamar a API.
  */
 export function montarSaida(saida: Saida, input: ClassifierInput): ClassifierOutput {
-  const obrasValidas = new Set(input.contexto.obrasAtivas.map((o) => o.id));
-  const fornecedoresValidos = new Set(input.contexto.fornecedoresConhecidos.map((f) => f.id));
+  // Nome → id é aqui, determinístico. Obra citada que não casa com nenhuma
+  // ativa fica sem id (o fluxo pergunta); fornecedor citado que não casa
+  // vira `fornecedor_nome_novo` (o "SIM" cria o cadastro).
+  const obra = resolverPorNome(saida.obra_nome, input.contexto.obrasAtivas);
+  const fornecedor = resolverPorNome(saida.fornecedor_nome, input.contexto.fornecedoresConhecidos);
+  const categoria = resolverPorNome(saida.categoria_nome, input.contexto.categorias ?? []);
+  const obraId = obra?.id;
+  const fornecedorId = fornecedor?.id;
 
-  const obraId = saida.obra_id && obrasValidas.has(saida.obra_id) ? saida.obra_id : undefined;
-  const fornecedorId =
-    saida.fornecedor_id && fornecedoresValidos.has(saida.fornecedor_id)
-      ? saida.fornecedor_id
-      : undefined;
-
-  const alucinouId =
-    (saida.obra_id != null && obraId === undefined) ||
-    (saida.fornecedor_id != null && fornecedorId === undefined);
+  const obraNaoCasou = Boolean(normalizarNome(saida.obra_nome)) && obraId === undefined;
 
   const extracted: ClassifierOutput['extracted'] = {
-    raciocinio: alucinouId
-      ? `${saida.raciocinio} [aviso: o classificador citou um id inexistente, que foi descartado]`
+    raciocinio: obraNaoCasou
+      ? `${saida.raciocinio} [aviso: a obra citada ("${saida.obra_nome}") não casou com nenhuma obra ativa]`
       : saida.raciocinio,
   };
 
@@ -213,7 +225,10 @@ export function montarSaida(saida: Saida, input: ClassifierInput): ClassifierOut
   }
   if (obraId) extracted.obra_id = obraId;
   if (fornecedorId) extracted.fornecedor_id = fornecedorId;
-  else if (saida.fornecedor_nome_novo) extracted.fornecedor_nome_novo = saida.fornecedor_nome_novo;
+  else if (normalizarNome(saida.fornecedor_nome)) {
+    extracted.fornecedor_nome_novo = String(saida.fornecedor_nome).trim().slice(0, 200);
+  }
+  if (categoria) extracted.categoria_id = categoria.id;
   if (saida.tipo_documento) extracted.tipo_documento = saida.tipo_documento;
   if (saida.numero_nf) extracted.numero_nf = saida.numero_nf;
   if (saida.descricao) extracted.descricao = saida.descricao;
@@ -226,10 +241,9 @@ export function montarSaida(saida: Saida, input: ClassifierInput): ClassifierOut
     if (doGrupo) extracted.obra_id = doGrupo.id;
   }
 
-  // Um id descartado significa que a extração é menos confiável do que o
-  // modelo achou. Rebaixamos abaixo do limiar de auto-aprovação em vez de
-  // confiar no número que veio junto com o erro.
-  const confidence = alucinouId ? Math.min(saida.confidence, 0.5) : saida.confidence;
+  // Obra citada que não casou: a extração é menos confiável do que o modelo
+  // achou. Abaixo do limiar de auto-aprovação, em vez de confiar no número.
+  const confidence = obraNaoCasou ? Math.min(saida.confidence, 0.5) : saida.confidence;
 
   // Coerência: sem valor ou sem obra não existe "pagamento completo",
   // independente do que o modelo tenha rotulado.
