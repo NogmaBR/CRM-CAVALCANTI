@@ -799,9 +799,17 @@ segundo celular.)
 Depois disso, ligar a cobrança de nota em `/config/automacoes` exige telefone real
 nos fornecedores (`/fornecedores`) — hoje todos estão vazios de propósito.
 
-- [ ] Instância de teste conectada e `/config/whatsapp` verde
-- [ ] Roteiro 13.3 completo (10 itens) no grupo de teste
-- [ ] Testes limpos (13.4)
+> **Registro de 2026-09-16 (fase de testes, seu número 557398489747 + Hugo, grupo "Teste"):**
+> testes 1–7 passaram; 8 e 9 ficaram para a próxima rodada. Quatro bugs achados e
+> corrigidos no caminho (PRs #34–#38): nono dígito do WhatsApp, UUID trocado pelo modelo,
+> pagamento sem obra sem saída, anexo ignorado. Limpeza feita (13.4): 250 pagamentos e
+> 320 documentos de volta ao estado do acervo, 0 mensagens, RAG 611/611. Autorizados
+> (2) e grupo Teste mantidos para continuar amanhã. Acabamento anotado: nome do arquivo
+> arquivado pelo WhatsApp fica `midia.jpeg`/`midia.pdf` (renomear por data/obra).
+
+- [x] Instância de teste conectada e `/config/whatsapp` verde (2026-09-16)
+- [ ] Roteiro 13.3 completo no grupo de teste (1–7 ✓ em 16/09; faltam 8 e 9)
+- [x] Testes limpos (13.4, 2026-09-16 — grupo e autorizados mantidos para a próxima rodada)
 - [ ] Número oficial ligado (13.5) e roteiro repetido com o Cavalcanti
 
 ---

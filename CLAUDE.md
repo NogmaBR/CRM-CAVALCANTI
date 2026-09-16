@@ -749,6 +749,12 @@ humanas na §12 de `SO-FALTA-VOCE.md`. O que muda de regra para quem for mexer:
   "Sheet1" com lixo em vez de lançar; `lerPlanilha` confere a assinatura (zip/OLE2)
   antes. E `jszip`/`xlsx` precisam estar em `package.json` do `apps/web` — o pnpm não
   deixa importar dependência transitiva.
+- **Estado da fase de testes (2026-09-16 03:40):** instância UAZAPI de teste = número do
+  usuário (557398489747, "Cavalcanti"/Társis) conectada, webhook certo, `UAZAPI_*` na
+  Vercel, `whatsapp: true`. Testes 1–7 do roteiro §13.3 passaram; 8 e 9 pendentes. Limpeza
+  aplicada; **autorizados (Társis + Hugo) e o grupo "Teste" `120363412955381272@g.us`
+  continuam cadastrados** para a próxima rodada. Troca para o número do Cavalcanti = §13.5.
+  Acabamento pendente: arquivo do WhatsApp fica `midia.jpeg`/`midia.pdf`.
 - **Anexo nunca é `nao_identificado`.** Foto de canteiro com legenda "inox" voltou do modelo
   como "só uma referência à obra, nada a registrar" e sumiu em silêncio (teste 4 de 16/09).
   `montarSaida` força `documento_obra` (imagem → `fotos`, PDF → `outro`) quando há mídia; o
