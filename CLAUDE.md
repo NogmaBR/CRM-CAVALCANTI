@@ -749,6 +749,11 @@ humanas na §12 de `SO-FALTA-VOCE.md`. O que muda de regra para quem for mexer:
   "Sheet1" com lixo em vez de lançar; `lerPlanilha` confere a assinatura (zip/OLE2)
   antes. E `jszip`/`xlsx` precisam estar em `package.json` do `apps/web` — o pnpm não
   deixa importar dependência transitiva.
+- **O WhatsApp esconde o nono dígito.** O JID de "(73) 99848-9747" chega como
+  `557398489747` (12 dígitos); o cadastro tem 13. Comparar dígito a dígito reprovou os
+  dois números no primeiro contato real (16/09, 10 eventos `ignorada_nao_autorizada`).
+  `lib/whatsapp/telefone-br.ts` gera as duas formas e `buscarAutorizado` busca com `.in()`.
+  Qualquer comparação nova de telefone passa por `variantesTelefoneBR`/`mesmoTelefoneBR`.
 - **O UAZAPI não assina o webhook.** Não há HMAC nem header de segredo no `POST /webhook`
   dele; a tela do painel confirma. Exigir só `x-signature` daria 401 mudo para sempre.
   A prova de origem é o token da instância no corpo. E a tela do painel sugere excluir

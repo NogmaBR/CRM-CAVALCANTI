@@ -14,6 +14,7 @@ import { interpretarComando } from '@/lib/whatsapp/comandos';
 import { interpretarEscolha } from '@/lib/whatsapp/escolha';
 import { ehPerguntaAoAssistente } from '@/lib/whatsapp/pergunta';
 import { interpretarResposta } from '@/lib/whatsapp/resposta';
+import { variantesTelefoneBR } from '@/lib/whatsapp/telefone-br';
 import type { Database } from '@nogma/db';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { classifyAndPersist } from './classify-and-persist';
@@ -643,12 +644,15 @@ async function buscarAutorizado(
 ): Promise<{ id: string; nome: string } | null> {
   // `telefone_norm` é gerada no banco (só dígitos) e única entre vivos
   // (PR #21): a busca é um índice, não a lista inteira normalizada em JS.
+  // As duas formas do celular brasileiro (com e sem o nono dígito) valem:
+  // o WhatsApp manda `557398489747`, o cadastro tem `5573998489747`.
   const { data, error } = await supabase
     .from('autorizados')
     .select('id, nome')
-    .eq('telefone_norm', telefone)
+    .in('telefone_norm', variantesTelefoneBR(telefone))
     .eq('ativo', true)
     .is('deleted_at', null)
+    .limit(1)
     .maybeSingle();
 
   if (error) {
