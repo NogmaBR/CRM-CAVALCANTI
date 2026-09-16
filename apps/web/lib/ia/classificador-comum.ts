@@ -112,7 +112,7 @@ Regras:
    - documento_apenas: é NF/comprovante de um pagamento, sem valor legível.
    - documento_obra: arquivo que NÃO é nota nem comprovante: foto do andamento, projeto, planta, proposta, orçamento de fornecedor (cotação, não pagamento), cronograma, contrato, alvará, laudo. Preencha categoria com a pasta: documentacao (contratos, alvarás, laudos, documentos oficiais), proposta, projeto, projeto_aprovado (aprovado na prefeitura), cronograma, orcamentos (cotações), fotos, outro.
    - registro_obra: informação do dia a dia da obra sem valor a lançar (andamento, equipe, problema, decisão, combinado com cliente ou fornecedor). Preencha resumo com uma linha de até 80 caracteres.
-   - nao_identificado: saudação, conversa, ou nada operacional.
+   - nao_identificado: saudação, conversa, ou nada operacional — SÓ para mensagem SEM anexo. Com foto ou PDF anexado, nunca: um arquivo mandado no grupo da obra sempre vale guardar. Foto de canteiro, parede, laje, equipe, material chegando = documento_obra com categoria fotos, mesmo que a legenda seja só o nome da obra ("inox") ou não exista.
    Obra: preencha obra_nome quando a mensagem menciona a obra por nome ou apelido. Se o contexto informar a obra do grupo e a mensagem não citar outra, use a do grupo.
 5. confidence reflete o quanto você tem certeza da EXTRAÇÃO inteira, não de um campo. Abaixo de 0.85 o sistema pede confirmação humana — use isso a seu favor: na dúvida, seja conservador.
 6. pergunta_confirmacao: uma frase curta, em português coloquial, que será enviada de volta no WhatsApp pedindo confirmação. Deve repetir os dados extraídos pra pessoa conferir e terminar pedindo SIM. Null quando kind = nao_identificado.
@@ -249,10 +249,23 @@ export function montarSaida(saida: Saida, input: ClassifierInput): ClassifierOut
 
   // Coerência: sem valor ou sem obra não existe "pagamento completo",
   // independente do que o modelo tenha rotulado.
-  const kind =
+  let kind: Saida['kind'] =
     saida.kind === 'pagamento_completo' && (extracted.valor == null || extracted.obra_id == null)
       ? 'pagamento_parcial'
       : saida.kind;
+
+  // Anexo nunca é "nada": foto de canteiro com legenda "inox" voltou como
+  // nao_identificado no teste 4 de 16/09 e sumiu em silêncio. Um arquivo
+  // mandado no grupo da obra sempre vale guardar — vira documento_obra, na
+  // pasta fotos (imagem) ou outro (PDF), como o mock já fazia.
+  const mimeAnexo = input.midiaMime?.split(';')[0]?.trim().toLowerCase() ?? '';
+  if (kind === 'nao_identificado' && mimeAnexo) {
+    kind = 'documento_obra';
+    extracted.categoria = MIMES_IMAGEM.has(mimeAnexo) ? 'fotos' : 'outro';
+    if (!extracted.tipo_documento) extracted.tipo_documento = 'outro';
+    extracted.raciocinio =
+      `${extracted.raciocinio ?? ''} [anexo sem classificação vira documento da obra]`.trim();
+  }
 
   return {
     kind,

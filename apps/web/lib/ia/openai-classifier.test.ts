@@ -173,6 +173,53 @@ describe('OpenAIClassifier.classify', () => {
     expect(out.extracted.categoria_id).toBe('cccccccc-cccc-4ccc-8ccc-cccccccccccc');
   });
 
+  it('foto com legenda só "inox" que o modelo chama de nao_identificado vira documento_obra › fotos (teste 4 de 16/09)', async () => {
+    const chamar = vi.fn(async () =>
+      respostaOk({
+        ...SAIDA_BASE,
+        kind: 'nao_identificado',
+        valor: null,
+        obra_nome: 'Inox',
+        fornecedor_nome: null,
+        pergunta_confirmacao: null,
+        raciocinio: 'só diz inox',
+      }),
+    );
+    const inox = {
+      id: '22222222-2222-4222-8222-222222222222',
+      nome: 'INOX Piratini',
+      apelidos: ['Inox'],
+    };
+    const out = await new OpenAIClassifier({ chamar, baixarMidia: async () => null }).classify(
+      input({
+        texto: 'inox',
+        midiaMime: 'image/jpeg',
+        midiaStoragePath: 'whatsapp/x/midia.jpeg',
+        contexto: { obrasAtivas: [...OBRAS, inox], fornecedoresConhecidos: [], grupoObraId: null },
+      }),
+    );
+    expect(out.kind).toBe('documento_obra');
+    expect(out.extracted.categoria).toBe('fotos');
+    expect(out.extracted.obra_id).toBe(inox.id);
+  });
+
+  it('texto sem anexo continua podendo ser nao_identificado', async () => {
+    const chamar = vi.fn(async () =>
+      respostaOk({
+        ...SAIDA_BASE,
+        kind: 'nao_identificado',
+        valor: null,
+        obra_nome: null,
+        fornecedor_nome: null,
+        pergunta_confirmacao: null,
+      }),
+    );
+    const out = await new OpenAIClassifier({ chamar, baixarMidia: async () => null }).classify(
+      input({ texto: 'oi' }),
+    );
+    expect(out.kind).toBe('nao_identificado');
+  });
+
   it('fornecedor desconhecido vira fornecedor_nome_novo', async () => {
     const chamar = vi.fn(async () => respostaOk({ ...SAIDA_BASE, fornecedor_nome: 'Zé da Areia' }));
     const out = await new OpenAIClassifier({ chamar, baixarMidia: async () => null }).classify(
