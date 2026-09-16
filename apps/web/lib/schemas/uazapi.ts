@@ -23,13 +23,28 @@ const msgTipoUazapi = z.enum([
 ]);
 export type MsgTipoUazapi = z.infer<typeof msgTipoUazapi>;
 
-/** Mapeamento tipo do provider → enum do nosso banco (msg_tipo). */
-export function mapTipoToDb(t: MsgTipoUazapi): 'texto' | 'imagem' | 'pdf' | 'audio' {
+export type MsgTipoDb = 'texto' | 'imagem' | 'pdf' | 'audio' | 'video' | 'arquivo';
+
+/**
+ * Tipo do provider → enum do banco (`msg_tipo`).
+ *
+ * `document` só é `pdf` quando o MIME diz que é; planilha, Word e o resto são
+ * `arquivo`. Figurinha é imagem (webp). Vídeo é vídeo — antes virava `texto` e
+ * o arquivo se perdia. `location` continua `texto` (não há arquivo).
+ */
+export function mapTipoToDb(t: MsgTipoUazapi, mime?: string | null): MsgTipoDb {
+  const m = (String(mime ?? '').split(';')[0] ?? '').trim().toLowerCase();
   if (t === 'text') return 'texto';
-  if (t === 'image') return 'imagem';
-  if (t === 'document') return 'pdf'; // aproximação — na prática pode ser PDF ou outro; classificador refina
+  if (t === 'image' || t === 'sticker') return 'imagem';
   if (t === 'audio') return 'audio';
-  // video/sticker/location → tratamos como texto por ora (metadata-only)
+  if (t === 'video') return 'video';
+  if (t === 'document') {
+    if (m === 'application/pdf') return 'pdf';
+    if (m.startsWith('image/')) return 'imagem';
+    if (m.startsWith('video/')) return 'video';
+    if (m.startsWith('audio/')) return 'audio';
+    return 'arquivo';
+  }
   return 'texto';
 }
 

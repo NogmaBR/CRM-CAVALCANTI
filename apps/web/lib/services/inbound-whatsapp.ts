@@ -12,6 +12,7 @@ import {
 import { uploadDocumentBuffer } from '@/lib/storage/documents';
 import { interpretarComando } from '@/lib/whatsapp/comandos';
 import { interpretarEscolha } from '@/lib/whatsapp/escolha';
+import { nomeArquivoDaMidia } from '@/lib/whatsapp/nome-arquivo';
 import { ehPerguntaAoAssistente } from '@/lib/whatsapp/pergunta';
 import { interpretarResposta } from '@/lib/whatsapp/resposta';
 import { variantesTelefoneBR } from '@/lib/whatsapp/telefone-br';
@@ -154,8 +155,8 @@ export async function processarInbound(
   // No canteiro se fala, não se digita. Sem transcrição o áudio chegava ao
   // classificador como `texto: null` e caía direto em `nao_identificado`.
   // Também é o que permite confirmar por áudio ("isso, pode lançar").
-  const tipoDb = mapTipoToDb(payload.type);
-  const midia = await materializarMidia(payload, tipoDb);
+  const tipoDb = mapTipoToDb(payload.type, payload.media?.mimetype);
+  const midia = await materializarMidia(payload, tipoDb, autorizado.nome);
   const textoEfetivo = payload.text?.trim() || midia.transcricao || null;
 
   // ---------------------------------------------------------------------
@@ -588,6 +589,7 @@ interface MidiaMaterializada {
 async function materializarMidia(
   payload: UazapiInbound,
   tipoDb: Database['public']['Enums']['msg_tipo'],
+  remetente: string | null = null,
 ): Promise<MidiaMaterializada> {
   // O v2 nem sempre manda URL http em `fileURL`; o provider dá o link sob
   // demanda pelo id da mensagem.
@@ -619,8 +621,15 @@ async function materializarMidia(
   }
 
   // Prefixo `whatsapp/` é o que a policy de storage espera pra mídia que
-  // ainda não virou `documentos` (migration 20260909140000).
-  const nome = nomeArquivo(payload, mime);
+  // ainda não virou `documentos` (migration 20260909140000). O nome diz
+  // quando, o que e quem — `midia.jpeg` repetido 40 vezes não ajuda ninguém.
+  const nome = nomeArquivoDaMidia({
+    tipo: payload.type,
+    mime,
+    nomeDeclarado: payload.media?.filename,
+    remetente,
+    quando: new Date(toIsoDate(payload.timestamp)),
+  });
   const path = `whatsapp/${payload.id.replace(/[^\w.-]/gu, '_')}/${nome}`;
 
   try {
@@ -634,14 +643,6 @@ async function materializarMidia(
     log.erro('upload_midia_falhou', { err });
     return { storagePath: null, mime, transcricao };
   }
-}
-
-function nomeArquivo(payload: UazapiInbound, mime: string): string {
-  const declarado = payload.media?.filename?.trim();
-  if (declarado) return declarado.replace(/[^\w.\-]/gu, '_').slice(0, 200);
-
-  const ext = mime.split(';')[0]?.split('/')[1]?.replace(/[^\w]/gu, '') || 'bin';
-  return `midia.${ext}`;
 }
 
 /**

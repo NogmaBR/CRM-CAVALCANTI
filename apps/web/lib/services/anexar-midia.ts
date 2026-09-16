@@ -1,4 +1,5 @@
 import 'server-only';
+import { mimeArquivavel } from '@/lib/arquivos/mime-arquivavel';
 import { logger } from '@/lib/log';
 import type { DadosExtraidos } from '@/lib/schemas/dados-extraidos';
 import {
@@ -14,8 +15,6 @@ const log = logger('anexar_midia');
 
 type Client = SupabaseClient<Database>;
 type AnexoTipo = Database['public']['Enums']['anexo_tipo'];
-
-const MIMES_DOCUMENTO = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
 
 export type ResultadoAnexo =
   | { ok: true; documentoId: string; jaExistia: boolean }
@@ -49,7 +48,8 @@ export async function anexarMidiaComoDocumento(
 ): Promise<ResultadoAnexo> {
   if (!args.storagePath) return { ok: false, motivo: 'sem_midia' };
   const mime = args.mime?.split(';')[0]?.trim().toLowerCase() ?? '';
-  if (!MIMES_DOCUMENTO.has(mime)) return { ok: false, motivo: 'mime_nao_suportado' };
+  // Mesma regra do acervo: qualquer arquivo entra, só executável não.
+  if (!mimeArquivavel(mime)) return { ok: false, motivo: 'mime_nao_suportado' };
 
   try {
     const bytes = await downloadDocumentBytes(args.storagePath);
