@@ -1,5 +1,7 @@
+import { Miniatura } from '@/components/arquivos/miniatura';
 import { TopBar } from '@/components/layout/topbar';
 import { Badge } from '@/components/nogma/Badge';
+import { rotuloDoMime, urlDoArquivo } from '@/lib/arquivos/tipo-visual';
 import { type MensagemFeedItem, type MsgStatus, listMensagens } from '@/lib/data/mensagens';
 import {
   MSG_STATUS_LABEL as STATUS_LABEL,
@@ -101,33 +103,56 @@ export default async function WhatsAppPage({
   );
 }
 
+const MSG_TIPO_LABEL: Record<string, string> = {
+  texto: 'Texto',
+  imagem: 'Imagem',
+  pdf: 'PDF',
+  audio: 'Áudio',
+  video: 'Vídeo',
+  arquivo: 'Arquivo',
+};
+
 function MensagemRow({ m }: { m: MensagemFeedItem }) {
   const hasMedia = !!m.midia_mime;
+  const temArquivo = !!m.midia_storage_path;
   return (
-    <li className="wa-item">
+    <li className={temArquivo ? 'wa-item wa-item--com-anexo' : 'wa-item'}>
+      {temArquivo ? (
+        <Miniatura
+          origem="mensagem"
+          id={m.id}
+          mime={m.midia_mime}
+          nome={m.texto_bruto?.trim() || 'Anexo da mensagem'}
+          tamanho={72}
+          href={urlDoArquivo('mensagem', m.id)}
+          novaAba
+        />
+      ) : null}
       <div>
         <div className="wa-item__header">
           <span className="wa-item__phone">{formatTelefone(m.telefone_from)}</span>
           <span>·</span>
           <span>{formatDateTime(m.recebida_em)}</span>
           <span>·</span>
-          <span style={{ textTransform: 'capitalize' }}>{m.tipo}</span>
+          <span>{MSG_TIPO_LABEL[m.tipo] ?? m.tipo}</span>
           {hasMedia ? (
             <>
               <span>·</span>
-              <span aria-label={`Anexo ${m.midia_mime}`}>
+              <span aria-label={`Anexo ${rotuloDoMime(m.midia_mime)}`}>
                 <Paperclip
                   size={12}
                   aria-hidden="true"
                   style={{ verticalAlign: 'middle', marginRight: 4 }}
                 />
-                {m.midia_mime}
+                {rotuloDoMime(m.midia_mime)}
               </span>
             </>
           ) : null}
         </div>
         <div className="wa-item__body">
-          {m.texto_bruto ?? <em style={{ color: 'var(--text-secondary)' }}>(sem texto)</em>}
+          {m.texto_bruto ?? m.texto_transcrito ?? (
+            <em style={{ color: 'var(--text-secondary)' }}>(sem texto)</em>
+          )}
         </div>
         {m.status === 'erro' && m.erro_msg ? (
           <div className="wa-item__error" title={m.erro_msg}>

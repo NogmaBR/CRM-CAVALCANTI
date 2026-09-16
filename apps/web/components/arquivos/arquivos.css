@@ -139,6 +139,31 @@
   overflow: auto;
 }
 
+/* Dentro de um cartão: menor, sem roubar a tela. */
+.arq-visualizador--compacto .arq-imagem img {
+  max-height: 260px;
+  max-width: min(100%, 420px);
+}
+
+.arq-visualizador--compacto .arq-visualizador__pdf {
+  height: 380px;
+  min-height: 280px;
+}
+
+.arq-visualizador--compacto .arq-visualizador__video {
+  max-width: 480px;
+  max-height: 320px;
+}
+
+.arq-visualizador--compacto .arq-visualizador__acoes {
+  gap: 6px 14px;
+}
+
+.arq-visualizador--compacto .arq-acao {
+  font-size: 12px;
+  min-height: 28px;
+}
+
 /* Lightbox: <dialog> nativo em tela cheia. */
 .arq-lightbox {
   padding: 0;

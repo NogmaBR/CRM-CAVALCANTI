@@ -1,8 +1,12 @@
+import { AnexoDaMensagem } from '@/components/arquivos/anexo-da-mensagem';
+import { GradeDeArquivos } from '@/components/arquivos/grade';
 import { TopBar } from '@/components/layout/topbar';
 import { Badge, type BadgeVariant } from '@/components/nogma/Badge';
 import { Button } from '@/components/nogma/Button';
 import { listCategorias } from '@/lib/data/categorias';
+import { listDocumentos } from '@/lib/data/documentos';
 import { listFornecedores } from '@/lib/data/fornecedores';
+import { getMensagem } from '@/lib/data/mensagens';
 import { listObras } from '@/lib/data/obras';
 import { getPagamento } from '@/lib/data/pagamentos';
 import { formatBRL } from '@/lib/schemas/pagamento';
@@ -62,6 +66,17 @@ export default async function PagamentoDetailPage({
     listCategorias(),
   ]);
   if (!pagamento) notFound();
+
+  // Os comprovantes e NFs deste lançamento, e — quando nasceu no WhatsApp — a
+  // mensagem original, para ver a foto que a pessoa mandou mesmo antes de ela
+  // virar documento.
+  const [documentos, mensagemOrigem] = await Promise.all([
+    listDocumentos({ pagamento_id: pagamento.id }),
+    pagamento.criado_via_msg_id ? getMensagem(pagamento.criado_via_msg_id) : Promise.resolve(null),
+  ]);
+  const mostrarMidiaDaMensagem =
+    !!mensagemOrigem?.midia_storage_path &&
+    !documentos.some((d) => d.id === mensagemOrigem.documento_id);
 
   const obra = obras.find((o) => o.id === pagamento.obra_id) ?? null;
   const fornecedor = pagamento.fornecedor_id
@@ -158,6 +173,44 @@ export default async function PagamentoDetailPage({
               swatch={categoria?.cor ?? null}
             />
           </Section>
+
+          <section className="detail-layout__section detail-layout__section--wide">
+            <h3 className="detail-layout__legend">Documentos</h3>
+            {documentos.length > 0 ? (
+              <GradeDeArquivos
+                rotulo="Documentos do pagamento"
+                itens={documentos.map((d) => ({
+                  id: d.id,
+                  mime: d.mime_type,
+                  nome: d.nome_arquivo,
+                  href: `/documentos/${d.id}`,
+                }))}
+              />
+            ) : null}
+            {mostrarMidiaDaMensagem && mensagemOrigem ? (
+              <div style={{ marginTop: documentos.length > 0 ? 14 : 0 }}>
+                <p className="detail-layout__aviso" style={{ marginBottom: 8 }}>
+                  Anexo da mensagem do WhatsApp que originou este lançamento
+                </p>
+                <AnexoDaMensagem
+                  mensagemId={mensagemOrigem.id}
+                  mime={mensagemOrigem.midia_mime}
+                  legenda={mensagemOrigem.texto_bruto}
+                />
+              </div>
+            ) : null}
+            {documentos.length === 0 && !mostrarMidiaDaMensagem ? (
+              <p className="detail-layout__aviso">
+                Nenhum documento ligado a este pagamento.{' '}
+                <Link
+                  href={`/documentos/novo?pagamento_id=${pagamento.id}`}
+                  className="obras-row-link"
+                >
+                  Anexar comprovante ou NF
+                </Link>
+              </p>
+            ) : null}
+          </section>
 
           <Section title="Descrição & notas" span={2}>
             <Row label="Descrição" value={pagamento.descricao ?? '—'} />

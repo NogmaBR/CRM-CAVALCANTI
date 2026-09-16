@@ -1,6 +1,7 @@
 import 'server-only';
-import type { Database } from '@nogma/db';
 import { createClient } from '@/lib/supabase/server';
+import { pareceUuid } from '@/lib/util/uuid';
+import type { Database } from '@nogma/db';
 
 export type MensagemWhats = Database['public']['Tables']['mensagens_whats']['Row'];
 export type MsgStatus = Database['public']['Enums']['msg_status'];
@@ -28,7 +29,9 @@ export async function listMensagens(limit = 100): Promise<MensagemFeedItem[]> {
   if (error) throw new Error(`Falha ao listar mensagens: ${error.message}`);
   const rows = data ?? [];
 
-  const pagamentoIds = [...new Set(rows.map((r) => r.pagamento_id).filter((v): v is string => !!v))];
+  const pagamentoIds = [
+    ...new Set(rows.map((r) => r.pagamento_id).filter((v): v is string => !!v)),
+  ];
 
   const pagamentosMap = new Map<string, { valor: number; obra_id: string }>();
   const obrasMap = new Map<string, string>();
@@ -58,4 +61,20 @@ export async function listMensagens(limit = 100): Promise<MensagemFeedItem[]> {
       pagamento_obra_nome: pagto ? (obrasMap.get(pagto.obra_id) ?? null) : null,
     };
   });
+}
+
+/**
+ * Uma mensagem pelo id — para a página do pagamento mostrar a foto/áudio que
+ * deu origem ao lançamento. `null` se não existe ou a RLS não deixa ver.
+ */
+export async function getMensagem(id: string): Promise<MensagemWhats | null> {
+  if (!pareceUuid(id)) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('mensagens_whats')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw new Error(`Falha ao carregar mensagem: ${error.message}`);
+  return data;
 }

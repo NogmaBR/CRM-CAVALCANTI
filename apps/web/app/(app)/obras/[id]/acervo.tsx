@@ -1,9 +1,38 @@
+import { GradeDeArquivos } from '@/components/arquivos/grade';
 import { EmptyState } from '@/components/nogma/EmptyState';
-import type { PastaDaObra, RegistroComAutor } from '@/lib/data/acervo';
+import { urlDoArquivo } from '@/lib/arquivos/tipo-visual';
+import type { FotoDaObra, PastaDaObra, RegistroComAutor } from '@/lib/data/acervo';
 import { CATEGORIA_LABELS, DOC_ORIGEM_LABEL } from '@/lib/status-labels';
 import { FolderOpen, NotebookPen } from 'lucide-react';
 import Link from 'next/link';
 import './acervo.css';
+
+/**
+ * Faixa com as fotos mais recentes da obra — o que chegou hoje pelo grupo —
+ * e o link para a pasta inteira em grade.
+ */
+export function UltimasFotos({ obraId, fotos }: { obraId: string; fotos: FotoDaObra[] }) {
+  return (
+    <div className="acervo-fotos">
+      <GradeDeArquivos
+        rotulo="Últimas fotos da obra"
+        semLegenda
+        itens={fotos.map((f) => ({
+          id: f.id,
+          mime: f.mime_type,
+          nome: f.nome_arquivo,
+          href: `/documentos/${f.id}`,
+        }))}
+      />
+      <Link
+        href={`/documentos?obra_id=${obraId}&categoria=fotos&visao=grade`}
+        className="acervo-fotos__todas"
+      >
+        Ver todas as fotos →
+      </Link>
+    </div>
+  );
+}
 
 /**
  * As "pastas" da obra: a mesma estrutura que o cliente usa no OneDrive
@@ -80,6 +109,18 @@ export function DiarioDaObra({ registros }: { registros: RegistroComAutor[] }) {
           <p className={r.resumo ? 'acervo-registro__texto' : 'acervo-registro__resumo'}>
             {r.texto}
           </p>
+          {r.midia_storage_path && r.midia_mime?.startsWith('audio/') ? (
+            // biome-ignore lint/a11y/useMediaCaption: a transcrição está logo acima, no texto do registro
+            <audio
+              className="acervo-registro__audio"
+              controls
+              preload="none"
+              src={urlDoArquivo('registro', r.id)}
+            >
+              Seu navegador não toca este áudio.{' '}
+              <a href={urlDoArquivo('registro', r.id, 'baixar')}>Baixar</a>.
+            </audio>
+          ) : null}
         </li>
       ))}
     </ol>

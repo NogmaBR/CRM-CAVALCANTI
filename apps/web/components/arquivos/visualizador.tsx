@@ -23,6 +23,7 @@ export function VisualizadorDeArquivo({
   nome,
   tamanho,
   textoExtraido,
+  compacto = false,
 }: {
   origem: OrigemArquivo;
   id: string;
@@ -30,15 +31,25 @@ export function VisualizadorDeArquivo({
   nome: string;
   tamanho?: number | null;
   textoExtraido?: string | null;
+  /** Dentro de um cartão (pendência, mensagem): imagem e PDF menores. */
+  compacto?: boolean;
 }) {
   const tipo = tipoVisual(mime);
   const abrir = urlDoArquivo(origem, id);
   const baixar = urlDoArquivo(origem, id, 'baixar');
 
   return (
-    <figure className="arq-visualizador" data-tipo={tipo}>
+    <figure
+      className={compacto ? 'arq-visualizador arq-visualizador--compacto' : 'arq-visualizador'}
+      data-tipo={tipo}
+    >
       {tipo === 'imagem' ? (
-        <ImagemComLightbox src={abrir} alt={nome} className="arq-visualizador__imagem" />
+        <ImagemComLightbox
+          src={abrir}
+          alt={nome}
+          miniatura={compacto ? urlDoArquivo(origem, id, 'miniatura') : undefined}
+          className="arq-visualizador__imagem"
+        />
       ) : null}
 
       {tipo === 'pdf' ? (

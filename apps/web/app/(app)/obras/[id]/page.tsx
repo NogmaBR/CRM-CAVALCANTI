@@ -1,7 +1,7 @@
 import { TopBar } from '@/components/layout/topbar';
 import { Badge, type BadgeVariant } from '@/components/nogma/Badge';
 import { Button } from '@/components/nogma/Button';
-import { getPastasDaObra, getRegistrosDaObra } from '@/lib/data/acervo';
+import { getPastasDaObra, getRegistrosDaObra, getUltimasFotosDaObra } from '@/lib/data/acervo';
 import { listLinksDaObra, urlDaPlanilha } from '@/lib/data/compartilhamentos';
 import { type Obra, getObra } from '@/lib/data/obras';
 import { createClient } from '@/lib/supabase/server';
@@ -9,7 +9,7 @@ import { Archive, ArrowLeft, Pencil, RotateCcw } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { archiveObra, restoreObra } from '../actions';
-import { DiarioDaObra, PastasDaObra } from './acervo';
+import { DiarioDaObra, PastasDaObra, UltimasFotos } from './acervo';
 import { CompartilharPlanilha } from './compartilhar-planilha';
 import '../../_shared/detail-layout.css';
 import { Row, Section } from '../../_shared/detail-primitives';
@@ -97,12 +97,13 @@ export default async function ObraDetailPage({
   if (!obra) notFound();
 
   const supabase = await createClient();
-  const [{ data: userData }, links, pastas, registros, { data: pagamentosObra }] =
+  const [{ data: userData }, links, pastas, registros, fotos, { data: pagamentosObra }] =
     await Promise.all([
       supabase.auth.getUser(),
       listLinksDaObra(id),
       getPastasDaObra(id),
       getRegistrosDaObra(id),
+      getUltimasFotosDaObra(id),
       supabase
         .from('pagamentos')
         .select('valor')
@@ -239,6 +240,12 @@ export default async function ObraDetailPage({
             <Row label="Data início" value={formatDate(obra.data_inicio)} />
             <Row label="Data prevista fim" value={formatDate(obra.data_prevista_fim)} />
           </Section>
+
+          {fotos.length > 0 ? (
+            <Section title="Últimas fotos" span={2}>
+              <UltimasFotos obraId={obra.id} fotos={fotos} />
+            </Section>
+          ) : null}
 
           <Section title="Pastas" span={2}>
             <PastasDaObra obraId={obra.id} pastas={pastas} />

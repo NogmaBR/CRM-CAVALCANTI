@@ -1,5 +1,6 @@
 'use client';
 
+import { Miniatura } from '@/components/arquivos/miniatura';
 import { DataTable } from '@/components/data-table';
 import { Badge, type BadgeVariant } from '@/components/nogma/Badge';
 import type { Documento } from '@/lib/data/documentos';
@@ -53,9 +54,20 @@ export function DocumentosTable({
         header: 'Arquivo',
         cell: ({ row }) => {
           const Icon = iconForMime(row.original.mime_type);
+          const ehImagem = row.original.mime_type.startsWith('image/');
           return (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-              <Icon size={14} aria-hidden="true" style={{ opacity: 0.6 }} />
+              {ehImagem ? (
+                <Miniatura
+                  origem="documento"
+                  id={row.original.id}
+                  mime={row.original.mime_type}
+                  nome={row.original.nome_arquivo}
+                  tamanho={32}
+                />
+              ) : (
+                <Icon size={14} aria-hidden="true" style={{ opacity: 0.6 }} />
+              )}
               <Link href={`/documentos/${row.original.id}`} className="obras-row-link">
                 {row.original.nome_arquivo}
               </Link>

@@ -8,6 +8,12 @@ import Link from 'next/link';
 type Option = { value: string; label: string };
 
 export type Agrupamento = '' | 'fornecedor' | 'obra';
+export type Visao = 'lista' | 'grade';
+
+const VISAO_OPTIONS: Array<{ value: Visao; label: string }> = [
+  { value: 'lista', label: 'Lista' },
+  { value: 'grade', label: 'Grade de miniaturas' },
+];
 
 const AGRUPAR_OPTIONS: Array<{ value: Agrupamento; label: string }> = [
   { value: '', label: 'Nenhum' },
@@ -30,6 +36,7 @@ export function DocumentosToolbar({
   obraId,
   categoria,
   agrupar,
+  visao,
   busca,
 }: {
   obras: Option[];
@@ -37,6 +44,7 @@ export function DocumentosToolbar({
   obraId: string;
   categoria: string;
   agrupar: Agrupamento;
+  visao: Visao;
   busca: string;
 }) {
   const submeterAoMudar = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -49,6 +57,7 @@ export function DocumentosToolbar({
     if (obraId) p.set('obra_id', obraId);
     if (categoria) p.set('categoria', categoria);
     if (agrupar) p.set('agrupar', agrupar);
+    if (visao === 'grade') p.set('visao', visao);
     const qs = p.toString();
     return qs ? `/documentos?${qs}` : '/documentos';
   })();
@@ -122,6 +131,22 @@ export function DocumentosToolbar({
         >
           {AGRUPAR_OPTIONS.map((opt) => (
             <option key={opt.value || 'nenhum'} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="docs-toolbar__campo">
+        <span className="docs-toolbar__rotulo">Ver como</span>
+        <select
+          name="visao"
+          className="docs-toolbar__select"
+          defaultValue={visao}
+          onChange={submeterAoMudar}
+        >
+          {VISAO_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
               {opt.label}
             </option>
           ))}

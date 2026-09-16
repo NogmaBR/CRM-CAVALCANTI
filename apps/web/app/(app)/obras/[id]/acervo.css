@@ -90,3 +90,36 @@
   color: var(--text-secondary);
   white-space: pre-wrap;
 }
+
+/* Faixa de últimas fotos: grade + link para a pasta inteira. */
+.acervo-fotos {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.acervo-fotos .arq-grade {
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+}
+
+.acervo-fotos__todas {
+  align-self: flex-end;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.acervo-fotos__todas:hover,
+.acervo-fotos__todas:focus-visible {
+  border-bottom-color: var(--accent);
+  outline: none;
+}
+
+.acervo-registro__audio {
+  display: block;
+  width: 100%;
+  max-width: 480px;
+  margin-top: 8px;
+}

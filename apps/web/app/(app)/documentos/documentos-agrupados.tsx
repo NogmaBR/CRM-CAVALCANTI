@@ -1,3 +1,4 @@
+import { Miniatura } from '@/components/arquivos/miniatura';
 import type { Database } from '@nogma/db';
 import { FileSignature, FileText, Paperclip, Receipt } from 'lucide-react';
 import Link from 'next/link';
@@ -113,7 +114,17 @@ export function DocumentosAgrupados({
                 return (
                   <li key={d.id}>
                     <Link href={`/documentos/${d.id}`} className="docs-grupo__item">
-                      <Icone size={14} aria-hidden="true" className="docs-grupo__icone" />
+                      {d.mime_type.startsWith('image/') ? (
+                        <Miniatura
+                          origem="documento"
+                          id={d.id}
+                          mime={d.mime_type}
+                          nome={d.nome_arquivo}
+                          tamanho={36}
+                        />
+                      ) : (
+                        <Icone size={14} aria-hidden="true" className="docs-grupo__icone" />
+                      )}
 
                       <span className="docs-grupo__arquivo">{d.nome_arquivo}</span>
 
