@@ -749,6 +749,12 @@ humanas na §12 de `SO-FALTA-VOCE.md`. O que muda de regra para quem for mexer:
   "Sheet1" com lixo em vez de lançar; `lerPlanilha` confere a assinatura (zip/OLE2)
   antes. E `jszip`/`xlsx` precisam estar em `package.json` do `apps/web` — o pnpm não
   deixa importar dependência transitiva.
+- **Pagamento sem obra pergunta a obra, e o número lança.** Comprovante de Pix não diz a
+  obra; no grupo sem obra dedicada o fluxo antigo perguntava "confirma?", a pessoa dizia
+  SIM e recebia "faltaram dados, o gestor vai revisar" (teste 2 de 16/09). Agora a pendência
+  de pagamento sem obra nasce com `opcoes` (obras numeradas); o número escolhe a obra E
+  confirma (`definirObraDaPendencia` + `aplicarConfirmacao`); "sim" sozinho responde "falta
+  a obra". O painel (`/pendentes`) continua podendo completar.
 - **Modelo de linguagem copia UUID mal.** No primeiro pagamento real pelo grupo (16/09) o
   classificador leu "Mathias Velho" certo, escreveu Mathias Velho na pergunta de
   confirmação — e devolveu o UUID de Maximiliano. UUID válido, fornecedor errado; a

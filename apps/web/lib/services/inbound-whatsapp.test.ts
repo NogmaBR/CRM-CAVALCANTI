@@ -322,6 +322,57 @@ describe('agente no grupo', () => {
     expect(enviarTexto).toHaveBeenLastCalledWith(GRUPO, 'Lançado ✅ Obrigado!');
   });
 
+  it('pagamento SEM obra (comprovante de Pix): pergunta a obra numerada; "sim" não basta; "1" lança na obra', async () => {
+    const f = db();
+    const opcoes = [{ n: 1, id: GARI_ID, nome: 'Garibaldi', apelidos: ['Gari'] }];
+    classifyAndPersist.mockImplementationOnce(async (mensagemId: string) => {
+      f.linhas('confirmacoes_pendentes').push({
+        id: 'conf-sem-obra',
+        mensagem_id: mensagemId,
+        pergunta_enviada:
+          'R$ 16,00 — Pix para Gilvando. De qual obra é esse pagamento? 1) Garibaldi',
+        tipo: 'pagamento',
+        opcoes,
+        resolvida: false,
+        created_at: new Date().toISOString(),
+      });
+      const m = f.linhas('mensagens_whats').find((x) => x.id === mensagemId);
+      if (m) {
+        m.status = 'classificada';
+        m.dados_extraidos = {
+          valor: 16,
+          data_pagamento: '2026-09-15',
+          fornecedor_nome_novo: 'Gilvando',
+        };
+      }
+      return {
+        ok: true,
+        status: 'classificada',
+        confianca: 0.98,
+        kind: 'pagamento_parcial',
+        confirmacao: { id: 'conf-sem-obra', pergunta: 'De qual obra?' },
+      };
+    });
+    const processar = await inbound();
+    await processar(cliente(f), msg({ type: 'image', text: undefined }) as never);
+
+    // "sim" sem obra: não lança, explica o que falta
+    const r1 = await processar(cliente(f), msg({ text: 'sim' }) as never);
+    expect(r1).toMatchObject({ acao: 'confirmou_pendencia', detalhe: 'falta_obra' });
+    expect(f.linhas('pagamentos')).toHaveLength(0);
+    expect(enviarTexto).toHaveBeenLastCalledWith(GRUPO, expect.stringContaining('Falta a obra'));
+
+    // o número escolhe a obra E confirma
+    const r2 = await processar(cliente(f), msg({ text: '1' }) as never);
+    expect(r2.acao).toBe('confirmou_pendencia');
+    expect(f.linhas('pagamentos')[0]).toMatchObject({
+      obra_id: GARI_ID,
+      valor: 16,
+      origem: 'whatsapp',
+    });
+    expect(enviarTexto).toHaveBeenLastCalledWith(GRUPO, 'Lançado em Garibaldi ✅ Obrigado!');
+  });
+
   it('no privado, a resposta vai para a própria pessoa', async () => {
     const f = db();
     classifyAndPersist.mockResolvedValue({
