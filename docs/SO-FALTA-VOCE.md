@@ -686,6 +686,126 @@ arquivadas do RAG.
 
 ---
 
+## 13. Fase de testes com o SEU número, depois o número do cliente
+
+> **Uma regra que muda tudo:** o número que você conecta no UAZAPI vira o **agente**.
+> O que o dono desse número manda pelo próprio celular chega ao CRM como `fromMe`
+> — e o CRM **aceita** (é assim que o Cavalcanti vai usar o dele). O que o CRM
+> responde pela API é descartado (`wasSentByApi`), por isso não entra em laço.
+>
+> **O UAZAPI não assina o webhook.** A prova de origem é o **token da instância**,
+> que vem dentro do corpo de cada evento: o CRM compara com `UAZAPI_TOKEN`. Ou seja,
+> a mesma variável que liga o envio também protege a entrada — nada a configurar
+> no painel do UAZAPI além da URL e dos filtros abaixo.
+
+### 13.1 — O que você precisa ter em mão
+
+| Item | Onde pegar |
+|---|---|
+| Uma instância no UAZAPI conectada ao **seu** número (QR code) | painel do UAZAPI |
+| `UAZAPI_BASE_URL` (ex.: `https://sua-instancia.uazapi.com`) e o **token da instância** | painel do UAZAPI › instância |
+| Um **segundo celular** para mandar mensagens (o número da instância também funciona, mas você quer ver os dois caminhos) | — |
+| Um grupo de WhatsApp com você (número da instância) + o segundo celular | crie no WhatsApp |
+
+Sobre a tela de webhook do painel: **não use** `https://webhook.nogmacorp.com.br/...`
+(relay). O CRM recebe direto. E o painel sugere excluir `isGroupYes` — **não exclua**:
+isso mataria as mensagens de grupo. `addUrlEvents` e `addUrlTypesMessages` ficam
+**desligados** (eles acrescentam `/messages/…` à URL e a rota não existe).
+
+### 13.2 — Ligar (5 minutos, três comandos e uma tela)
+
+1. No `.env.local` da raiz, acrescente (sem aspas):
+   ```
+   UAZAPI_BASE_URL=https://<sua-instancia>.uazapi.com
+   UAZAPI_TOKEN=<token da instância de teste>
+   ```
+2. Mergeie o PR e aplique a migration do rastro do webhook:
+   ```
+   ! node --env-file=.env.local scripts/apply-migration.mjs 20260916100000_webhook_eventos.sql
+   ```
+3. Grave o webhook certo na instância, as variáveis na Vercel e redeploye — tudo num
+   comando (ele mostra o estado da instância antes e relê o webhook depois):
+   ```
+   ! node --env-file=.env.local scripts/configurar-whatsapp.mjs --webhook --vercel
+   ```
+   Espere o deploy ficar READY (1–2 min). Depois, um envio de teste para o seu
+   segundo celular, pela API:
+   ```
+   ! node --env-file=.env.local scripts/configurar-whatsapp.mjs --teste 55DDDNUMERO
+   ```
+4. Abra **`/config/whatsapp`** (Configurações › Diagnóstico do WhatsApp). Tudo tem
+   que estar verde: instância conectada, webhook (URL, `messages`, `wasSentByApi`
+   excluído, grupos e dono do número chegando, sem sufixos), credencial na Vercel, IA.
+   Vermelho vem com o motivo escrito.
+5. Cadastre **os dois números** (o da instância e o segundo celular) em
+   `/config/autorizados`. Mande "oi" de cada um para o número da instância: os dois
+   aparecem em "Últimos eventos" com a ação que o CRM tomou.
+6. Mande qualquer coisa **no grupo**. Aparece um aviso amarelo "Chegou mensagem de
+   grupo que não está cadastrado: `1203…@g.us` → cadastrar". Clique, dê um nome
+   (ex.: "Teste"), escolha ou não uma obra dedicada, salve.
+
+### 13.3 — Roteiro de testes (o que mandar, o que tem que acontecer)
+
+Faça no grupo, pelo segundo celular; repita 2 ou 3 pelo número da instância.
+
+| # | Você manda | O agente faz | Onde conferir |
+|---|---|---|---|
+| 1 | texto: `paguei 1200 de cimento pro Mathias Velho na Garibaldi hoje` | responde com o resumo e **"Confirma? Responda SIM"** | `/pendentes` mostra a pendência |
+| 2 | `SIM` | "✅ Lançado" | `/pagamentos`: novo pagamento R$ 1.200, Garibaldi, Mathias Velho; `/whatsapp` mostra a mensagem `classificada` |
+| 3 | foto de um comprovante Pix ou nota (com valor) | lê valor/data/fornecedor da imagem, pergunta "Confirma?" | `/pendentes` › dados extraídos |
+| 4 | `não` ou nada por 24 h | pendência recusada/expira, nada é lançado | `/pendentes` |
+| 5 | foto sem valor (canteiro, projeto) | `📁 Obra › Fotos ✔` — arquiva na pasta da obra | `/obras/<id>` › Pastas › Fotos |
+| 6 | PDF de proposta/projeto | `📁 Obra › Proposta ✔` | `/obras/<id>` › Pastas |
+| 7 | áudio: "hoje concretamos a laje do segundo pavimento" | transcreve e `📝 Anotado em Obra ✔` | `/obras/<id>` › Diário |
+| 8 | texto sem obra reconhecível (grupo **sem** obra dedicada) | `1) Aguirre 2) Casa EJ 3) Garibaldi 4) INOX Piratini` — você responde o número | `/pendentes` › tipo obra |
+| 9 | `resumo` / `pendências` / `quanto gastei na garibaldi` | responde com números reais | — |
+| 10 | mensagem de um número **não** cadastrado | silêncio total | `/config/whatsapp` mostra `ignorada_nao_autorizada` |
+
+Se algo não acontecer: `/config/whatsapp` › Últimos eventos diz o que o CRM decidiu
+para cada mensagem (`pendencia_criada`, `arquivado`, `ignorada_grupo_nao_autorizado`,
+`payload_rejeitado` com o campo…). Se nem aparecer lá, o UAZAPI não chamou o CRM:
+volte ao item 4 (webhook).
+
+### 13.4 — Limpar os testes (uma linha)
+
+Tudo que nasceu do seu número e do grupo de teste sai — pagamentos, documentos e
+arquivos, diário, pendências, mensagens, rastro. O acervo e os pagamentos das planilhas
+não têm mensagem por trás e não são tocados.
+
+```
+node --env-file=.env.local scripts/limpar-testes-whatsapp.mjs --telefone 55DDDNUMERO --grupo 1203…@g.us --tudo            # ensaio
+node --env-file=.env.local scripts/limpar-testes-whatsapp.mjs --telefone 55DDDNUMERO --grupo 1203…@g.us --tudo --aplicar  # grava
+```
+
+(`--tudo` também arquiva o autorizado e o grupo de teste. Repita com `--telefone` do
+segundo celular.)
+
+### 13.5 — Trocar para o número oficial do Cavalcanti (os mesmos comandos)
+
+1. No UAZAPI: crie/conecte a instância com o número do Cavalcanti (QR code no celular
+   dele). Copie o token **dessa** instância.
+2. No `.env.local`, troque `UAZAPI_TOKEN` (e `UAZAPI_BASE_URL`, se for outra).
+3. ```
+   ! node --env-file=.env.local scripts/configurar-whatsapp.mjs --webhook --vercel
+   ```
+   (grava o webhook na instância nova, troca o token na Vercel, redeploya).
+4. `/config/autorizados`: cadastre Cavalcanti (o número da instância), o gerente e você.
+   `/config/whatsapp`: confira verde.
+5. Crie o grupo oficial (Cavalcanti + gerente + você). Primeira mensagem → aviso amarelo
+   em `/config/whatsapp` → cadastrar, com **obra dedicada vazia** (o agente pergunta a
+   obra quando precisar; são 4 obras).
+6. Faça o roteiro 13.3 uma vez com o Cavalcanti olhando. Pronto.
+
+Depois disso, ligar a cobrança de nota em `/config/automacoes` exige telefone real
+nos fornecedores (`/fornecedores`) — hoje todos estão vazios de propósito.
+
+- [ ] Instância de teste conectada e `/config/whatsapp` verde
+- [ ] Roteiro 13.3 completo (10 itens) no grupo de teste
+- [ ] Testes limpos (13.4)
+- [ ] Número oficial ligado (13.5) e roteiro repetido com o Cavalcanti
+
+---
+
 ## Se algo der errado, olhe aqui primeiro
 
 | Sintoma | Onde olhar |

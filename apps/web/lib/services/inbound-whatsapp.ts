@@ -25,7 +25,7 @@ import {
   buscarConfirmacaoAberta,
   recusarConfirmacao,
 } from './confirmacoes';
-import { baixarMidia, enviarTexto } from './uazapi';
+import { baixarMidia, enviarTexto, obterLinkDaMidia } from './uazapi';
 
 /**
  * Processamento de uma mensagem inbound do WhatsApp — o fluxo principal do
@@ -535,8 +535,16 @@ async function materializarMidia(
   payload: UazapiInbound,
   tipoDb: Database['public']['Enums']['msg_tipo'],
 ): Promise<MidiaMaterializada> {
-  const url = payload.media?.url;
-  if (!url) return { storagePath: null, mime: null, transcricao: null };
+  // O v2 nem sempre manda URL http em `fileURL`; o provider dá o link sob
+  // demanda pelo id da mensagem.
+  const urlDoPayload = payload.media?.url;
+  const url =
+    urlDoPayload && /^https?:\/\//u.test(urlDoPayload)
+      ? urlDoPayload
+      : payload.media
+        ? await obterLinkDaMidia(payload.id)
+        : null;
+  if (!url) return { storagePath: null, mime: payload.media?.mimetype ?? null, transcricao: null };
 
   const download = await baixarMidia(url);
   if (!download.ok) {

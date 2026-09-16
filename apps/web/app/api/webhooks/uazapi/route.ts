@@ -4,8 +4,9 @@ import { UazapiInboundSchema, normalizeTelefone } from '@/lib/schemas/uazapi';
 import { LIMITES, ipDaRequest, resposta429, verificarLimite } from '@/lib/security/rate-limit';
 import { processarInbound } from '@/lib/services/inbound-whatsapp';
 import { adaptarPayloadUazapi } from '@/lib/webhooks/adaptar-uazapi';
+import { autenticarWebhookUazapi } from '@/lib/webhooks/autenticar-uazapi';
+import { registrarEventoWebhook } from '@/lib/webhooks/eventos';
 import { formaDoPayload } from '@/lib/webhooks/forma-payload';
-import { verifyHmacSignature } from '@/lib/webhooks/hmac';
 import type { Database } from '@nogma/db';
 import { createClient as createSbClient } from '@supabase/supabase-js';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -42,25 +43,17 @@ const log = logger('webhook');
  */
 export async function POST(request: NextRequest) {
   const secret = process.env.WEBHOOK_HMAC_SECRET;
-  if (!secret) {
+  const uazapiToken = process.env.UAZAPI_TOKEN;
+  if (!secret && !uazapiToken) {
     return NextResponse.json({ error: 'webhook secret missing' }, { status: 500 });
   }
 
   const raw = await request.text();
   const signature = request.headers.get('x-signature');
-  if (!verifyHmacSignature(raw, signature, secret)) {
-    // Sem conteúdo: a request é pré-autorizados. O que importa saber é SE o
-    // provider assina e COMO (header presente? tamanho?), para o primeiro
-    // contato não ser um 401 mudo (CEO review, G2).
-    log.aviso('assinatura_invalida', {
-      header_presente: signature != null,
-      tamanho_assinatura: signature?.length ?? 0,
-      tamanho_corpo: raw.length,
-      content_type: request.headers.get('content-type'),
-    });
-    return NextResponse.json({ error: 'invalid signature' }, { status: 401 });
-  }
 
+  // O JSON é lido antes da autenticação porque uma das provas de origem está
+  // no corpo (o token da instância — o UAZAPI não assina). Corpo que não é
+  // JSON não pode provar nada e sai em 400 antes de qualquer processamento.
   let json: unknown;
   try {
     json = JSON.parse(raw);
@@ -69,13 +62,49 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'invalid json' }, { status: 400 });
   }
 
+  const autenticacao = autenticarWebhookUazapi(
+    raw,
+    json,
+    { signature },
+    { hmacSecret: secret, uazapiToken },
+  );
+  if (!autenticacao) {
+    // Sem conteúdo: a request é pré-autorizados. O que importa saber é SE o
+    // provider assina e COMO (header presente? tamanho? token no corpo?),
+    // para o primeiro contato não ser um 401 mudo (CEO review, G2).
+    log.aviso('assinatura_invalida', {
+      header_presente: signature != null,
+      tamanho_assinatura: signature?.length ?? 0,
+      token_no_corpo: typeof (json as Record<string, unknown> | null)?.token === 'string',
+      tamanho_corpo: raw.length,
+      content_type: request.headers.get('content-type'),
+    });
+    return NextResponse.json({ error: 'invalid signature' }, { status: 401 });
+  }
+
   // O provider real embrulha a mensagem em `{ event, instance, message }`;
   // o adaptador traz para a forma canônica das fixtures. Evento que não é
   // mensagem recebida (status de conexão, eco do que a própria instância
   // enviou) vira 200 sem processamento: um 4xx faria o provider reenviar.
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    return NextResponse.json({ error: 'supabase env missing' }, { status: 500 });
+  }
+  // Service role: não há sessão de usuário num webhook. A autorização aqui é
+  // a prova de origem (HMAC ou token da instância) somada à checagem de
+  // `autorizados` lá dentro (o número pode mesmo lançar pagamento).
+  const supabase = createSbClient<Database>(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  // Rastro para /config/whatsapp: nunca conteúdo, só forma e decisão.
+  const rastro = (campos: Parameters<typeof registrarEventoWebhook>[2]) =>
+    registrarEventoWebhook(supabase, autenticacao, campos);
+
   const adaptado = adaptarPayloadUazapi(json);
   if (adaptado === null) {
     log.info('evento_ignorado', { forma: formaDoPayload(json) });
+    await rastro({ bruto: json, acao: 'evento_ignorado' });
     return NextResponse.json({ ok: true, acao: 'evento_ignorado' });
   }
 
@@ -90,6 +119,11 @@ export async function POST(request: NextRequest) {
       campo: first ? first.path.join('.') : null,
       erro: first?.message,
       forma: formaDoPayload(json),
+    });
+    await rastro({
+      bruto: json,
+      acao: 'payload_rejeitado',
+      detalhe: first ? `${first.path.join('.')}: ${first.message}` : 'schema',
     });
     return NextResponse.json(
       {
@@ -108,18 +142,6 @@ export async function POST(request: NextRequest) {
   if (!limite.permitido) {
     return resposta429(limite.retryApos);
   }
-
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    return NextResponse.json({ error: 'supabase env missing' }, { status: 500 });
-  }
-  // Service role: não há sessão de usuário num webhook. A autorização aqui é
-  // o HMAC (a request veio mesmo do provider) somada à checagem de
-  // `autorizados` lá dentro (o número pode mesmo lançar pagamento).
-  const supabase = createSbClient<Database>(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
 
   // -------------------------------------------------------------------------
   // Assíncrono, quando ligado
@@ -146,6 +168,7 @@ export async function POST(request: NextRequest) {
         const { enfileirar } = await import('@/lib/queue/fila');
         const msgId = await enfileirar(supabase, 'whatsapp_inbound', { payload });
         log.info('enfileirada', { fila: 'whatsapp_inbound', msgId });
+        await rastro({ bruto: json, payload, acao: 'enfileirada' });
         return NextResponse.json({ ok: true, acao: 'enfileirada', jobId: msgId });
       } catch (err) {
         // Não conseguiu enfileirar: cai para o processamento síncrono em vez de
@@ -164,6 +187,7 @@ export async function POST(request: NextRequest) {
     });
 
     log.info('processada', { acao: resultado.acao, detalhe: resultado.detalhe });
+    await rastro({ bruto: json, payload, acao: resultado.acao, detalhe: resultado.detalhe });
     return NextResponse.json({ ok: true, ...resultado });
   });
 }

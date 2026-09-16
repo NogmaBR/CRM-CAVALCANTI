@@ -99,10 +99,50 @@ describe('adaptarPayloadUazapi — v2 → canônico', () => {
     expect(tipo('Esquisito')).toBe('text');
   });
 
-  it('mensagem enviada pela própria instância (fromMe) é descartada', () => {
+  it('eco do que o CRM enviou pela API (fromMe + wasSentByApi) é descartado', () => {
+    expect(
+      adaptarPayloadUazapi({
+        ...V2_GRUPO,
+        message: { ...V2_GRUPO.message, fromMe: true, wasSentByApi: true },
+      }),
+    ).toBeNull();
+  });
+
+  it('fromMe sem dizer se foi pela API também é descartado (laço custa mais que uma foto)', () => {
     expect(
       adaptarPayloadUazapi({ ...V2_GRUPO, message: { ...V2_GRUPO.message, fromMe: true } }),
     ).toBeNull();
+  });
+
+  it('o dono do número mandando pelo celular (fromMe, wasSentByApi false) passa como remetente', () => {
+    const p = UazapiInboundSchema.parse(
+      adaptarPayloadUazapi({
+        ...V2_GRUPO,
+        owner: '5551999990000',
+        message: {
+          ...V2_GRUPO.message,
+          fromMe: true,
+          wasSentByApi: false,
+          sender: '5551999990000@s.whatsapp.net',
+        },
+      }),
+    );
+    expect(p.from).toBe('5551999990000@s.whatsapp.net');
+    expect(p.chatId).toBe('120363012345678901@g.us');
+  });
+
+  it('participante identificado por LID: sender_pn (telefone) é o from', () => {
+    const p = UazapiInboundSchema.parse(
+      adaptarPayloadUazapi({
+        ...V2_GRUPO,
+        message: {
+          ...V2_GRUPO.message,
+          sender: '123456789012345@lid',
+          sender_pn: '5551981944829@s.whatsapp.net',
+        },
+      }),
+    );
+    expect(p.from).toBe('5551981944829@s.whatsapp.net');
   });
 
   it('evento que não é mensagem é descartado', () => {

@@ -53,6 +53,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'internal error' }, { status: 500 });
   }
 
+  // Rastro do webhook (/config/whatsapp): sete dias bastam para diagnosticar.
+  const limiteEventos = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { error: erroEventos, count: eventosPurgados } = await supabase
+    .from('webhook_eventos')
+    .delete({ count: 'exact' })
+    .lt('recebido_em', limiteEventos);
+  if (erroEventos) {
+    log.erro('sweep_webhook_eventos_falhou', {
+      rota: 'cron/sweep-pending-documentos',
+      erro: erroEventos,
+    });
+  }
+
   // Housekeeping do rate limiting: sem isso a tabela `rate_limits` só cresce.
   // Best-effort — falhar aqui não invalida a limpeza de documentos órfãos.
   // A dedupe de comandos/perguntas do WhatsApp só precisa cobrir a janela de
@@ -81,6 +94,7 @@ export async function GET(request: NextRequest) {
     ok: true,
     deleted: data?.length ?? 0,
     rate_limits_purgados: rateLimitsPurgados,
+    webhook_eventos_purgados: eventosPurgados ?? 0,
     cutoff,
   });
 }

@@ -7,6 +7,7 @@ import {
   MessagesSquare,
   ScrollText,
   ShieldCheck,
+  Stethoscope,
   Tag,
   Upload,
   User,
@@ -76,6 +77,13 @@ const OPERACAO: Atalho[] = [
 ];
 
 const INTEGRACOES: Atalho[] = [
+  {
+    href: '/config/whatsapp',
+    label: 'Diagnóstico do WhatsApp',
+    hint: 'A instância está conectada? O webhook está certo? O que chegou? Manda uma mensagem de teste.',
+    icon: Stethoscope,
+    admin: true,
+  },
   {
     href: '/whatsapp',
     label: 'Mensagens do WhatsApp',

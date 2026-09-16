@@ -22,7 +22,13 @@ export const metadata = { title: 'Grupos de WhatsApp' };
 export default async function GruposPage({
   searchParams,
 }: {
-  searchParams: Promise<{ success?: string; error?: string; campo?: string; v?: string }>;
+  searchParams: Promise<{
+    success?: string;
+    error?: string;
+    campo?: string;
+    v?: string;
+    chat_id?: string;
+  }>;
 }) {
   const supabase = await createClient();
   const { data: userData } = await supabase.auth.getUser();
@@ -112,7 +118,7 @@ export default async function GruposPage({
                   label="Id do grupo"
                   name="chat_id"
                   required
-                  defaultValue={v.chat_id ?? ''}
+                  defaultValue={v.chat_id ?? params.chat_id ?? ''}
                   placeholder="120363012345678901@g.us"
                   autoComplete="off"
                   error={erroDe('chat_id')}

@@ -157,7 +157,7 @@ aqui — não invente uma integração.
 | Supabase (banco, auth, storage) | ✅ ligado | Todas as migrations aplicadas |
 | Vercel produção | ✅ no ar | Deploy automático a partir da `main` |
 | GitHub | ✅ ligado | `gh` autenticado com escopo `workflow` |
-| **UAZAPI (WhatsApp)** | ❌ **sem credencial** | Código pronto. Sem `UAZAPI_BASE_URL`/`UAZAPI_TOKEN` o CRM recebe e registra, mas **nunca responde** — o ciclo de confirmação não fecha |
+| **UAZAPI (WhatsApp)** | ❌ **sem credencial** — fase de teste planejada (§13 do SO-FALTA-VOCE) | `scripts/configurar-whatsapp.mjs --webhook --vercel` liga uma instância (grava webhook certo + env na Vercel + redeploy); `/config/whatsapp` diagnostica. **O UAZAPI não assina o webhook**: a prova de origem é o token da instância no corpo (`lib/webhooks/autenticar-uazapi.ts`), ou HMAC em `x-signature` |
 | **IA (OpenAI)** | ✅ ligada em produção (`IA_PROVIDER=openai`, 2026-09-15) | **Tudo OpenAI** (`gpt-5.4-mini`: classificador com visão, visão do acervo, assistente; `gpt-4o-mini-transcribe`; `text-embedding-3-small`). Health mostra `classificador/transcricao/busca: true`. **Decisão do usuário (2026-09-15): a chave fica como está, sem rotação** — não volte a sugerir. Anthropic ficou como provider alternativo, sem chave |
 | n8n | ❌ não provisionado | Opcional; o CRM faz tudo sozinho agora |
 | CI (`ci.yml`) | ✅ verde (PR #14) | typecheck, vitest, build, lint do diff. Sem segredo. É o check que vale |
@@ -585,6 +585,20 @@ humanas na §12 de `SO-FALTA-VOCE.md`. O que muda de regra para quem for mexer:
   OpenAI, `MAX_BYTES_*_OPENAI`) — os da Anthropic (4,5/20) continuam só para ela.
   Conciliação (`lib/acervo/conciliar.ts`): mesma obra + valor ±R$0,01 + data ±7 dias +
   **um** candidato; nunca cria pagamento.
+- **WhatsApp pronto para o número real (2026-09-16, PR da fase de testes).** Lido do
+  OpenAPI de docs.uazapi.com (`openapi-bundled.json`): o webhook **não é assinado**; o
+  corpo traz `token` (da instância), `EventType`, `message{messageid, chatid, sender,
+  sender_pn, isGroup, fromMe, wasSentByApi, messageType, text, fileURL…}`. Regras:
+  `fromMe` **passa** quando `wasSentByApi === false` (o dono do número é usuário — o
+  Cavalcanti manda foto do próprio celular); `fromMe` sem `wasSentByApi: false` é
+  descartado (laço custa mais). `sender_pn` antes de `sender` (LID). Mídia sem URL http em
+  `fileURL` → `POST /message/download` pelo `messageid`. Cada evento autenticado vira uma
+  linha em `webhook_eventos` (7 dias, purga no sweep) — é o que `/config/whatsapp` mostra,
+  com botão para cadastrar o grupo que apareceu. No painel do UAZAPI: eventos `messages`,
+  excluir só `wasSentByApi`, **nunca `isGroupYes` nem `fromMeYes`**, `addUrlEvents`/
+  `addUrlTypesMessages` desligados. `scripts/limpar-testes-whatsapp.mjs --telefone …
+  --grupo … --tudo` apaga tudo que nasceu do número de teste. Trocar para o número oficial
+  = trocar `UAZAPI_TOKEN` no `.env.local` e rodar `configurar-whatsapp.mjs --webhook --vercel`.
 - **Grupo no webhook:** `lib/webhooks/adaptar-uazapi.ts` traduz o payload v2
   (`message.chatid/sender/isGroup/messageType`) para o canônico antes do Zod — escrito
   pela documentação, **conferir com o primeiro payload real** (`formaDoPayload` loga).
@@ -735,6 +749,10 @@ humanas na §12 de `SO-FALTA-VOCE.md`. O que muda de regra para quem for mexer:
   "Sheet1" com lixo em vez de lançar; `lerPlanilha` confere a assinatura (zip/OLE2)
   antes. E `jszip`/`xlsx` precisam estar em `package.json` do `apps/web` — o pnpm não
   deixa importar dependência transitiva.
+- **O UAZAPI não assina o webhook.** Não há HMAC nem header de segredo no `POST /webhook`
+  dele; a tela do painel confirma. Exigir só `x-signature` daria 401 mudo para sempre.
+  A prova de origem é o token da instância no corpo. E a tela do painel sugere excluir
+  `isGroupYes` — isso mata os grupos; o diagnóstico acusa.
 - **Limite de mídia não é um só.** 4,5 MB/imagem era o teto da Anthropic e barrava os
   renders do cliente (5–7 MB) na visão da OpenAI, que aceita 20 MB. Cada provider tem a
   sua constante.
