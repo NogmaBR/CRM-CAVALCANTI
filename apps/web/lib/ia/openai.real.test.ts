@@ -76,6 +76,10 @@ describe.skipIf(!REAL)('OpenAI de verdade', () => {
     expect(out.extracted.obra_id).toBe(OBRAS[0]?.id);
     expect(out.extracted.fornecedor_id).toBe(forn[0]?.id);
     expect(out.extracted.fornecedor_nome_novo).toBeUndefined();
+    // descrição curta (o que foi pago), não a frase inteira; cimento cai em Estrutura
+    expect((out.extracted.descricao ?? '').split(' ').length).toBeLessThanOrEqual(5);
+    expect(out.extracted.descricao ?? '').not.toMatch(/paguei|Mathias|Garibaldi|1200/u);
+    expect(out.extracted.categoria_id).toBe(cats[0]?.id);
   }, 60_000);
 
   it('texto: registro de obra', async () => {
