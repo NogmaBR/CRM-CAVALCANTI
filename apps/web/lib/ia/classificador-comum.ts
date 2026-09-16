@@ -117,6 +117,8 @@ Regras:
 5. confidence reflete o quanto você tem certeza da EXTRAÇÃO inteira, não de um campo. Abaixo de 0.85 o sistema pede confirmação humana — use isso a seu favor: na dúvida, seja conservador.
 6. pergunta_confirmacao: uma frase curta, em português coloquial, que será enviada de volta no WhatsApp pedindo confirmação. Deve repetir os dados extraídos pra pessoa conferir e terminar pedindo SIM. Null quando kind = nao_identificado.
 7. raciocinio: uma frase explicando a decisão, para o gestor que revisa no painel.
+8. descricao: O QUE foi pago ou o que é o documento, em 1 a 5 palavras, como entraria numa planilha ("cimento", "areia para reboco", "M.O. pintura", "taxa de alvará"). Nunca repita a frase inteira, nem valor, fornecedor, obra ou data.
+9. categoria_nome: escolha a conta do plano de contas quando o item deixa claro — material de estrutura, concreto, aço, madeira de caixaria, cimento e areia → Estrutura; reboco/argamassa → Reboco; tinta → Pintura; fio, disjuntor, eletricista → Elétrica; cano, registro, hidráulico → Hidráulica; entulho, caçamba, faxina → Limpeza; M.O. de empreiteiro → a etapa que ele executa. Só null quando não dá para saber.
 
 Nunca invente dados que não estão na mensagem. Faltou informação, o campo é null.`;
 
