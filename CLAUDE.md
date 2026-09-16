@@ -749,6 +749,10 @@ humanas na §12 de `SO-FALTA-VOCE.md`. O que muda de regra para quem for mexer:
   "Sheet1" com lixo em vez de lançar; `lerPlanilha` confere a assinatura (zip/OLE2)
   antes. E `jszip`/`xlsx` precisam estar em `package.json` do `apps/web` — o pnpm não
   deixa importar dependência transitiva.
+- **Anexo nunca é `nao_identificado`.** Foto de canteiro com legenda "inox" voltou do modelo
+  como "só uma referência à obra, nada a registrar" e sumiu em silêncio (teste 4 de 16/09).
+  `montarSaida` força `documento_obra` (imagem → `fotos`, PDF → `outro`) quando há mídia; o
+  prompt diz o mesmo. `nao_identificado` fica só para texto puro.
 - **Pagamento sem obra pergunta a obra, e o número lança.** Comprovante de Pix não diz a
   obra; no grupo sem obra dedicada o fluxo antigo perguntava "confirma?", a pessoa dizia
   SIM e recebia "faltaram dados, o gestor vai revisar" (teste 2 de 16/09). Agora a pendência
