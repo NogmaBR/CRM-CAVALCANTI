@@ -17,6 +17,7 @@ const ROTULOS_OBRA: Rotulos = {
   tipo: 'Tipo',
   status: 'Status',
   orcamento: 'Orçamento',
+  valor_contrato: 'Valor do contrato',
   data_inicio: 'Data início',
   data_prevista_fim: 'Data prevista fim',
   'endereco.cep': 'CEP',
@@ -61,6 +62,7 @@ export async function createObra(formData: FormData) {
       tipo: parsed.data.tipo ?? null,
       status: parsed.data.status,
       orcamento: parsed.data.orcamento ?? null,
+      valor_contrato: parsed.data.valor_contrato ?? null,
       data_inicio: parsed.data.data_inicio ?? null,
       data_prevista_fim: parsed.data.data_prevista_fim ?? null,
       endereco: parsed.data.endereco ?? null,
@@ -101,6 +103,9 @@ export async function updateObra(formData: FormData) {
       ...(rest.tipo !== undefined ? { tipo: rest.tipo ?? null } : {}),
       ...(rest.status !== undefined ? { status: rest.status } : {}),
       ...(rest.orcamento !== undefined ? { orcamento: rest.orcamento ?? null } : {}),
+      ...(rest.valor_contrato !== undefined
+        ? { valor_contrato: rest.valor_contrato ?? null }
+        : {}),
       ...(rest.data_inicio !== undefined ? { data_inicio: rest.data_inicio || null } : {}),
       ...(rest.data_prevista_fim !== undefined
         ? { data_prevista_fim: rest.data_prevista_fim || null }

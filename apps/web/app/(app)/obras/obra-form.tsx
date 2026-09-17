@@ -143,6 +143,22 @@ export function ObraForm({
           </div>
           <div className="form-layout__field">
             <Input
+              label="Valor do contrato (R$)"
+              name="valor_contrato"
+              type="number"
+              min="0"
+              step="0.01"
+              defaultValue={
+                v.valor_contrato ??
+                (initial?.valor_contrato != null ? String(initial.valor_contrato) : '')
+              }
+              placeholder="Quanto o cliente paga pela obra"
+              error={erroDe('valor_contrato')}
+              autoFocus={campo === 'valor_contrato'}
+            />
+          </div>
+          <div className="form-layout__field">
+            <Input
               label="Data início"
               name="data_inicio"
               type="date"

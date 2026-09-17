@@ -1,0 +1,136 @@
+/* Resultado da obra (contrato · gasto · recebido · resultado) e parcelas recebidas. */
+
+.resultado-obra {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.resultado-obra__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .resultado-obra__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.resultado-obra__item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.resultado-obra__item--positivo {
+  border-color: color-mix(in srgb, var(--success, #1f7a4d) 45%, var(--border-default));
+}
+
+.resultado-obra__item--negativo {
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--border-default));
+}
+
+.resultado-obra__rotulo {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.resultado-obra__valor {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.resultado-obra__nota {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.resultado-obra__frase {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.recebimentos {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.recebimentos__vazio {
+  margin: 0;
+  padding: 14px;
+  border: 1px dashed var(--border-default);
+  border-radius: 10px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.recebimentos__tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.recebimentos__tabela th,
+.recebimentos__tabela td {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--border-default);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.recebimentos__tabela th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.recebimentos__num {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.recebimentos__acoes {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.recebimentos__origem {
+  margin-left: 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.recebimentos__form {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1.6fr auto;
+  gap: 12px;
+  align-items: end;
+  padding: 14px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+@media (max-width: 900px) {
+  .recebimentos__form {
+    grid-template-columns: 1fr;
+  }
+}
+
+.recebimentos__form-acao {
+  display: flex;
+  align-items: flex-end;
+}

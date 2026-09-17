@@ -4,6 +4,7 @@ import { Button } from '@/components/nogma/Button';
 import { getPastasDaObra, getRegistrosDaObra, getUltimasFotosDaObra } from '@/lib/data/acervo';
 import { listLinksDaObra, urlDaPlanilha } from '@/lib/data/compartilhamentos';
 import { type Obra, getObra } from '@/lib/data/obras';
+import { listRecebimentosDaObra, resumoFinanceiroDaObra } from '@/lib/data/recebimentos';
 import { createClient } from '@/lib/supabase/server';
 import { Archive, ArrowLeft, Pencil, RotateCcw } from 'lucide-react';
 import Link from 'next/link';
@@ -11,8 +12,10 @@ import { notFound } from 'next/navigation';
 import { archiveObra, restoreObra } from '../actions';
 import { DiarioDaObra, PastasDaObra, UltimasFotos } from './acervo';
 import { CompartilharPlanilha } from './compartilhar-planilha';
+import { RecebimentosDaObra, ResultadoDaObra } from './recebimentos';
 import '../../_shared/detail-layout.css';
 import { Row, Section } from '../../_shared/detail-primitives';
+import { estadoDoFormulario } from '../../_shared/form-erros';
 import './compartilhar.css';
 
 export const metadata = { title: 'Obra' };
@@ -90,26 +93,22 @@ export default async function ObraDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string; success?: string }>;
+  searchParams: Promise<{ error?: string; success?: string; campo?: string; v?: string }>;
 }) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
   const obra = await getObra(id);
   if (!obra) notFound();
 
   const supabase = await createClient();
-  const [{ data: userData }, links, pastas, registros, fotos, { data: pagamentosObra }] =
+  const [{ data: userData }, links, pastas, registros, fotos, resumo, recebimentos] =
     await Promise.all([
       supabase.auth.getUser(),
       listLinksDaObra(id),
       getPastasDaObra(id),
       getRegistrosDaObra(id),
       getUltimasFotosDaObra(id),
-      supabase
-        .from('pagamentos')
-        .select('valor')
-        .eq('obra_id', id)
-        .is('deleted_at', null)
-        .in('status_pagto', ['confirmado', 'aguardando']),
+      resumoFinanceiroDaObra(id),
+      listRecebimentosDaObra(id),
     ]);
 
   let papel: string | null = null;
@@ -122,13 +121,17 @@ export default async function ObraDetailPage({
     papel = perfil?.papel ?? null;
   }
   const podeGerenciarLinks = papel === 'admin' || papel === 'gestor';
+  const podeEscreverFinanceiro = papel === 'admin' || papel === 'gestor' || papel === 'financeiro';
+  const estadoForm = estadoDoFormulario(sp);
 
   // A URL completa é montada no servidor: `NEXT_PUBLIC_APP_URL` é a fonte da
   // verdade e o client não deve inferir domínio a partir do `window`.
   const urls = Object.fromEntries(links.map((l) => [l.token, urlDaPlanilha(l.token)]));
 
-  const totalGasto = (pagamentosObra ?? []).reduce((acc, p) => acc + Number(p.valor), 0);
-  const orcamento = obra.orcamento == null ? null : Number(obra.orcamento);
+  const totalGasto = resumo.gasto;
+  // Barra: orçamento planejado; sem ele, o contrato serve de teto.
+  const orcamento =
+    obra.orcamento != null ? Number(obra.orcamento) : (resumo.contrato ?? null);
   const percentual = orcamento && orcamento > 0 ? Math.round((totalGasto / orcamento) * 100) : null;
 
   const status = obra.status ?? 'ativa';
@@ -203,6 +206,7 @@ export default async function ObraDetailPage({
 
           <Section title="Financeiro & prazos">
             <Row label="Orçamento" value={formatBRL(obra.orcamento)} />
+            <Row label="Valor do contrato" value={formatBRL(obra.valor_contrato)} />
             <Row label="Total gasto" value={formatBRL(totalGasto)} />
             {percentual != null ? (
               <div className="obra-orcamento">
@@ -239,6 +243,19 @@ export default async function ObraDetailPage({
             ) : null}
             <Row label="Data início" value={formatDate(obra.data_inicio)} />
             <Row label="Data prevista fim" value={formatDate(obra.data_prevista_fim)} />
+          </Section>
+
+          <Section title="Resultado da obra" span={2}>
+            <ResultadoDaObra resumo={resumo} />
+          </Section>
+
+          <Section title="Recebimentos do cliente" span={2}>
+            <RecebimentosDaObra
+              obraId={obra.id}
+              recebimentos={recebimentos}
+              estado={estadoForm}
+              podeEscrever={podeEscreverFinanceiro && !isArquivada}
+            />
           </Section>
 
           {fotos.length > 0 ? (
