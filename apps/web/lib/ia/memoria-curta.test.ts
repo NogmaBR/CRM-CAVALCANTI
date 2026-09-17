@@ -18,7 +18,7 @@ function banco() {
         telefone_from: '55',
         texto_bruto: 'quanto gastei na garibaldi',
         texto_transcrito: null,
-        classificacao: null,
+        status: 'recebida',
         created_at: '2026-09-16T14:00:00Z',
         dados_extraidos: null,
       },
@@ -28,9 +28,9 @@ function banco() {
         telefone_from: '55',
         texto_bruto: null,
         texto_transcrito: 'paguei 500 pro zé',
-        classificacao: 'pagamento',
+        status: 'classificada',
         created_at: '2026-09-16T14:30:00Z',
-        dados_extraidos: { obra_id: GARI, valor: 500 },
+        dados_extraidos: { kind: 'pagamento', obra_id: GARI, valor: 500 },
       },
       {
         id: 'velha',
@@ -38,7 +38,7 @@ function banco() {
         telefone_from: '55',
         texto_bruto: 'ontem',
         texto_transcrito: null,
-        classificacao: null,
+        status: 'recebida',
         created_at: '2026-09-15T10:00:00Z',
         dados_extraidos: null,
       },
@@ -48,7 +48,7 @@ function banco() {
         telefone_from: '55',
         texto_bruto: 'outro grupo',
         texto_transcrito: null,
-        classificacao: null,
+        status: 'recebida',
         created_at: '2026-09-16T14:40:00Z',
         dados_extraidos: null,
       },
@@ -87,7 +87,7 @@ describe('conversaRecente', () => {
     expect(texto.split('\n')[0]).toContain('Pessoa: quanto gastei na garibaldi');
     expect(texto).toContain('Agente: R$ 120 mil na Garibaldi.');
     expect(texto).toContain('Pessoa: paguei 500 pro zé');
-    expect(texto).toContain('(entendi como: pagamento)');
+    expect(texto).toContain('(entendi como: pagamento, classificada)');
   });
 
   it('sem nada → vazio, sem erro', async () => {

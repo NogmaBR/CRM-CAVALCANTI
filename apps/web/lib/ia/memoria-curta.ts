@@ -17,7 +17,7 @@ type Client = SupabaseClient<Database>;
  * Duas fontes, porque as respostas do agente não ficam em `mensagens_whats`:
  *
  *   - `mensagens_whats` — o que a pessoa mandou (texto ou transcrição), com
- *     o que o CRM fez (`classificacao`).
+ *     o que o CRM fez (tipo lido e status).
  *   - `ai_conversations` → `ai_messages` — perguntas e respostas do
  *     assistente, do mesmo autorizado.
  *
@@ -55,7 +55,7 @@ export async function conversaRecente(supabase: Client, f: FiltroMemoria): Promi
   try {
     let q = supabase
       .from('mensagens_whats')
-      .select('texto_bruto, texto_transcrito, classificacao, recebida_em, created_at')
+      .select('texto_bruto, texto_transcrito, status, dados_extraidos, created_at')
       .gte('created_at', desde)
       .order('created_at', { ascending: false })
       .limit(MAX_TROCAS);
@@ -78,10 +78,15 @@ export async function conversaRecente(supabase: Client, f: FiltroMemoria): Promi
       const texto = curto(m.texto_bruto || m.texto_transcrito);
       if (!texto) continue;
       trocas.push({ papel: 'pessoa', texto, quando: m.created_at ?? '' });
-      if (m.classificacao) {
+      // O que o CRM fez com ela: o tipo lido pelo classificador e o status.
+      const tipo = (m.dados_extraidos as { kind?: unknown } | null)?.kind;
+      const entendido = [typeof tipo === 'string' ? tipo : null, m.status]
+        .filter(Boolean)
+        .join(', ');
+      if (entendido) {
         trocas.push({
           papel: 'agente',
-          texto: `(entendi como: ${m.classificacao})`,
+          texto: `(entendi como: ${entendido})`,
           quando: m.created_at ?? '',
         });
       }
