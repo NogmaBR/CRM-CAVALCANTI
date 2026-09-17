@@ -4,7 +4,7 @@
 > **Mantenha-o atualizado**: ao terminar um trabalho relevante, atualize a §7 (estado)
 > e acrescente em §8 (armadilhas) qualquer erro novo que você cometeu.
 >
-> Última atualização: **2026-09-16**, com a fase de testes do WhatsApp (1–7 ok) e a mídia visível dentro do CRM (PR `feat/ver-midia-no-crm`).
+> Última atualização: **2026-09-17**, com o agente sobre o CRM inteiro (PR `feat/agente-crm-completo`): lucro, ações com SIM, roteador de intenção.
 
 ---
 
@@ -715,6 +715,47 @@ era um redirect de 60 s para o Supabase. Regras para quem for mexer:
   com sessão sem o provedor: `auth.admin.generateLink({type:'magiclink'})` +
   `verifyOtp({token_hash, type:'magiclink'})` funciona.
 
+
+**Agente sobre o CRM inteiro (2026-09-17, PR `feat/agente-crm-completo`; spec em
+`docs/superpowers/specs/2026-09-16-agente-whatsapp-crm-completo-design.md`, ações humanas
+na §15 de `SO-FALTA-VOCE.md`).** O WhatsApp responde qualquer pergunta sobre o CRM e executa
+cinco cadastros com confirmação. Regras para quem for mexer:
+- **Roteador** (`lib/whatsapp/roteador.ts`, passo 5b do inbound): três camadas — puro
+  (mídia e cheiro de dinheiro com número → classificador; `ehPerguntaAoAssistente` →
+  assistente), padrão de ação (`pareceAcao`), e só então o modelo (`lib/ia/intencao.ts`,
+  `json_schema` estrito: `pergunta|acao|lancamento|conversa|nenhuma`). **Lançamento nunca
+  chega ao modelo.** Sem chave, a camada 3 não existe e vale o fluxo antigo.
+- **Allowlist do agente é `FERRAMENTAS_DO_AGENTE`** (`lib/ia/ferramentas/todas.ts`): gasto
+  (`obras.ts`) + CRM (`crm.ts`: `listar_obras`, `resumo_da_obra`, `lucro_por_obra`,
+  `gasto_por_etapa`, `pagamentos_recentes`, `listar_fornecedores`, `documentos_da_obra`,
+  `diario_da_obra`, `recebimentos_da_obra`) + proposta (`acoes.ts`: `propor_*`). Arquivo
+  próprio para não haver import circular (`crm.ts` usa as puras de `obras.ts`).
+- **Ferramenta de ação nunca grava.** Devolve `{ ok, proposta }` (`PropostaSchema`,
+  discriminated union em Zod v4); o laço do assistente recolhe em
+  `RespostaDoAssistente.proposta` (duas → "uma de cada vez"); o inbound grava a mensagem,
+  abre `confirmacoes_pendentes.tipo='acao'` com a proposta em `acao` (JSONB) e manda
+  **`perguntaDaAcao`** — template em `lib/services/acoes-whatsapp.ts`, não texto do modelo.
+  O SIM chama `aplicarAcao`: reivindica (`UPDATE … WHERE resolvida=false`), executa por
+  tipo, marca `resultado='executada'`; falha reabre com `resultado='erro: …'`. `/pendentes`
+  mostra "Ação pedida pelo WhatsApp" e chama a mesma função.
+- **Lucro = `montarResumo`** (`lib/financeiro/resumo-obra.ts`), usado pela página da obra e
+  pela ferramenta: contrato (`obras.valor_contrato`), gasto (`STATUS_QUE_CONTAM`),
+  recebido (`recebimentos`), resultado = recebido − gasto, margem = contrato − gasto.
+  Sem contrato → nulos e o prompt manda dizer que falta (regra 3 do prompt v3).
+- **Memória curta** (`lib/ia/memoria-curta.ts`): 6 trocas / 2 h do mesmo chat
+  (`mensagens_whats` + `ai_messages`) entram no prompt como `CONVERSA RECENTE`;
+  `obraRecente` (última obra classificada no chat ou criada por ação) vira o
+  `grupoObraId` do classificador quando o grupo não tem obra dedicada — é o default, e a
+  pergunta de confirmação sempre repete a obra.
+- Prompt do assistente é **v3** com o bloco COMO ESCREVER (frases curtas, número junto do
+  nome, por extenso curto acima de 10 mil, terminar com o que fazer). Ao mudar, suba
+  `VERSAO`.
+- `lib/ia/agente.real.test.ts` (gated `TESTE_REAL=1`) prova contra a OpenAI: lucro sem
+  contrato, resumo com contrato, proposta de obra, intenção. Rode com
+  `node --env-file=.env.local <script que exporta TESTE_REAL=1 e chama o vitest>`.
+- PR #7 foi **fechado sem merge** em 16/09: a `main` já tinha os chamadores de `emitir()`
+  desde o #19. `FILA_WHATSAPP` continua desligada por decisão (até o número oficial).
+
 ### O que falta — e é ação humana, não código
 
 1. **Repositório é público.** Vai virar privado quando a Vercel for paga
@@ -841,6 +882,20 @@ era um redirect de 60 s para o Supabase. Regras para quem for mexer:
   (`X-Frame-Options`/`Content-Disposition` ausentes) em vez de julgar pela imagem.
 - **`waitUntil: 'networkidle'` não serve para grade de miniaturas**: 9 gerações de miniatura
   em paralelo passam de 30 s na primeira visita. Use `load` + `document.images` completas.
+
+- **`gpt-5.4-mini` recusa function tools com `reasoning_effort` no `/chat/completions`**
+  (400: "set reasoning_effort to 'none'"). O assistente com ferramentas ficou **mudo em
+  produção** desde 15/09 e ninguém viu, porque `perguntar` engole o erro e responde
+  `SEM_CONTEXTO`. `openai-modelo.ts` manda `'none'` quando há tools. Chamada nova com
+  tools: prove contra a API real antes de dizer que funciona.
+- **`pnpm typecheck | head` esconde o erro** (o `head` sai 0). Aconteceu de novo em 16/09:
+  commitei com 4 erros TS. Use `| grep -c "error TS"` e leia o número.
+- **Heredoc/`sed` com `
+` dentro de código** vira quebra de linha real (`join('
+')`
+  quebrou o `assistente.ts`). Para trecho com escape, a ferramenta Edit.
+- **O vitest esconde `console.log` de teste que passa.** Para ver a resposta do modelo
+  num teste real, escreva em `process.stderr`.
 
 ### Git e GitHub
 

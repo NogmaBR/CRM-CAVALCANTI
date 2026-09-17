@@ -32,9 +32,10 @@ SÓ FALTA VOCÊ
   🟡 7. Domínio próprio + Cloudflare
   🟡 8. Indexar a base de conhecimento (embeddings)
   🟡 9. Ligar as automações, com cuidado
-  ⏳ 10. Depois de 16/09: PR #7 e a chave FILA_WHATSAPP
+  ✅ 10. PR #7 fechado em 16/09 (já estava na main pelo #19); FILA_WHATSAPP fica desligada até o número oficial
   🔵 11. Decisão: Fase 6 (vendas) — o que preciso de você para começar
   ⏳ 12. Depois de 16/09: acervo do OneDrive + agente no grupo (PR da branch feat/acervo-onedrive-e-agente-grupo)
+  🔴 15. Agente sobre o CRM inteiro (17/09): mergear o PR, aplicar 1 migration, testar 11–16 no grupo
 
 PARA O DIA 16
   📋 docs/ROTEIRO-DEMO-16-09.md — o que mostrar, em que ordem, e a versão B sem WhatsApp
@@ -861,6 +862,80 @@ continua entrando (o refresh não passa pelo provedor); quem abrir `/login` numa
 A primeira vez que uma miniatura é pedida ela é gerada (`sharp`, ~0,1–0,5 s por foto) e
 guardada em `miniaturas/` no bucket; da segunda em diante é instantânea. As 124 imagens
 do acervo geram sob demanda — não precisa rodar nada.
+
+---
+
+## 15. O agente responde e age sobre o CRM inteiro (17/09) — o que é seu
+
+O PR `feat/agente-crm-completo` faz o WhatsApp responder **qualquer coisa** que esteja no
+CRM (obras, lucro, etapas, fornecedores, notas, documentos, diário, recebimentos) e
+executar cinco cadastros pedidos por texto — **sempre** repetindo o que entendeu e
+esperando o *SIM*: criar obra, cadastrar fornecedor, valor do contrato, recebimento do
+cliente, arquivar obra. Também corrige um defeito antigo: o assistente estava **mudo em
+produção** desde a troca para OpenAI (o modelo recusava ferramentas com raciocínio ligado
+— era o teste 9 do roteiro 13.3 que nunca passou).
+
+### 15.1 — Mergear o PR e aplicar a migration (uma linha, depois do merge)
+
+```bash
+! node --env-file=.env.local scripts/apply-migration.mjs 20260916230000_contrato_recebimentos_acoes.sql
+```
+
+Ela cria `obras.valor_contrato`, a tabela `recebimentos` (parcelas que o cliente da obra
+pagou) e o tipo `acao` nas pendências. Foi **ensaiada** em produção (transação + rollback)
+em 16/09. **Como conferir** (SQL do Supabase):
+
+```sql
+select column_name from information_schema.columns where table_name='obras' and column_name='valor_contrato';
+select count(*) from recebimentos;   -- 0, sem erro
+```
+
+Sem a migration: o agente responde perguntas, mas "criar obra"/"contrato"/"recebimento"
+falham com erro de coluna, e a página da obra dá 500 (ela lê `recebimentos`). **Aplique
+antes de o deploy ficar READY** — ou logo depois.
+
+### 15.2 — Dizer os contratos (pelo WhatsApp ou pelo painel)
+
+Nenhuma das 4 obras tem valor de contrato (nenhum documento do acervo traz). Sem ele o
+agente responde "o valor do contrato ainda não foi informado" — correto, mas você vai
+querer ver o lucro. Duas formas:
+
+- No grupo: `o contrato da Garibaldi é 850 mil` → ele repete → `SIM`.
+- No painel: Obras › obra › Editar › **Valor do contrato (R$)**.
+
+E as parcelas já recebidas: `recebi 300 mil do cliente da Garibaldi em 01/08` → `SIM`,
+ou Obras › obra › **Recebimentos do cliente** › formulário.
+
+### 15.3 — Roteiro de testes (continuação do 13.3, no grupo Teste)
+
+| # | Você manda | O agente faz | Onde conferir |
+|---|---|---|---|
+| 11 | `velho, quanto tô lucrando na garibaldi` | gasto, recebido, resultado; **sem contrato** diz que falta e ensina a informar | — |
+| 12 | `o contrato da garibaldi é 850 mil` → `SIM` | repete "Valor do contrato: R$ 850.000,00 (850 mil)" e pede SIM; depois "✅ Anotado" | `/obras/Garibaldi` › Resultado da obra |
+| 13 | `como está a obra garibaldi` | contrato, gasto, recebido, lucro até agora, margem, por etapa, notas faltando, último diário | — |
+| 14 | `cria uma obra chamada Sítio do Pedro, cliente Pedro Alves` → `SIM` | repete os dados e pede SIM; "✅ Obra criada"; depois foto sem legenda no grupo → arquiva **no Sítio do Pedro** (obra recente, 2 h) | `/obras` (obra nova), `/pendentes` (ficou vazio) |
+| 15 | `cria uma obra chamada Sítio do Pedro` de novo | "já existe uma obra chamada…" — não abre pendência | — |
+| 16 | `bom dia` / `valeu` | uma linha simpática, sem pendência no painel | `/pendentes` continua vazio |
+| 17 | `cadastra o fornecedor Elétrica Silva, CNPJ 12.345.678/0001-90` → `NÃO` | pergunta; "Ok, cancelei. Nada foi gravado." | `/fornecedores` sem o Silva |
+| 18 | `quais obras temos` / `quem mais recebeu esse mês` / `tem projeto aprovado da casa ej` | responde com números/nomes reais, ≤ 12 linhas, termina com "o que fazer em seguida" | — |
+| 19 | `paguei 1200 de cimento pro Mathias na Garibaldi` | **continua** o fluxo de pagamento (pergunta "Confirma?") — nunca vai ao assistente | `/pendentes` |
+
+Toda ação pendente também aparece em `/pendentes` como **"Ação pedida pelo WhatsApp"**,
+com *Confirmar e executar* / *Cancelar* — o painel é outro caminho para o mesmo SIM.
+
+`/config/whatsapp` › Últimos eventos mostra `acao_proposta`, `executou_acao`, `pergunta`
+e, no log da Vercel, `roteador` com `destino`/`motivo`/`intencao` por mensagem.
+
+### 15.4 — Custo e limites
+
+Cada mensagem de texto que **não** é lançamento, comando nem resposta a pendência custa
+uma chamada curta ao modelo (intenção, ~200 tokens) e, se for para o assistente, até 4
+rodadas com ferramentas. Foto e "paguei X" continuam custando o de sempre.
+
+- [ ] PR mergeado e deploy READY
+- [ ] Migration 20260916230000 aplicada e conferida (15.1)
+- [ ] Contratos das 4 obras informados (15.2)
+- [ ] Roteiro 15.3 (11–19) feito no grupo Teste
 
 ---
 

@@ -180,6 +180,9 @@ export default async function PendentesPage({
         ) : (
           <div className="pendentes-list">
             {pendentes.map((item) => {
+              if (item.tipo_pendencia === 'acao') {
+                return <CardPendenciaDeAcao key={item.confirmacao_id} item={item} />;
+              }
               if (item.tipo_pendencia !== 'pagamento') {
                 return <CardPendenciaDeObra key={item.confirmacao_id} item={item} />;
               }
@@ -532,6 +535,47 @@ function CardPendenciaDeObra({ item }: { item: PendenteItem }) {
           </label>
           <Button type="submit" variant="primary" size="sm" leadingIcon={<Check size={14} />}>
             {ehDocumento ? 'Arquivar' : 'Anotar'}
+          </Button>
+        </form>
+      </div>
+    </article>
+  );
+}
+
+/**
+ * Ação pedida pelo WhatsApp ("cria a obra X", "o contrato da Y é…") que ainda
+ * espera o SIM. A pergunta enviada já repete tudo o que vai ser gravado — é o
+ * que o gestor confere aqui. Confirmar executa a mesma função do "SIM".
+ */
+function CardPendenciaDeAcao({ item }: { item: PendenteItem }) {
+  return (
+    <article className="pendente-card">
+      <div className="pendente-card__header">
+        <span className="pendente-card__telefone">{formatTelefone(item.telefone_from)}</span>
+        <span className="pendente-card__data">{formatDateTime(item.recebida_em)}</span>
+        <span className="pendente-card__badge">
+          <Check size={11} />
+          Ação pedida pelo WhatsApp
+        </span>
+      </div>
+
+      <div className="pendente-card__body">
+        {item.texto_bruto ? <div className="pendente-card__texto">{item.texto_bruto}</div> : null}
+        <div className="pendente-card__pergunta">{item.pergunta_enviada}</div>
+      </div>
+
+      <div className="pendente-card__actions">
+        <form action={rejeitarPendencia}>
+          <input type="hidden" name="confirmacao_id" value={item.confirmacao_id} />
+          <Button type="submit" variant="danger" size="sm" leadingIcon={<X size={14} />}>
+            Cancelar
+          </Button>
+        </form>
+        <form action={confirmarPendencia}>
+          <input type="hidden" name="confirmacao_id" value={item.confirmacao_id} />
+          <input type="hidden" name="tipo" value="acao" />
+          <Button type="submit" variant="primary" size="sm" leadingIcon={<Check size={14} />}>
+            Confirmar e executar
           </Button>
         </form>
       </div>

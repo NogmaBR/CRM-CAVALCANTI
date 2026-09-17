@@ -46,9 +46,18 @@ vi.mock('@/lib/storage/documents', () => ({
   makeStoragePath: (o: string, d: string, n: string) => `${o}/${d}/${n}`,
   sha256Hex: () => 'hash-fixo',
 }));
+/** O assistente é ligado por teste: `assistente.disponivel = true` + `perguntar` falso. */
+const assistente = {
+  disponivel: false,
+  perguntar: vi.fn(async (_s: unknown, _e: unknown): Promise<unknown> => null),
+};
 vi.mock('@/lib/ia/assistente', () => ({
-  assistenteDisponivel: () => false,
-  perguntar: vi.fn(),
+  assistenteDisponivel: () => assistente.disponivel,
+  perguntar: (...a: [unknown, unknown]) => assistente.perguntar(...a),
+}));
+vi.mock('@/lib/ia/intencao', () => ({
+  intencaoDisponivel: () => false,
+  classificarIntencao: vi.fn(async () => 'nenhuma'),
 }));
 
 const GRUPO = '120363000000000001@g.us';
@@ -86,6 +95,10 @@ function db() {
       documentos: [],
       registros_obra: [],
       whatsapp_respostas: [],
+      fornecedores: [],
+      recebimentos: [],
+      ai_conversations: [],
+      ai_messages: [],
     },
     {
       unicos: {
@@ -440,5 +453,107 @@ describe('agente no grupo', () => {
       midia_mime: 'video/mp4',
       midia_storage_path: path,
     });
+  });
+});
+
+describe('ações pelo WhatsApp (assistente ligado)', () => {
+  beforeEach(() => {
+    assistente.disponivel = true;
+    assistente.perguntar.mockReset();
+    enviarTexto.mockClear();
+    classifyAndPersist.mockReset();
+  });
+
+  const PROPOSTA = {
+    tipo: 'criar_obra',
+    dados: {
+      nome: 'Sítio do Pedro',
+      cliente: null,
+      tipo_obra: null,
+      endereco: null,
+      valor_contrato: null,
+      data_inicio: null,
+    },
+  };
+
+  it('"cria a obra X" → pergunta por template no grupo; "sim" cria a obra e avisa', async () => {
+    const f = db();
+    assistente.perguntar.mockResolvedValueOnce({
+      texto: 'Preparei. Confira abaixo:',
+      fontes: [],
+      usouModelo: true,
+      ferramentas: [],
+      proposta: PROPOSTA,
+    });
+    const processar = await inbound();
+
+    const r1 = await processar(cliente(f), msg({ text: 'cria uma obra chamada Sítio do Pedro' }));
+    expect(r1.acao).toBe('acao_proposta');
+    expect(classifyAndPersist).not.toHaveBeenCalled();
+    const pergunta = enviarTexto.mock.calls[0]?.[1] ?? '';
+    expect(enviarTexto.mock.calls[0]?.[0]).toBe(GRUPO);
+    expect(pergunta).toContain('Nome da obra: *Sítio do Pedro*');
+    expect(pergunta).toContain('Responda *SIM*');
+    expect(f.linhas('confirmacoes_pendentes')[0]).toMatchObject({ tipo: 'acao', resolvida: false });
+    expect(f.linhas('obras')).toHaveLength(2);
+
+    const r2 = await processar(cliente(f), msg({ text: 'SIM' }));
+    expect(r2.acao).toBe('executou_acao');
+    expect(f.linhas('obras')).toHaveLength(3);
+    expect(f.linhas('obras')[2]).toMatchObject({ nome: 'Sítio do Pedro', status: 'ativa' });
+    expect(enviarTexto.mock.calls[1]?.[1]).toContain('✅ Obra *Sítio do Pedro* criada');
+    expect(f.linhas('confirmacoes_pendentes')[0]).toMatchObject({
+      resolvida: true,
+      resultado: 'executada',
+    });
+  });
+
+  it('"não" cancela a ação sem gravar nada', async () => {
+    const f = db();
+    assistente.perguntar.mockResolvedValueOnce({
+      texto: '',
+      fontes: [],
+      usouModelo: true,
+      ferramentas: [],
+      proposta: PROPOSTA,
+    });
+    const processar = await inbound();
+    await processar(cliente(f), msg({ text: 'cria uma obra chamada Sítio do Pedro' }));
+    const r = await processar(cliente(f), msg({ text: 'não' }));
+    expect(r.acao).toBe('recusou_pendencia');
+    expect(f.linhas('obras')).toHaveLength(2);
+    expect(f.linhas('confirmacoes_pendentes')[0]).toMatchObject({ resolvida: true });
+    expect(enviarTexto.mock.calls[1]?.[1]).toBe('Ok, cancelei. Nada foi gravado.');
+  });
+
+  it('pergunta livre: o assistente responde e nada vira pendência', async () => {
+    const f = db();
+    assistente.perguntar.mockResolvedValueOnce({
+      texto: 'Obra *Garibaldi*: R$ 134.231,05 (134 mil) gastos.',
+      fontes: [],
+      usouModelo: true,
+      ferramentas: [{ ferramenta: 'resumo_da_obra' }],
+    });
+    const processar = await inbound();
+    const r = await processar(cliente(f), msg({ text: 'quanto estou lucrando na garibaldi' }));
+    expect(r.acao).toBe('pergunta');
+    expect(enviarTexto.mock.calls[0]?.[1]).toContain('Garibaldi');
+    expect(f.linhas('confirmacoes_pendentes')).toHaveLength(0);
+    expect(f.linhas('mensagens_whats')).toHaveLength(0);
+  });
+
+  it('lançamento nunca vai ao assistente, mesmo ligado', async () => {
+    const f = db();
+    classifyAndPersist.mockResolvedValueOnce({
+      ok: true,
+      status: 'classificada',
+      confianca: 0.9,
+      kind: 'pagamento',
+      confirmacao: null,
+    });
+    const processar = await inbound();
+    await processar(cliente(f), msg({ text: 'paguei 1200 de cimento pro Mathias na Garibaldi' }));
+    expect(assistente.perguntar).not.toHaveBeenCalled();
+    expect(classifyAndPersist).toHaveBeenCalledTimes(1);
   });
 });

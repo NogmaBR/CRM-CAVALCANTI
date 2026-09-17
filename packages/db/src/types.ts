@@ -370,6 +370,7 @@ export type Database = {
         Row: {
           tipo: string;
           opcoes: Json | null;
+          acao: Json | null;
           chat_id: string | null;
           created_at: string | null;
           id: string;
@@ -386,6 +387,7 @@ export type Database = {
         Insert: {
           tipo?: string;
           opcoes?: Json | null;
+          acao?: Json | null;
           chat_id?: string | null;
           created_at?: string | null;
           id?: string;
@@ -402,6 +404,7 @@ export type Database = {
         Update: {
           tipo?: string;
           opcoes?: Json | null;
+          acao?: Json | null;
           chat_id?: string | null;
           created_at?: string | null;
           id?: string;
@@ -883,6 +886,7 @@ export type Database = {
           observacoes: string | null;
           onedrive_folder_id: string | null;
           orcamento: number | null;
+          valor_contrato: number | null;
           status: Database['public']['Enums']['obra_status'] | null;
           tipo: Database['public']['Enums']['obra_tipo'] | null;
           updated_at: string | null;
@@ -900,6 +904,7 @@ export type Database = {
           observacoes?: string | null;
           onedrive_folder_id?: string | null;
           orcamento?: number | null;
+          valor_contrato?: number | null;
           status?: Database['public']['Enums']['obra_status'] | null;
           tipo?: Database['public']['Enums']['obra_tipo'] | null;
           updated_at?: string | null;
@@ -917,6 +922,7 @@ export type Database = {
           observacoes?: string | null;
           onedrive_folder_id?: string | null;
           orcamento?: number | null;
+          valor_contrato?: number | null;
           status?: Database['public']['Enums']['obra_status'] | null;
           tipo?: Database['public']['Enums']['obra_tipo'] | null;
           updated_at?: string | null;
@@ -1131,6 +1137,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: 'whatsapp_grupos_obra_id_fkey';
+            columns: ['obra_id'];
+            isOneToOne: false;
+            referencedRelation: 'obras';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      recebimentos: {
+        Row: {
+          autorizado_id: string | null;
+          created_at: string;
+          criado_por_user_id: string | null;
+          data_recebimento: string;
+          deleted_at: string | null;
+          descricao: string | null;
+          id: string;
+          obra_id: string;
+          observacoes: string | null;
+          origem: string;
+          updated_at: string;
+          valor: number;
+        };
+        Insert: {
+          autorizado_id?: string | null;
+          created_at?: string;
+          criado_por_user_id?: string | null;
+          data_recebimento: string;
+          deleted_at?: string | null;
+          descricao?: string | null;
+          id?: string;
+          obra_id: string;
+          observacoes?: string | null;
+          origem?: string;
+          updated_at?: string;
+          valor: number;
+        };
+        Update: {
+          autorizado_id?: string | null;
+          created_at?: string;
+          criado_por_user_id?: string | null;
+          data_recebimento?: string;
+          deleted_at?: string | null;
+          descricao?: string | null;
+          id?: string;
+          obra_id?: string;
+          observacoes?: string | null;
+          origem?: string;
+          updated_at?: string;
+          valor?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'recebimentos_obra_id_fkey';
             columns: ['obra_id'];
             isOneToOne: false;
             referencedRelation: 'obras';

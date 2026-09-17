@@ -1,4 +1,5 @@
 import 'server-only';
+import { type Proposta, lerProposta } from '@/lib/ia/ferramentas/acoes';
 import { logger } from '@/lib/log';
 import {
   type DadosLancaveis,
@@ -56,7 +57,7 @@ export type ResultadoConfirmacao =
       motivo: string;
     };
 
-export type TipoPendencia = 'pagamento' | 'obra_documento' | 'obra_registro';
+export type TipoPendencia = 'pagamento' | 'obra_documento' | 'obra_registro' | 'acao';
 
 export type ResultadoRecusa =
   | { ok: true; jaEstavaResolvida: boolean }
@@ -396,6 +397,8 @@ export interface PendenciaAberta {
   perguntaEnviada: string;
   tipo: TipoPendencia;
   opcoes: Opcao[];
+  /** Para `tipo = 'acao'`: a proposta gravada (relida pelo schema no SIM). */
+  acao: Proposta | null;
 }
 
 export async function buscarConfirmacaoAberta(
@@ -408,7 +411,7 @@ export async function buscarConfirmacaoAberta(
   const { data, error } = await supabase
     .from('confirmacoes_pendentes')
     .select(
-      'id, mensagem_id, pergunta_enviada, created_at, tipo, opcoes, mensagens_whats!inner(telefone_from)',
+      'id, mensagem_id, pergunta_enviada, created_at, tipo, opcoes, acao, mensagens_whats!inner(telefone_from)',
     )
     .eq('resolvida', false)
     .eq('mensagens_whats.telefone_from', telefone)
@@ -430,11 +433,12 @@ export async function buscarConfirmacaoAberta(
     perguntaEnviada: linha.pergunta_enviada,
     tipo: lerTipoPendencia(linha.tipo),
     opcoes: lerOpcoes(linha.opcoes),
+    acao: lerProposta(linha.acao),
   };
 }
 
 export function lerTipoPendencia(t: unknown): TipoPendencia {
-  return t === 'obra_documento' || t === 'obra_registro' ? t : 'pagamento';
+  return t === 'obra_documento' || t === 'obra_registro' || t === 'acao' ? t : 'pagamento';
 }
 
 export function lerOpcoes(v: unknown): Opcao[] {

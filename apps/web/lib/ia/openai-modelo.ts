@@ -69,7 +69,10 @@ export class ModeloOpenAI implements ModeloComFerramentas {
       messages: this.mensagens,
       tools: this.tools.length > 0 ? this.tools : undefined,
       max_completion_tokens: MAX_TOKENS,
-      reasoning_effort: 'low',
+      // gpt-5.4-mini recusa function tools com raciocínio ligado no
+      // /chat/completions ("set reasoning_effort to 'none'") — foi o 400 que
+      // deixava o assistente mudo em produção. Sem ferramentas, `low` vale.
+      reasoning_effort: this.tools.length > 0 ? 'none' : 'low',
     });
     if (!r.ok) throw new Error(`OpenAI HTTP ${r.status}: ${r.detalhe}`);
 

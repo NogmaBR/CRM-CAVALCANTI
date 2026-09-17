@@ -4,8 +4,10 @@ import { buscar, fontesDe, montarContexto } from '@/lib/rag/busca';
 import { hojeBR } from '@/lib/util/datas';
 import type { Database } from '@nogma/db';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { FERRAMENTAS_DE_OBRA } from './ferramentas/obras';
+import { type Proposta, ehResultadoDeProposta } from './ferramentas/acoes';
 import { type Ferramenta, executarFerramenta } from './ferramentas/registro';
+import { FERRAMENTAS_DO_AGENTE } from './ferramentas/todas';
+import { conversaRecente, formatarConversa } from './memoria-curta';
 import {
   type CriarModelo,
   type ResultadoDeFerramenta,
@@ -65,6 +67,9 @@ export interface PerguntaAoAssistente {
   autorizadoId?: string | null;
   userId?: string | null;
   obraId?: string | null;
+  /** Para a memória curta (WhatsApp): o chat e o remetente. */
+  chatId?: string | null;
+  telefone?: string | null;
 }
 
 export interface ChamadaDeFerramenta {
@@ -82,6 +87,12 @@ export interface RespostaDoAssistente {
   usouModelo: boolean;
   ferramentas: ChamadaDeFerramenta[];
   conversationId?: string;
+  /**
+   * Uma ferramenta de proposta foi chamada com sucesso: a ação a confirmar.
+   * Quem chamou abre a pendência e manda a pergunta (template); o `texto` do
+   * modelo vira só uma linha de introdução.
+   */
+  proposta?: Proposta;
 }
 
 export interface DependenciasDoAssistente {
@@ -91,6 +102,8 @@ export interface DependenciasDoAssistente {
   ferramentas?: readonly Ferramenta[];
   /** Data de hoje (AAAA-MM-DD), para o modelo resolver "este mês" em datas. */
   hoje?: () => string;
+  /** Substitui a leitura da memória curta (testes). */
+  conversaRecente?: typeof conversaRecente;
 }
 
 export function assistenteDisponivel(): boolean {
@@ -115,7 +128,7 @@ export async function perguntar(
   entrada: PerguntaAoAssistente,
   deps: DependenciasDoAssistente = {},
 ): Promise<RespostaDoAssistente> {
-  const ferramentas = deps.ferramentas ?? FERRAMENTAS_DE_OBRA;
+  const ferramentas = deps.ferramentas ?? FERRAMENTAS_DO_AGENTE;
   const temModelo = deps.criarModelo ? true : assistenteDisponivel();
 
   // 1. Busca por semelhança. Pode não estar configurada; isso já não impede
@@ -149,6 +162,20 @@ export async function perguntar(
   const contexto =
     trechos.length > 0 ? montarContexto(trechos) : '(nenhum lançamento parecido encontrado)';
   const hoje = deps.hoje ? deps.hoje() : hojeBR();
+
+  // Memória curta: só no WhatsApp, e só quando sabemos de quem/onde. Falha
+  // vira memória vazia — nunca segura a resposta.
+  let memoria = '';
+  if (entrada.canal === 'whatsapp' && entrada.autorizadoId && entrada.telefone) {
+    const ler = deps.conversaRecente ?? conversaRecente;
+    const trocas = await ler(supabase, {
+      chatId: entrada.chatId ?? null,
+      telefone: entrada.telefone,
+      autorizadoId: entrada.autorizadoId,
+    });
+    memoria = formatarConversa(trocas);
+  }
+
   const modelo = deps.criarModelo
     ? deps.criarModelo({ sistema: SISTEMA, ferramentas })
     : await criarModeloPadrao({ sistema: SISTEMA, ferramentas });
@@ -158,9 +185,10 @@ export async function perguntar(
   let tokensSaida = 0;
   let texto = '';
   let concluiu = false;
+  const propostas: Proposta[] = [];
 
   try {
-    let resposta = await modelo.perguntar(montarPrompt(entrada.pergunta, contexto, hoje));
+    let resposta = await modelo.perguntar(montarPrompt(entrada.pergunta, contexto, hoje, memoria));
     for (let rodada = 0; rodada < MAX_RODADAS; rodada++) {
       tokensEntrada += resposta.tokensEntrada;
       tokensSaida += resposta.tokensSaida;
@@ -183,6 +211,7 @@ export async function perguntar(
           duracao_ms: r.duracao_ms,
         };
         chamadas.push(registro);
+        if (r.ok && ehResultadoDeProposta(r.resultado)) propostas.push(r.resultado.proposta);
         log[r.ok ? 'info' : 'aviso']('ferramenta', {
           ferramenta: uso.nome,
           ok: r.ok,
@@ -211,6 +240,22 @@ export async function perguntar(
     texto = SEM_RESPOSTA;
   }
 
+  // Uma ação por mensagem: com duas propostas, nenhuma vira pendência — a
+  // pessoa escolhe qual quer primeiro. Com uma, quem chamou pergunta.
+  let proposta: Proposta | undefined;
+  if (propostas.length === 1) {
+    proposta = propostas[0];
+  } else if (propostas.length > 1) {
+    texto = [
+      'Entendi mais de uma coisa para fazer. Faço uma de cada vez.',
+      '',
+      ...propostas.map((p, i) => `${i + 1}) ${tituloCurto(p)}`),
+      '',
+      'Mande de novo só a primeira que você quer.',
+    ].join('\n');
+    proposta = undefined;
+  }
+
   const citadas = extrairCitacoes(texto);
   // Só as fontes que ele de fato citou. Registrar todas as encontradas daria a
   // impressão de que todas sustentaram a resposta.
@@ -221,7 +266,30 @@ export async function perguntar(
     tokensSaida,
   });
 
-  return { texto, fontes: fontesUsadas, usouModelo: true, ferramentas: chamadas, conversationId };
+  return {
+    texto,
+    fontes: fontesUsadas,
+    usouModelo: true,
+    ferramentas: chamadas,
+    conversationId,
+    ...(proposta ? { proposta } : {}),
+  };
+}
+
+/** Título de uma proposta para a lista "uma de cada vez". */
+function tituloCurto(p: Proposta): string {
+  switch (p.tipo) {
+    case 'criar_obra':
+      return `criar a obra "${p.dados.nome}"`;
+    case 'cadastrar_fornecedor':
+      return `cadastrar o fornecedor "${p.dados.nome}"`;
+    case 'definir_contrato':
+      return `anotar o contrato da obra ${p.dados.obra_nome}`;
+    case 'registrar_recebimento':
+      return `registrar um recebimento na obra ${p.dados.obra_nome}`;
+    case 'arquivar_obra':
+      return `arquivar a obra ${p.dados.obra_nome}`;
+  }
 }
 
 /**

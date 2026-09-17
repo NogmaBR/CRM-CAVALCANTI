@@ -1,5 +1,6 @@
 import 'server-only';
 import { type Classifier, type ClassifierInput, getClassifier } from '@/lib/ia/classifier';
+import { obraRecente } from '@/lib/ia/memoria-curta';
 import { logger } from '@/lib/log';
 import { CATEGORIAS, type DocCategoria } from '@/lib/status-labels';
 import { hojeBR } from '@/lib/util/datas';
@@ -128,7 +129,21 @@ export async function classifyAndPersist(mensagemId: string): Promise<
       obrasAtivas,
       fornecedoresConhecidos: (fornRes.data ?? []).map((f) => ({ id: f.id, nome: f.nome })),
       categorias: (catRes.data ?? []).map((c) => ({ id: c.id, nome: c.nome })),
-      grupoObraId: grupoRes.data?.obra_id ?? null,
+      // Obra padrão: a do grupo dedicado; sem ela, a de que se estava falando
+      // neste chat nas últimas horas (criada por ação, ou citada na última
+      // mensagem classificada). É o que faz "vou mandar os documentos aqui"
+      // depois de "cria a obra X" arquivar em X sem perguntar a cada foto.
+      grupoObraId:
+        grupoRes.data?.obra_id ??
+        (msg.autorizado_id
+          ? ((
+              await obraRecente(supabase, {
+                chatId: msg.chat_id,
+                telefone: msg.telefone_from,
+                autorizadoId: msg.autorizado_id,
+              })
+            )?.id ?? null)
+          : null),
     },
   };
 

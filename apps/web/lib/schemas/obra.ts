@@ -30,12 +30,28 @@ const orcamentoOptional = z
   .transform((v) => (v == null || v === '' ? undefined : Number(v)))
   .refine((v) => v === undefined || (Number.isFinite(v) && v >= 0), 'Orçamento deve ser ≥ 0');
 
+/** Quanto o cliente da obra paga pelo todo. Nulo até alguém informar. */
+const valorContratoOptional = z
+  .string()
+  .trim()
+  .optional()
+  .transform((v) => (v == null || v === '' ? undefined : Number(v)))
+  .refine(
+    (v) => v === undefined || (Number.isFinite(v) && v > 0),
+    'Valor do contrato deve ser maior que zero',
+  );
+
 const apelidosOptional = z
   .string()
   .trim()
   .optional()
   .transform((v) =>
-    v == null || v === '' ? [] : v.split(',').map((s) => s.trim()).filter(Boolean),
+    v == null || v === ''
+      ? []
+      : v
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
   );
 
 export const ObraCreateSchema = z.object({
@@ -44,6 +60,7 @@ export const ObraCreateSchema = z.object({
   tipo: obraTipoEnum.optional(),
   status: obraStatusEnum.default('ativa'),
   orcamento: orcamentoOptional,
+  valor_contrato: valorContratoOptional,
   data_inicio: isoDateOptional,
   data_prevista_fim: isoDateOptional,
   endereco: enderecoSchema,
