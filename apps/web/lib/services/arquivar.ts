@@ -1,7 +1,7 @@
 import 'server-only';
 import { mimeArquivavel } from '@/lib/arquivos/mime-arquivavel';
 import { logger } from '@/lib/log';
-import { CATEGORIA_LABELS, type DocCategoria } from '@/lib/status-labels';
+import type { DocCategoria } from '@/lib/status-labels';
 import {
   downloadDocumentBytes,
   makeStoragePath,
@@ -229,12 +229,6 @@ async function ligarMensagem(
   if (error) log.aviso('mensagem_nao_ligada', { mensagemId, erro: error.message });
 }
 
-/** "📁 Garibaldi › Fotos ✔" */
-export function respostaArquivado(obraNome: string, categoria: DocCategoria): string {
-  return `📁 ${obraNome} › ${CATEGORIA_LABELS[categoria].rotulo} ✔`;
-}
-
-/** "📝 Anotado em Garibaldi ✔" */
-export function respostaRegistrado(obraNome: string): string {
-  return `📝 Anotado em ${obraNome} ✔`;
-}
+// Os textos vivem em `lib/whatsapp/textos.ts` (um lugar só, com teste de
+// legibilidade); ficam reexportados aqui para os chamadores de sempre.
+export { respostaArquivado, respostaRegistrado } from '@/lib/whatsapp/textos';

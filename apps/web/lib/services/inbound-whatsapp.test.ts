@@ -209,7 +209,10 @@ describe('agente no grupo', () => {
 
     const r2 = await processar(cliente(f), msg({ text: '2' }) as never);
     expect(r2.acao).toBe('escolheu_obra');
-    expect(enviarTexto).toHaveBeenLastCalledWith(GRUPO, '📁 Garibaldi › Fotos ✔');
+    expect(enviarTexto).toHaveBeenLastCalledWith(
+      GRUPO,
+      expect.stringContaining('Guardei na obra *Garibaldi*, pasta *Fotos*'),
+    );
     expect(f.linhas('documentos')[0]).toMatchObject({
       obra_id: GARI_ID,
       categoria: 'fotos',
@@ -277,10 +280,7 @@ describe('agente no grupo', () => {
     const processar = await inbound();
     const r = await processar(cliente(f), msg({ text: 'não' }) as never);
     expect(r.acao).toBe('recusou_pendencia');
-    expect(enviarTexto).toHaveBeenLastCalledWith(
-      GRUPO,
-      expect.stringContaining('deixei sem arquivar'),
-    );
+    expect(enviarTexto).toHaveBeenLastCalledWith(GRUPO, expect.stringContaining('não guardei'));
     expect(f.linhas('confirmacoes_pendentes')[0]).toMatchObject({
       resolvida: true,
       resultado: 'recusada',
@@ -346,7 +346,7 @@ describe('agente no grupo', () => {
       valor: 1200,
       origem: 'whatsapp',
     });
-    expect(enviarTexto).toHaveBeenLastCalledWith(GRUPO, 'Lançado ✅ Obrigado!');
+    expect(enviarTexto).toHaveBeenLastCalledWith(GRUPO, expect.stringContaining('✅ Lançado'));
   });
 
   it('pagamento SEM obra (comprovante de Pix): pergunta a obra numerada; "sim" não basta; "1" lança na obra', async () => {
@@ -387,7 +387,10 @@ describe('agente no grupo', () => {
     const r1 = await processar(cliente(f), msg({ text: 'sim' }) as never);
     expect(r1).toMatchObject({ acao: 'confirmou_pendencia', detalhe: 'falta_obra' });
     expect(f.linhas('pagamentos')).toHaveLength(0);
-    expect(enviarTexto).toHaveBeenLastCalledWith(GRUPO, expect.stringContaining('Falta a obra'));
+    expect(enviarTexto).toHaveBeenLastCalledWith(
+      GRUPO,
+      expect.stringContaining('Falta dizer a obra'),
+    );
 
     // o número escolhe a obra E confirma
     const r2 = await processar(cliente(f), msg({ text: '1' }) as never);
@@ -397,7 +400,10 @@ describe('agente no grupo', () => {
       valor: 16,
       origem: 'whatsapp',
     });
-    expect(enviarTexto).toHaveBeenLastCalledWith(GRUPO, 'Lançado em Garibaldi ✅ Obrigado!');
+    expect(enviarTexto).toHaveBeenLastCalledWith(
+      GRUPO,
+      expect.stringContaining('Obra: *Garibaldi*'),
+    );
   });
 
   it('no privado, a resposta vai para a própria pessoa', async () => {

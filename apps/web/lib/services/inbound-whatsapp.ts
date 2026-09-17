@@ -16,9 +16,10 @@ import { nomeArquivoDaMidia } from '@/lib/whatsapp/nome-arquivo';
 import { interpretarResposta } from '@/lib/whatsapp/resposta';
 import { decidirDestino } from '@/lib/whatsapp/roteador';
 import { variantesTelefoneBR } from '@/lib/whatsapp/telefone-br';
+import { RESPOSTAS, respostaPagamentoLancado } from '@/lib/whatsapp/textos';
 import type { Database } from '@nogma/db';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { RESPOSTA_ACAO_CANCELADA, abrirPendenciaDeAcao, aplicarAcao } from './acoes-whatsapp';
+import { abrirPendenciaDeAcao, aplicarAcao } from './acoes-whatsapp';
 import { classifyAndPersist } from './classify-and-persist';
 import { executarComando } from './comandos-whatsapp';
 import {
@@ -84,19 +85,7 @@ export interface ResultadoInbound {
  */
 const JANELA_RESPOSTA_HORAS = 24;
 
-/** Respostas automáticas. Texto curto de propósito: WhatsApp de obra. */
-const RESPOSTAS = {
-  confirmado: 'Lançado ✅ Obrigado!',
-  confirmadoSemPagamento:
-    'Recebi sua confirmação, mas faltaram dados pra lançar automaticamente. ' +
-    'O gestor vai revisar no painel.',
-  recusado: 'Ok, cancelei esse lançamento. Se quiser, é só mandar de novo com os dados corretos.',
-  faltaObra: 'Falta a obra: responda só o número dela na lista acima (ou NÃO para cancelar).',
-  obraRecusada: 'Ok, deixei sem arquivar. O gestor pode arquivar pelo painel.',
-  falhaTemporaria:
-    'Não consegui processar sua mensagem agora. Ela ficou registrada; ' +
-    'o gestor pode lançar pelo painel, ou você pode reenviar daqui a alguns minutos.',
-} as const;
+// As respostas fixas vivem em `lib/whatsapp/textos.ts`, com teste de legibilidade.
 
 export async function processarInbound(
   supabase: Client,
@@ -203,9 +192,7 @@ export async function processarInbound(
       log.aviso('acao_nao_executada', { codigo: r.codigo, motivo: r.motivo });
       await enviarTexto(
         destino,
-        r.codigo === 'ja_resolvida'
-          ? 'Essa ação já foi resolvida. Se precisar, peça de novo.'
-          : RESPOSTAS.falhaTemporaria,
+        r.codigo === 'ja_resolvida' ? RESPOSTAS.acaoJaResolvida : RESPOSTAS.falhaTemporaria,
       );
       return { acao: 'executou_acao', detalhe: r.codigo };
     }
@@ -226,7 +213,7 @@ export async function processarInbound(
         tipoDb,
         status: 'recusada',
       });
-      await enviarTexto(destino, RESPOSTA_ACAO_CANCELADA);
+      await enviarTexto(destino, RESPOSTAS.acaoCancelada);
       return { acao: 'recusou_pendencia', detalhe: 'acao' };
     }
   }
@@ -498,6 +485,19 @@ export async function processarInbound(
     }
   }
 
+  // Texto que não deu em nada (`nao_identificado`): antes era silêncio, e a
+  // pessoa achava que tinha lançado. Uma linha dizendo como mandar, uma vez
+  // só. Mídia não entra aqui — anexo nunca é `nao_identificado`.
+  if (
+    'ok' in classificacao &&
+    classificacao.ok &&
+    classificacao.kind === 'nao_identificado' &&
+    !midia.storagePath &&
+    !(await jaRespondida(supabase, payload.id, 'nao_entendi'))
+  ) {
+    await enviarTexto(destino, RESPOSTAS.naoEntendi);
+  }
+
   // Documento ou registro de obra resolvido sem pergunta: avisa onde foi
   // parar ("📁 Garibaldi › Fotos ✔"). Uma vez só, mesmo com retry.
   if ('ok' in classificacao && classificacao.ok && classificacao.resposta) {
@@ -567,7 +567,7 @@ async function resolverPendencia(ctx: ContextoResolucao): Promise<ResultadoInbou
 
     await enviarTexto(
       destino,
-      ctx.rotuloObra ? `Lançado em ${ctx.rotuloObra} ✅ Obrigado!` : RESPOSTAS.confirmado,
+      await textoDoLancado(supabase, resultado.pagamentoId, ctx.rotuloObra),
     );
     return { acao: 'confirmou_pendencia', pagamentoId: resultado.pagamentoId };
   }
@@ -822,4 +822,39 @@ async function buscarAutorizado(
     });
   }
   return null;
+}
+
+/**
+ * "✅ Lançado: R$ 1.200,00 · Obra: Garibaldi · Fornecedor: Mathias" — relê o
+ * pagamento gravado para a resposta repetir o que foi gravado, não o que se
+ * achou que ia ser. Falha na leitura cai no texto curto de sempre.
+ */
+async function textoDoLancado(
+  supabase: Client,
+  pagamentoId: string,
+  rotuloObra?: string,
+): Promise<string> {
+  try {
+    const { data } = await supabase
+      .from('pagamentos')
+      .select('valor, obra_id, fornecedor_id')
+      .eq('id', pagamentoId)
+      .maybeSingle();
+    if (!data) return RESPOSTAS.confirmado;
+    const [obra, fornecedor] = await Promise.all([
+      data.obra_id
+        ? supabase.from('obras').select('nome').eq('id', data.obra_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+      data.fornecedor_id
+        ? supabase.from('fornecedores').select('nome').eq('id', data.fornecedor_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+    return respostaPagamentoLancado({
+      valor: Number(data.valor),
+      obra: obra.data?.nome ?? rotuloObra ?? null,
+      fornecedor: fornecedor.data?.nome ?? null,
+    });
+  } catch {
+    return RESPOSTAS.confirmado;
+  }
 }

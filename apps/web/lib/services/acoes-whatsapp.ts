@@ -1,6 +1,7 @@
 import 'server-only';
 import { type Proposta, lerProposta } from '@/lib/ia/ferramentas/acoes';
 import { logger } from '@/lib/log';
+import { RESPOSTAS, brl, dataBR, valorLegivel } from '@/lib/whatsapp/textos';
 import type { Database } from '@nogma/db';
 import type { Json } from '@nogma/db/types';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -38,32 +39,8 @@ type Client = SupabaseClient<Database>;
 // Texto
 // ---------------------------------------------------------------------------
 
-export function brl(n: number): string {
-  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
-
-/** "850 mil", "1,2 milhão", "12,5 mil" — para conferir de ouvido. */
-export function porExtensoCurto(n: number): string | null {
-  if (n >= 1_000_000) {
-    const m = Math.round((n / 1_000_000) * 10) / 10;
-    return `${m.toLocaleString('pt-BR')} ${m === 1 ? 'milhão' : 'milhões'}`;
-  }
-  if (n >= 10_000) {
-    const k = Math.round((n / 1_000) * 10) / 10;
-    return `${k.toLocaleString('pt-BR')} mil`;
-  }
-  return null;
-}
-
-function valorLegivel(n: number): string {
-  const extenso = porExtensoCurto(n);
-  return extenso ? `${brl(n)} (${extenso})` : brl(n);
-}
-
-export function dataBR(iso: string): string {
-  const [y, m, d] = iso.split('-');
-  return y && m && d ? `${d}/${m}/${y}` : iso;
-}
+// Formatação compartilhada com todos os textos do WhatsApp.
+export { brl, dataBR, porExtensoCurto } from '@/lib/whatsapp/textos';
 
 const TIPO_OBRA: Record<'nova' | 'reforma', string> = { nova: 'obra nova', reforma: 'reforma' };
 
@@ -168,7 +145,7 @@ export function respostaDaAcao(p: Proposta): string {
   }
 }
 
-export const RESPOSTA_ACAO_CANCELADA = 'Ok, cancelei. Nada foi gravado.';
+export const RESPOSTA_ACAO_CANCELADA = RESPOSTAS.acaoCancelada;
 
 // ---------------------------------------------------------------------------
 // Pendência
