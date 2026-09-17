@@ -359,21 +359,28 @@
   gap: 16px;
   padding: 16px 18px;
   border: 1px solid var(--border-default);
-  border-left-width: 6px;
   border-radius: 12px;
   background: var(--surface-card);
 }
 
-.alerta--alta {
-  border-left-color: var(--danger);
+/* A gravidade é o rótulo escrito; o ponto colorido só reforça. */
+.alerta__gravidade::before {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 50%;
+  vertical-align: middle;
+  background: var(--text-muted);
 }
 
-.alerta--media {
-  border-left-color: var(--warning);
+.alerta--alta .alerta__gravidade::before {
+  background: var(--danger);
 }
 
-.alerta--baixa {
-  border-left-color: var(--text-muted);
+.alerta--media .alerta__gravidade::before {
+  background: var(--warning);
 }
 
 .alerta__numero {
