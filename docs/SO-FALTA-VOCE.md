@@ -833,7 +833,9 @@ listar `texto, imagem, pdf, audio, video, arquivo`. Sem a migration, um vídeo m
 grupo dá erro de enum ao gravar a mensagem (o log mostra `invalid input value for enum
 msg_tipo: "video"`) — foto, PDF e áudio continuam funcionando.
 
-### 14.2 — Ligar o login por e-mail no Supabase Auth (achado do teste)
+### 14.2 — Ligar o login por e-mail no Supabase Auth (achado do teste) — ✅ feito em 17/09
+
+> **17/09:** o script respondeu "já está ligado" (`external_email_enabled=true`, `disable_signup=true`), e a prova pelo comportamento passou: senha errada devolve `invalid_credentials`, não "Email logins are disabled". Nada a fazer.
 
 Ao testar com sessão de verdade, o Auth respondeu **"Email logins are disabled"**: o provedor
 de e-mail está desligado no projeto (`external_email_enabled=false`). Quem já está logado
