@@ -406,22 +406,35 @@ describe('agente no grupo', () => {
     );
   });
 
-  it('no privado, a resposta vai para a própria pessoa', async () => {
+  it('no privado é ignorado em silêncio, mesmo autorizado — só grupo cadastrado entra', async () => {
     const f = db();
-    classifyAndPersist.mockResolvedValue({
-      ok: true,
-      status: 'confirmada',
-      confianca: 0.6,
-      kind: 'registro_obra',
-      confirmacao: null,
-      resposta: '📝 Anotado em Garibaldi ✔',
-    });
     const processar = await inbound();
-    await processar(
-      cliente(f),
-      msg({ chatId: undefined, isGroup: false, text: 'hoje terminou a laje da Gari' }) as never,
-    );
-    expect(enviarTexto).toHaveBeenCalledWith(FERNANDO, '📝 Anotado em Garibaldi ✔');
+    const r = await processar(cliente(f), msg({ chatId: FERNANDO, isGroup: false, text: 'oi' }));
+    expect(r.acao).toBe('ignorada_privado');
+    expect(enviarTexto).not.toHaveBeenCalled();
+    expect(classifyAndPersist).not.toHaveBeenCalled();
+    expect(f.linhas('mensagens_whats')).toHaveLength(0);
+  });
+
+  it('WHATSAPP_ACEITA_PRIVADO=true reabre o privado (resposta para a própria pessoa)', async () => {
+    process.env.WHATSAPP_ACEITA_PRIVADO = 'true';
+    try {
+      const f = db();
+      classifyAndPersist.mockResolvedValueOnce({
+        ok: true,
+        status: 'classificada',
+        confianca: 0.9,
+        kind: 'documento_obra',
+        confirmacao: null,
+        resposta: '📁 Garibaldi › Fotos ✔',
+      });
+      const processar = await inbound();
+      await processar(cliente(f), msg({ chatId: FERNANDO, isGroup: false, text: 'foto da obra' }));
+      expect(enviarTexto).toHaveBeenCalledWith(FERNANDO, '📁 Garibaldi › Fotos ✔');
+    } finally {
+      process.env.WHATSAPP_ACEITA_PRIVADO = undefined as unknown as string;
+      delete process.env.WHATSAPP_ACEITA_PRIVADO;
+    }
   });
 
   it('vídeo no grupo: baixa, guarda com nome legível e tipo `video`, e vai para o classificador', async () => {
