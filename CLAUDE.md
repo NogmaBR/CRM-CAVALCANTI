@@ -4,7 +4,7 @@
 > **Mantenha-o atualizado**: ao terminar um trabalho relevante, atualize a §7 (estado)
 > e acrescente em §8 (armadilhas) qualquer erro novo que você cometeu.
 >
-> Última atualização: **2026-09-17**, com o agente sobre o CRM inteiro (PR `feat/agente-crm-completo`): lucro, ações com SIM, roteador de intenção.
+> Última atualização: **2026-09-17**: agente sobre o CRM inteiro (PR #40), textos claros (PR #41), painel do empresário + A/A+/A++ (PR #42) — os três empilhados, nesta ordem.
 
 ---
 
@@ -755,6 +755,47 @@ cinco cadastros com confirmação. Regras para quem for mexer:
   `node --env-file=.env.local <script que exporta TESTE_REAL=1 e chama o vitest>`.
 - PR #7 foi **fechado sem merge** em 16/09: a `main` já tinha os chamadores de `emitir()`
   desde o #19. `FILA_WHATSAPP` continua desligada por decisão (até o número oficial).
+
+
+**Painel do empresário e ergonomia (2026-09-17, PR `feat/painel-empresario`, empilhado sobre
+`feat/agente-crm-completo`; spec em `docs/superpowers/specs/2026-09-17-painel-do-empresario-e-ergonomia-design.md`).**
+Regras para quem for mexer:
+- **`/painel?aba=`** tem seis abas (visão geral, por obra, fornecedores, caixa, documentos,
+  alertas) como **links**, não estado de cliente; cada aba é um server component em
+  `app/(app)/painel/abas/`. Dado em `lib/data/painel-empresario.ts` (uma função por aba);
+  **as contas são puras** em `lib/financeiro/agregacoes.ts` (com teste) — é lá que se
+  muda uma regra de soma, nunca no componente.
+- **Todo gráfico vive num `Cartao`** (`painel/cartao.tsx`): título em frase, gráfico,
+  **frase de leitura** (o número que importa, com `porExtensoCurto`) e a tabela dobrada
+  em "Ver os números". A tabela não é opcional: é o reforço do dataviz para a paleta
+  escura (contraste < 3:1) e o que o usuário de 70+ prefere.
+- **Paleta categórica fixa por obra**: `--serie-1..4` (ordem alfabética do nome, nunca por
+  ranking), `--serie-entra`/`--serie-sai` para entrou×saiu, `--chart-1-fg` para texto
+  sobre `--chart-1` (aba ativa, botão de alerta). Validadas com o `validate_palette.js`
+  do skill dataviz em `styles/tokens/colors.css` — não invente cor nova sem validar.
+  Uma série só usa `--chart-1`. Nunca eixo duplo.
+- **Rótulo/tick de valor usa `brlCurto` com espaço não quebrável** (`comum.tsx`): o
+  `<text>` do Recharts faz word-wrap pela largura da barra e "R$ / 264 / mil" saía em
+  três linhas. **Função nunca atravessa server→client** (`rodape` do tooltip virou campo
+  `detalhe` no dado) — o erro é "Functions cannot be passed directly to Client Components".
+- **Tamanho do texto A/A+/A++**: cookie `nogma-texto` (rota `/api/texto`, httpOnly como o
+  tema) → `<html data-texto>` no servidor → `typography.css` escala a base (112,5 % /
+  125 %). Componente `components/layout/tamanho-do-texto.tsx`; `lib/texto.ts` é puro
+  (o client importa dele) e `lib/texto-server.ts` lê o cookie — **não** importe
+  `next/headers` em módulo que um client component importa (quebra o build).
+- **Sidebar aberta com nomes em ≥ 1280 px** (`nos-shell.css`); o trilho com hover vale
+  de 768 a 1279. Itens de menu e abas têm 44–48 px de altura.
+- Sem a migration `20260916230000` o painel **não fica em branco**: `carregarBase` cai
+  para obras sem contrato e recebimentos vazios, com `obras_falhou`/`recebimentos_falhou`
+  no log.
+- **Provado localmente contra produção** (`next start -p 3108` + sessão por magic link;
+  receita: `admin.generateLink({type:'magiclink'})` → `verifyOtp({token_hash,type:'magiclink'})`
+  → cookie `sb-<ref>-auth-token` = `base64-` + base64url(JSON da sessão), em pedaços de
+  3180): 24 capturas (6 abas × claro 1440, escuro 1440, claro 390, claro A++), todas 200,
+  zero erro no servidor.
+- **`pnpm --filter web build | grep` não é build.** O primeiro `next start` disse "no
+  production build": o build filtrado pelo grep não tinha gravado o `BUILD_ID`. Rode
+  `pnpm exec next build > log` e confira o `BUILD_ID` antes de subir.
 
 ### O que falta — e é ação humana, não código
 

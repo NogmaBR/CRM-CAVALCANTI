@@ -64,6 +64,33 @@ export async function getUltimasFotosDaObra(obraId: string, limite = 8): Promise
   return data ?? [];
 }
 
+export interface FotoGeral extends FotoDaObra {
+  obra_id: string | null;
+  obra_nome: string | null;
+}
+
+/** As últimas fotos de todas as obras (painel do empresário). */
+export async function getUltimasFotosGerais(limite = 12): Promise<FotoGeral[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('documentos')
+    .select('id, nome_arquivo, mime_type, created_at, obra_id, obras ( nome )')
+    .eq('categoria', 'fotos')
+    .is('deleted_at', null)
+    .neq('storage_path', 'pending')
+    .order('created_at', { ascending: false })
+    .limit(limite);
+  if (error) throw new Error(`Falha ao listar fotos: ${error.message}`);
+  return (data ?? []).map((d) => ({
+    id: d.id,
+    nome_arquivo: d.nome_arquivo,
+    mime_type: d.mime_type,
+    created_at: d.created_at,
+    obra_id: d.obra_id,
+    obra_nome: (d.obras as { nome: string } | null)?.nome ?? null,
+  }));
+}
+
 export interface RegistroComAutor extends RegistroObra {
   autor_nome: string | null;
 }

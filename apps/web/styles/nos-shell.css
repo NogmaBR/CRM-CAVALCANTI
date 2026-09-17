@@ -45,9 +45,10 @@
 
 .nos-navitem {
   color: var(--sidebar-muted);
-  padding: 11px 14px;
+  min-height: 44px;
+  padding: 10px 14px;
   gap: 14px;
-  font-size: 14.5px;
+  font-size: 0.9375rem;
 }
 .nos-navitem svg {
   flex: none;
@@ -152,6 +153,32 @@
     margin-left: var(--rail-w);
   }
 }
+/* Em tela larga a sidebar fica ABERTA, com os nomes visíveis: quem não sabe
+   que o trilho expande no hover nunca descobriria o menu. O trilho com hover
+   continua valendo de 768 a 1279px. */
+@media (min-width: 1280px) {
+  .nos-sidebar-zone,
+  .nos-sidebar-zone .nos-sidebar {
+    width: var(--sidebar-w);
+  }
+  .nos-sidebar-zone .nos-sidebar {
+    box-shadow: none;
+  }
+  .nos-navitem__label,
+  .nos-brand__wordtext,
+  .nos-userpill__meta,
+  .nos-userpill__logout {
+    opacity: 1;
+    transform: none;
+  }
+  .nos-navitem {
+    width: 100%;
+  }
+  .nos-app-shell > main {
+    margin-left: var(--sidebar-w);
+  }
+}
+
 @media (min-width: 768px) and (prefers-reduced-motion: reduce) {
   .nos-sidebar-zone .nos-sidebar,
   .nos-navitem__label,
@@ -266,13 +293,18 @@
   align-items: center;
   gap: 4px;
 }
-/* Tema no topo só no desktop; no celular ele mora no rodapé do menu. */
-.nos-topbar__theme {
+/* Tema e tamanho do texto no topo só no desktop; no celular moram no rodapé do menu. */
+.nos-topbar__theme,
+.nos-topbar__texto {
   display: none;
 }
 @media (min-width: 768px) {
-  .nos-topbar__theme {
+  .nos-topbar__theme,
+  .nos-topbar__texto {
     display: inline-flex;
+  }
+  .nos-topbar__texto {
+    margin-right: 6px;
   }
 }
 

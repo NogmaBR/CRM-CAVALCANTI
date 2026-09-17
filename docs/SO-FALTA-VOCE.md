@@ -35,7 +35,8 @@ SÓ FALTA VOCÊ
   ✅ 10. PR #7 fechado em 16/09 (já estava na main pelo #19); FILA_WHATSAPP fica desligada até o número oficial
   🔵 11. Decisão: Fase 6 (vendas) — o que preciso de você para começar
   ⏳ 12. Depois de 16/09: acervo do OneDrive + agente no grupo (PR da branch feat/acervo-onedrive-e-agente-grupo)
-  🔴 15. Agente sobre o CRM inteiro (17/09): mergear o PR, aplicar 1 migration, testar 11–16 no grupo
+  🔴 15. Agente sobre o CRM inteiro (17/09): mergear o PR #40, aplicar 1 migration, testar 11–19 no grupo
+  🟠 16. Textos claros (#41) e painel do empresário (#42): mergear na ordem, conferir a tabela da §16
 
 PARA O DIA 16
   📋 docs/ROTEIRO-DEMO-16-09.md — o que mostrar, em que ordem, e a versão B sem WhatsApp
@@ -936,6 +937,30 @@ rodadas com ferramentas. Foto e "paguei X" continuam custando o de sempre.
 - [ ] Migration 20260916230000 aplicada e conferida (15.1)
 - [ ] Contratos das 4 obras informados (15.2)
 - [ ] Roteiro 15.3 (11–19) feito no grupo Teste
+
+---
+
+## 16. Painel do empresário e textos claros (17/09) — o que ver depois dos merges
+
+Três PRs **empilhados** (cada um contém o anterior). Mergeie **nesta ordem**, esperando o
+deploy READY entre um e outro: **#40** (agente sobre o CRM) → **#41** (textos claros) →
+**#42** (painel do empresário + tamanho do texto). A migration da §15.1 vale para os três.
+
+| Onde | O que tem que aparecer |
+|---|---|
+| `/painel` | Seis abas grandes (Visão geral, Por obra, Fornecedores, Caixa, Documentos, Alertas); cartão "Como estão as obras" com as 4 obras |
+| `/painel?aba=por-obra` | Barras por obra com o valor em cima (sem quebrar em 3 linhas), empilhado mês a mês com uma cor por obra, etapas por obra |
+| `/painel?aba=caixa` | "Entrou × saiu" (verde × laranja) — entrou fica zero até você registrar recebimentos (§15.2) |
+| `/painel?aba=alertas` | Frases com número grande e botão; "50 pagamentos sem nota" é real (são as notas do acervo que não casaram) |
+| Topo, à direita | **A / A+ / A++** — clique em A++ e recarregue: continua grande (é cookie) |
+| Tela larga (≥ 1280 px) | Sidebar aberta com os nomes; em notebook menor continua o trilho que expande no hover |
+| Grupo Teste: `paguei 1200 de cimento pro Mathias na Garibaldi` | A pergunta vem em linhas: Valor / Obra / Fornecedor / O que foi / Data, e termina com "Responda *SIM* para lançar, ou *NÃO* para cancelar" |
+| Grupo Teste: `ajuda` | Lista numerada com as 5 coisas que o agente faz |
+| Grupo Teste: `asdfgh` (texto sem sentido) | "Não entendi o que fazer com essa mensagem" + exemplo — antes era silêncio |
+
+- [ ] #40 mergeado → READY → migration §15.1 aplicada
+- [ ] #41 mergeado → READY
+- [ ] #42 mergeado → READY → tabela acima conferida
 
 ---
 

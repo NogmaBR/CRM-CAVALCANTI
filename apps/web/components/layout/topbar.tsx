@@ -1,9 +1,11 @@
 import { createClient } from '@/lib/supabase/server';
+import { getServerTexto } from '@/lib/texto-server';
 import { getServerTheme } from '@/lib/theme';
 import { Bell } from 'lucide-react';
 import Link from 'next/link';
 import { CommandPalette } from './command-palette';
 import { MobileNav } from './mobile-nav';
+import { TamanhoDoTexto } from './tamanho-do-texto';
 import { ThemeToggle } from './theme-toggle';
 import { UserMenu } from './user-menu';
 
@@ -43,7 +45,11 @@ export async function TopBar({
   subtitle?: string;
   actions?: React.ReactNode;
 }) {
-  const [pendencias, theme] = await Promise.all([contarPendencias(), getServerTheme()]);
+  const [pendencias, theme, texto] = await Promise.all([
+    contarPendencias(),
+    getServerTheme(),
+    getServerTexto(),
+  ]);
   const rotuloSino =
     pendencias === 0
       ? 'Pendências: nenhuma'
@@ -54,7 +60,11 @@ export async function TopBar({
   return (
     <header className="nos-topbar">
       <div className="nos-topbar__left">
-        <MobileNav userMenu={<UserMenu />} themeToggle={<ThemeToggle initial={theme} />} />
+        <MobileNav
+          userMenu={<UserMenu />}
+          themeToggle={<ThemeToggle initial={theme} />}
+          textoToggle={<TamanhoDoTexto initial={texto} />}
+        />
       </div>
       <div className="nos-topbar__heading">
         <h1 className="nos-topbar__title">{title}</h1>
@@ -71,6 +81,9 @@ export async function TopBar({
               </span>
             ) : null}
           </Link>
+          <span className="nos-topbar__texto">
+            <TamanhoDoTexto initial={texto} />
+          </span>
           <span className="nos-topbar__theme">
             <ThemeToggle initial={theme} />
           </span>
