@@ -54,12 +54,22 @@ describe('camada 1 — código puro vence sempre', () => {
 
   it('texto curto demais fica no fluxo de hoje', async () => {
     expect(
-      (await decidirDestino({ texto: 'ok', temMidia: false }, modelo('conversa'))).motivo,
+      (await decidirDestino({ texto: 'xx', temMidia: false }, modelo('conversa'))).motivo,
     ).toBe('curta');
     expect((await decidirDestino({ texto: '', temMidia: false }, modelo('conversa'))).motivo).toBe(
       'curta',
     );
   });
+});
+
+describe('saudação', () => {
+  it.each(['oi', 'Bom dia!', 'valeu', 'ok', 'boa tarde pessoal'])(
+    '%s → resposta fixa, sem modelo',
+    async (texto) => {
+      const d = await decidirDestino({ texto, temMidia: false }, modelo('pergunta'));
+      expect(d).toEqual({ destino: 'saudacao', motivo: 'saudacao' });
+    },
+  );
 });
 
 describe('camada 2 — padrão de ação', () => {
