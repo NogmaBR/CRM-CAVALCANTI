@@ -1,5 +1,7 @@
 # Agente do WhatsApp — CRM completo: plano de implementação
 
+> **Executado em 2026-09-16/17.** Todas as tasks feitas; achado extra: `reasoning_effort` com tools (ver CLAUDE.md §8).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** O agente do WhatsApp responde qualquer pergunta sobre o CRM (inclusive lucro por obra) e executa cinco ações (criar obra, cadastrar fornecedor, definir contrato, registrar recebimento, arquivar obra) — sempre com confirmação "SIM".
@@ -45,71 +47,71 @@ Spec: `docs/superpowers/specs/2026-09-16-agente-whatsapp-crm-completo-design.md`
 
 ### Task 1: Migration + tipos
 
-- [ ] Escrever `20260916230000_contrato_recebimentos_acoes.sql` (spec › Banco). Policies no formato `TO authenticated` + `(select has_role(...))`; `GRANT SELECT, INSERT, UPDATE, DELETE ON recebimentos TO authenticated; GRANT ALL TO service_role`; `trg_recebimentos_updated` (`set_updated_at`), `trg_audit_recebimentos` (`audit_log_trigger`); índice parcial por obra.
-- [ ] Ensaiar: `node --env-file=.env.local scripts/apply-migration.mjs 20260916230000_contrato_recebimentos_acoes.sql --ensaio` → sem erro.
-- [ ] Atualizar `packages/db/src/types.ts` à mão (obras.valor_contrato; tabela recebimentos; confirmacoes_pendentes.acao).
-- [ ] `pnpm --filter web typecheck` verde. Commit `feat(db): valor_contrato, recebimentos e pendência de ação`.
+- [x] Escrever `20260916230000_contrato_recebimentos_acoes.sql` (spec › Banco). Policies no formato `TO authenticated` + `(select has_role(...))`; `GRANT SELECT, INSERT, UPDATE, DELETE ON recebimentos TO authenticated; GRANT ALL TO service_role`; `trg_recebimentos_updated` (`set_updated_at`), `trg_audit_recebimentos` (`audit_log_trigger`); índice parcial por obra.
+- [x] Ensaiar: `node --env-file=.env.local scripts/apply-migration.mjs 20260916230000_contrato_recebimentos_acoes.sql --ensaio` → sem erro.
+- [x] Atualizar `packages/db/src/types.ts` à mão (obras.valor_contrato; tabela recebimentos; confirmacoes_pendentes.acao).
+- [x] `pnpm --filter web typecheck` verde. Commit `feat(db): valor_contrato, recebimentos e pendência de ação`.
 
 ### Task 2: Dado no painel (contrato + recebimentos)
 
-- [ ] `lib/schemas/obra.ts`: `valor_contrato` igual a `orcamento` (opcional, pt-BR).
-- [ ] `lib/schemas/recebimento.ts`: `{ obra_id uuid, valor > 0 (pt-BR), data_recebimento date, descricao? ≤ 200, observacoes? ≤ 1000 }`.
-- [ ] `lib/data/recebimentos.ts`: `listRecebimentosDaObra(obraId)`, `totalRecebidoPorObra(ids[])`.
-- [ ] `lib/data/obras.ts`: `resumoFinanceiroDaObra(id)` → `{ contrato, gasto, recebido, resultado, margemPrevista }` com `STATUS_QUE_CONTAM`.
-- [ ] Form da obra: campo "Valor do contrato (R$)" após Orçamento, com `valores`/`erroDe`/`autoFocus` como os outros; `obras/actions.ts` grava.
-- [ ] `obras/[id]/page.tsx`: bloco **Resultado da obra** (4 números + frase) e seção **Recebimentos** (tabela + form inline + arquivar). Actions em `obras/[id]/recebimentos/actions.ts` (`criarRecebimento`, `arquivarRecebimento`) com `voltarComErro`, `erroDeEscrita`, `revalidatePath`.
-- [ ] typecheck + vitest. Commit `feat(obras): valor do contrato e recebimentos no painel`.
+- [x] `lib/schemas/obra.ts`: `valor_contrato` igual a `orcamento` (opcional, pt-BR).
+- [x] `lib/schemas/recebimento.ts`: `{ obra_id uuid, valor > 0 (pt-BR), data_recebimento date, descricao? ≤ 200, observacoes? ≤ 1000 }`.
+- [x] `lib/data/recebimentos.ts`: `listRecebimentosDaObra(obraId)`, `totalRecebidoPorObra(ids[])`.
+- [x] `lib/data/obras.ts`: `resumoFinanceiroDaObra(id)` → `{ contrato, gasto, recebido, resultado, margemPrevista }` com `STATUS_QUE_CONTAM`.
+- [x] Form da obra: campo "Valor do contrato (R$)" após Orçamento, com `valores`/`erroDe`/`autoFocus` como os outros; `obras/actions.ts` grava.
+- [x] `obras/[id]/page.tsx`: bloco **Resultado da obra** (4 números + frase) e seção **Recebimentos** (tabela + form inline + arquivar). Actions em `obras/[id]/recebimentos/actions.ts` (`criarRecebimento`, `arquivarRecebimento`) com `voltarComErro`, `erroDeEscrita`, `revalidatePath`.
+- [x] typecheck + vitest. Commit `feat(obras): valor do contrato e recebimentos no painel`.
 
 ### Task 3: Ferramentas de leitura (`ferramentas/crm.ts`)
 
-- [ ] Teste com `fakeSupabase` (obras, pagamentos, recebimentos, categorias, fornecedores, documentos, registros_obra): `listar_obras` soma gasto/recebido; `resumo_da_obra` sem contrato → `contrato: null`, `margem_prevista: null`; nome ambíguo → `{ ok:false, opcoes }`; `lucro_por_obra` ordena por resultado.
-- [ ] Implementar as 9 ferramentas com `ferramenta({...})`, limites (`limite ≤ 20`), resolução por `resolverPorNome`.
-- [ ] `FERRAMENTAS_DE_OBRA = [...existentes, ...FERRAMENTAS_CRM]`.
-- [ ] Commit `feat(ia): ferramentas de leitura do CRM inteiro (lucro, etapas, documentos, diário, fornecedores)`.
+- [x] Teste com `fakeSupabase` (obras, pagamentos, recebimentos, categorias, fornecedores, documentos, registros_obra): `listar_obras` soma gasto/recebido; `resumo_da_obra` sem contrato → `contrato: null`, `margem_prevista: null`; nome ambíguo → `{ ok:false, opcoes }`; `lucro_por_obra` ordena por resultado.
+- [x] Implementar as 9 ferramentas com `ferramenta({...})`, limites (`limite ≤ 20`), resolução por `resolverPorNome`.
+- [x] `FERRAMENTAS_DE_OBRA = [...existentes, ...FERRAMENTAS_CRM]`.
+- [x] Commit `feat(ia): ferramentas de leitura do CRM inteiro (lucro, etapas, documentos, diário, fornecedores)`.
 
 ### Task 4: Ferramentas de ação (`ferramentas/acoes.ts`) + templates
 
-- [ ] `export type Proposta = { tipo: 'criar_obra' | 'cadastrar_fornecedor' | 'definir_contrato' | 'registrar_recebimento' | 'arquivar_obra'; dados: …; resumo: string }` com Zod por tipo (`PropostaSchema`) — é o que vai para o JSONB e o que `aplicarAcao` relê.
-- [ ] Testes: duplicata de obra → `ok:false`; fornecedor com nome parecido existente → devolve o existente como aviso; contrato em obra ambígua → opções; recebimento sem data → hoje BR.
-- [ ] Implementar 5 `propor_*` devolvendo `{ ok: true, proposta }`.
-- [ ] Commit `feat(ia): ferramentas de proposta de ação (nunca gravam)`.
+- [x] `export type Proposta = { tipo: 'criar_obra' | 'cadastrar_fornecedor' | 'definir_contrato' | 'registrar_recebimento' | 'arquivar_obra'; dados: …; resumo: string }` com Zod por tipo (`PropostaSchema`) — é o que vai para o JSONB e o que `aplicarAcao` relê.
+- [x] Testes: duplicata de obra → `ok:false`; fornecedor com nome parecido existente → devolve o existente como aviso; contrato em obra ambígua → opções; recebimento sem data → hoje BR.
+- [x] Implementar 5 `propor_*` devolvendo `{ ok: true, proposta }`.
+- [x] Commit `feat(ia): ferramentas de proposta de ação (nunca gravam)`.
 
 ### Task 5: `acoes-whatsapp.ts`
 
-- [ ] Testes: `perguntaDaAcao` por tipo (texto exato, termina com "Responda SIM…"); `aplicarAcao` cria obra/fornecedor/recebimento, define contrato, arquiva obra; segunda chamada → `ja_resolvida`; tipo diferente → `tipo_diferente`; erro de insert → pendência continua aberta com `resultado` = erro.
-- [ ] Implementar `abrirPendenciaDeAcao`, `perguntaDaAcao`, `respostaDaAcao`, `aplicarAcao` (padrão de `aplicarConfirmacao`: pré-checagem + `UPDATE … eq('resolvida', false)` + `erroDeEscrita`).
-- [ ] `confirmacoes.ts`: `TipoPendencia` + `'acao'`, `PendenciaAberta.acao: Proposta | null`, `lerTipoPendencia`, select inclui `acao`.
-- [ ] Commit `feat(whatsapp): pendência de ação — pergunta por template, SIM executa`.
+- [x] Testes: `perguntaDaAcao` por tipo (texto exato, termina com "Responda SIM…"); `aplicarAcao` cria obra/fornecedor/recebimento, define contrato, arquiva obra; segunda chamada → `ja_resolvida`; tipo diferente → `tipo_diferente`; erro de insert → pendência continua aberta com `resultado` = erro.
+- [x] Implementar `abrirPendenciaDeAcao`, `perguntaDaAcao`, `respostaDaAcao`, `aplicarAcao` (padrão de `aplicarConfirmacao`: pré-checagem + `UPDATE … eq('resolvida', false)` + `erroDeEscrita`).
+- [x] `confirmacoes.ts`: `TipoPendencia` + `'acao'`, `PendenciaAberta.acao: Proposta | null`, `lerTipoPendencia`, select inclui `acao`.
+- [x] Commit `feat(whatsapp): pendência de ação — pergunta por template, SIM executa`.
 
 ### Task 6: Memória curta + intenção + roteador
 
-- [ ] `memoria-curta.ts`: `conversaRecente(supabase, { chatId, telefone, agora })` → `Array<{ papel:'pessoa'|'agente', texto }>` (≤ 6, 2 h) lendo `mensagens_whats` e `ai_messages` via `ai_conversations.autorizado_id`; `obraRecente(...)` → `{ id, nome } | null` (pendência resolvida com obra, obra criada por ação, ou ferramenta `resumo_da_obra` nas 2 h). Teste com fake.
-- [ ] `intencao.ts`: `classificarIntencao(texto, deps)` → `'pergunta'|'acao'|'lancamento'|'conversa'|'nenhuma'`; usa `chatCompletions` com `response_format: json_schema strict`; qualquer falha → `'nenhuma'`. Teste com `chat` falso.
-- [ ] `roteador.ts`: `decidirDestino({ texto, temMidia, comando }, deps)` → `'assistente' | 'classificador'`. Tabela de testes:
+- [x] `memoria-curta.ts`: `conversaRecente(supabase, { chatId, telefone, agora })` → `Array<{ papel:'pessoa'|'agente', texto }>` (≤ 6, 2 h) lendo `mensagens_whats` e `ai_messages` via `ai_conversations.autorizado_id`; `obraRecente(...)` → `{ id, nome } | null` (pendência resolvida com obra, obra criada por ação, ou ferramenta `resumo_da_obra` nas 2 h). Teste com fake.
+- [x] `intencao.ts`: `classificarIntencao(texto, deps)` → `'pergunta'|'acao'|'lancamento'|'conversa'|'nenhuma'`; usa `chatCompletions` com `response_format: json_schema strict`; qualquer falha → `'nenhuma'`. Teste com `chat` falso.
+- [x] `roteador.ts`: `decidirDestino({ texto, temMidia, comando }, deps)` → `'assistente' | 'classificador'`. Tabela de testes:
   - mídia → classificador; "paguei 500 pro Zé" → classificador; "quanto gastei na garibaldi" → assistente (sem modelo);
   - "cria uma obra chamada Sítio" → assistente (padrão de ação, sem modelo);
   - "velho, queria saber quanto estou lucrando no garibaldi" → modelo diz `pergunta` → assistente; modelo falha → classificador;
   - "bom dia" → modelo `conversa` → assistente; "ok" (≤ 3 palavras, sem modelo) → classificador.
-- [ ] Commit `feat(whatsapp): roteador de intenção — pergunta, ação e conversa vão ao assistente`.
+- [x] Commit `feat(whatsapp): roteador de intenção — pergunta, ação e conversa vão ao assistente`.
 
 ### Task 7: Assistente v3 + inbound
 
-- [ ] Prompt v3 (`VERSAO = 3`) com as regras da spec e do projeto B.
-- [ ] `assistente.ts`: `PerguntaAoAssistente.chatId`; monta `CONVERSA RECENTE`; coleta `proposta` dos resultados; `RespostaDoAssistente.proposta?: Proposta`; duas propostas → texto "uma de cada vez".
-- [ ] `inbound-whatsapp.ts`: passo 4 — `pendencia.tipo === 'acao'`: `sim` → `aplicarAcao` → responde; `nao` → `recusarConfirmacao` → responde; outro → segue. Passo 5b — `decidirDestino`; se assistente: dedupe, `perguntar`; se `proposta`: `gravarMensagem(status:'recebida')` + `abrirPendenciaDeAcao` + envia `perguntaDaAcao`; senão envia texto.
-- [ ] `classificador-comum.ts` + mock: `contexto.obraSugeridaId` (mesma semântica de `grupoObraId`, precedência: grupo dedicado > sugerida). Inbound preenche pela `obraRecente`.
-- [ ] `inbound-whatsapp.test.ts`: cenários "cria a obra X" → SIM; NÃO; "bom dia".
-- [ ] Commit `feat(whatsapp): o agente responde e age sobre o CRM inteiro`.
+- [x] Prompt v3 (`VERSAO = 3`) com as regras da spec e do projeto B.
+- [x] `assistente.ts`: `PerguntaAoAssistente.chatId`; monta `CONVERSA RECENTE`; coleta `proposta` dos resultados; `RespostaDoAssistente.proposta?: Proposta`; duas propostas → texto "uma de cada vez".
+- [x] `inbound-whatsapp.ts`: passo 4 — `pendencia.tipo === 'acao'`: `sim` → `aplicarAcao` → responde; `nao` → `recusarConfirmacao` → responde; outro → segue. Passo 5b — `decidirDestino`; se assistente: dedupe, `perguntar`; se `proposta`: `gravarMensagem(status:'recebida')` + `abrirPendenciaDeAcao` + envia `perguntaDaAcao`; senão envia texto.
+- [x] `classificador-comum.ts` + mock: `contexto.obraSugeridaId` (mesma semântica de `grupoObraId`, precedência: grupo dedicado > sugerida). Inbound preenche pela `obraRecente`.
+- [x] `inbound-whatsapp.test.ts`: cenários "cria a obra X" → SIM; NÃO; "bom dia".
+- [x] Commit `feat(whatsapp): o agente responde e age sobre o CRM inteiro`.
 
 ### Task 8: `/pendentes`
 
-- [ ] `page.tsx`: item `tipo === 'acao'` mostra "Ação pelo WhatsApp" + `pergunta_enviada` + botões Confirmar/Rejeitar.
-- [ ] `actions.ts › confirmarPendencia`: lê `tipo`; `'acao'` → `aplicarAcao(..., via:'painel')`; mensagem de sucesso = `resposta.texto`.
-- [ ] Commit `feat(pendentes): ações do WhatsApp podem ser confirmadas no painel`.
+- [x] `page.tsx`: item `tipo === 'acao'` mostra "Ação pelo WhatsApp" + `pergunta_enviada` + botões Confirmar/Rejeitar.
+- [x] `actions.ts › confirmarPendencia`: lê `tipo`; `'acao'` → `aplicarAcao(..., via:'painel')`; mensagem de sucesso = `resposta.texto`.
+- [x] Commit `feat(pendentes): ações do WhatsApp podem ser confirmadas no painel`.
 
 ### Task 9: Prova real, docs, verificação
 
-- [ ] `openai.real.test.ts`: 2 casos (gated). Rodar com `TESTE_REAL=1` uma vez e registrar o resultado no commit.
-- [ ] `docs/SO-FALTA-VOCE.md` §15 (migration, como conferir, roteiro de teste 11–15), `CLAUDE.md` §7 + §8, spec marcada.
-- [ ] `pnpm --filter web typecheck && pnpm --filter web exec vitest run && pnpm --filter web build`; `biome check --fix` só nos arquivos tocados; typecheck de novo.
-- [ ] `graphify update .`; PR `feat/agente-crm-completo`.
+- [x] `openai.real.test.ts`: 2 casos (gated). Rodar com `TESTE_REAL=1` uma vez e registrar o resultado no commit.
+- [x] `docs/SO-FALTA-VOCE.md` §15 (migration, como conferir, roteiro de teste 11–15), `CLAUDE.md` §7 + §8, spec marcada.
+- [x] `pnpm --filter web typecheck && pnpm --filter web exec vitest run && pnpm --filter web build`; `biome check --fix` só nos arquivos tocados; typecheck de novo.
+- [x] `graphify update .`; PR `feat/agente-crm-completo`.
