@@ -432,3 +432,15 @@
   line-height: 1.5;
   color: var(--text-secondary);
 }
+
+/* Pendência de ação: a pergunta enviada, como o WhatsApp mostrou. */
+.pendente-card__pergunta {
+  white-space: pre-line;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-default);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-strong);
+}

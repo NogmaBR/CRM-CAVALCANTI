@@ -1,5 +1,6 @@
 'use server';
 
+import { aplicarAcao } from '@/lib/services/acoes-whatsapp';
 import {
   aplicarConfirmacao,
   aplicarEscolhaDeObra,
@@ -43,6 +44,26 @@ export async function confirmarPendencia(formData: FormData) {
 
   const supabase = await createClient();
   const { data: userData } = await supabase.auth.getUser();
+
+  // Ação pedida pelo WhatsApp (criar obra, contrato…): o painel é só outro
+  // caminho para o mesmo "SIM".
+  if (String(formData.get('tipo') ?? '') === 'acao') {
+    const acao = await aplicarAcao(supabase, {
+      confirmacaoId,
+      via: 'painel',
+      respostaBruta: 'confirmado via painel',
+      userId: userData.user?.id ?? null,
+    });
+    if (!acao.ok) comErro(acao.motivo);
+    revalidarTudo();
+    revalidatePath('/obras');
+    revalidatePath('/fornecedores');
+    redirect(
+      `${BASE_PATH}?success=${encodeURIComponent(
+        acao.jaEstavaResolvida ? 'Esta ação já havia sido executada.' : acao.texto,
+      )}`,
+    );
+  }
 
   const resultado = await aplicarConfirmacao(supabase, {
     confirmacaoId,
