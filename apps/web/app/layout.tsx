@@ -1,4 +1,4 @@
-import { getServerTexto } from '@/lib/texto';
+import { getServerTexto } from '@/lib/texto-server';
 import { getServerTheme } from '@/lib/theme';
 import type { Metadata, Viewport } from 'next';
 import '@/styles/globals.css';

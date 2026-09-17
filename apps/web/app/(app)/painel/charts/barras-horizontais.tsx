@@ -19,10 +19,9 @@ import { EIXO, TooltipPainel, brlCurto } from './comum';
  */
 export function BarrasHorizontais({
   data,
-  rodape,
 }: {
-  data: Array<{ nome: string; valor: number } & Record<string, unknown>>;
-  rodape?: (dado: Record<string, unknown>) => string | null;
+  /** `detalhe` (opcional) é a linha extra do tooltip — texto pronto, vindo do servidor. */
+  data: Array<{ nome: string; valor: number; detalhe?: string }>;
 }) {
   const altura = Math.max(200, data.length * 40 + 24);
   return (
@@ -32,7 +31,7 @@ export function BarrasHorizontais({
         <XAxis type="number" tickFormatter={brlCurto} {...EIXO} />
         <YAxis type="category" dataKey="nome" {...EIXO} width={150} interval={0} />
         <Tooltip
-          content={<TooltipPainel rodape={rodape} />}
+          content={<TooltipPainel rodape={(d) => (d.detalhe ? String(d.detalhe) : null)} />}
           cursor={{ fill: 'var(--chart-1-soft)' }}
         />
         <Bar

@@ -135,6 +135,8 @@
 
   /* Gráficos: série principal, faixa de hover e linhas de grade. */
   --chart-1: var(--cavalcanti-blue-500);
+  /* Texto sobre --chart-1 (botão de aba ativa, ação de alerta). */
+  --chart-1-fg: var(--white);
   --chart-1-soft: color-mix(in srgb, var(--cavalcanti-blue-500) 14%, transparent);
   --chart-grid: color-mix(in srgb, var(--petroleum-950) 8%, transparent);
 
@@ -206,6 +208,7 @@
   --mark-fg: var(--white);
 
   --chart-1: var(--lime-500);
+  --chart-1-fg: var(--petroleum-950);
   --chart-1-soft: color-mix(in srgb, var(--lime-500) 12%, transparent);
   --chart-grid: color-mix(in srgb, var(--white) 7%, transparent);
 
@@ -273,6 +276,7 @@
   --mark-fg: var(--white);
 
   --chart-1: var(--lime-500);
+  --chart-1-fg: var(--petroleum-950);
   --chart-1-soft: color-mix(in srgb, var(--lime-500) 14%, transparent);
   --chart-grid: color-mix(in srgb, var(--white) 9%, transparent);
 

@@ -7,7 +7,8 @@ import { Cartao, brl } from '../cartao';
 /** Intensidade sequencial (uma cor, claro → escuro) pela contagem. */
 function intensidade(n: number, maximo: number): string {
   if (n === 0 || maximo === 0) return 'transparent';
-  const p = 0.12 + (n / maximo) * 0.55;
+  // Teto em 50%: acima disso o número (texto escuro) some na célula.
+  const p = 0.12 + (n / maximo) * 0.38;
   return `color-mix(in srgb, var(--chart-1) ${Math.round(p * 100)}%, transparent)`;
 }
 

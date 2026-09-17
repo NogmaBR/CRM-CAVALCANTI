@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { getServerTexto } from '@/lib/texto';
+import { getServerTexto } from '@/lib/texto-server';
 import { getServerTheme } from '@/lib/theme';
 import { Bell } from 'lucide-react';
 import Link from 'next/link';

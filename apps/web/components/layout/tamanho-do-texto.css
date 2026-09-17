@@ -38,7 +38,7 @@
 
 .texto-tamanho__botao[aria-pressed='true'] {
   background: var(--chart-1);
-  color: var(--mark-fg, #fff);
+  color: var(--chart-1-fg, #fff);
 }
 
 .texto-tamanho__botao:focus-visible {

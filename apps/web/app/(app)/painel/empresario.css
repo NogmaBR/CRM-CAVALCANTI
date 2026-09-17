@@ -51,7 +51,7 @@
 .painel-abas__aba--ativa:hover {
   background: var(--chart-1);
   border-color: var(--chart-1);
-  color: var(--mark-fg, #fff);
+  color: var(--chart-1-fg, #fff);
 }
 
 .painel-abas__aba:focus-visible {
@@ -424,7 +424,7 @@
   padding: 0 16px;
   border-radius: 999px;
   background: var(--chart-1);
-  color: var(--mark-fg, #fff);
+  color: var(--chart-1-fg, #fff);
   font-size: 0.9375rem;
   font-weight: 600;
   text-decoration: none;

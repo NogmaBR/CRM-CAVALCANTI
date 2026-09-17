@@ -10,13 +10,20 @@
  * direto quando há até 4.
  */
 
+/**
+ * "R$ 264 mil" com espaços que não quebram: o <text> do Recharts faz
+ * word-wrap pela largura da barra, e "R$ / 264 / mil" em três linhas era o
+ * que saía na primeira captura.
+ */
 export function brlCurto(v: number): string {
   const abs = Math.abs(v);
   const sinal = v < 0 ? '−' : '';
+  const nbsp = String.fromCharCode(0xa0);
   if (abs >= 1_000_000)
-    return `${sinal}R$ ${(abs / 1_000_000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mi`;
-  if (abs >= 1_000) return `${sinal}R$ ${Math.round(abs / 1_000).toLocaleString('pt-BR')} mil`;
-  return `${sinal}R$ ${Math.round(abs).toLocaleString('pt-BR')}`;
+    return `${sinal}R$${nbsp}${(abs / 1_000_000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}${nbsp}mi`;
+  if (abs >= 1_000)
+    return `${sinal}R$${nbsp}${Math.round(abs / 1_000).toLocaleString('pt-BR')}${nbsp}mil`;
+  return `${sinal}R$${nbsp}${Math.round(abs).toLocaleString('pt-BR')}`;
 }
 
 export function brl(v: number): string {

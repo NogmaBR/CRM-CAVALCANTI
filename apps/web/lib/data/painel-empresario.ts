@@ -20,6 +20,7 @@ import {
   somar,
   ultimosMeses,
 } from '@/lib/financeiro/agregacoes';
+import { logger } from '@/lib/log';
 import { CATEGORIAS, CATEGORIA_LABELS, STATUS_QUE_CONTAM } from '@/lib/status-labels';
 import { createClient } from '@/lib/supabase/server';
 import { hojeBR } from '@/lib/util/datas';
@@ -29,6 +30,8 @@ import { hojeBR } from '@/lib/util/datas';
  * usuário (RLS). Cada uma carrega só o que a aba mostra; as contas ficam em
  * `lib/financeiro/agregacoes.ts`, que é onde os testes estão.
  */
+
+const log = logger('painel-empresario');
 
 async function carregarBase() {
   const supabase = await createClient();
@@ -56,8 +59,30 @@ async function carregarBase() {
       .limit(10000),
   ]);
 
+  // Sem a migration 20260916230000 (valor_contrato, recebimentos) o painel
+  // não pode ficar em branco: cai para as obras sem contrato e sem
+  // recebimentos, com o motivo no log — é aviso, não erro silencioso.
+  let linhasDeObras: Array<{
+    id: string;
+    nome: string;
+    status: string | null;
+    valor_contrato: number | string | null;
+  }> = obrasR.data ?? [];
+  if (obrasR.error) {
+    log.erro('obras_falhou', { erro: obrasR.error.message });
+    const semContrato = await supabase
+      .from('obras')
+      .select('id, nome, status')
+      .is('deleted_at', null)
+      .order('nome');
+    linhasDeObras = (semContrato.data ?? []).map((o) => ({ ...o, valor_contrato: null }));
+  }
+  if (recR.error) log.erro('recebimentos_falhou', { erro: recR.error.message });
+  if (pagsR.error) log.erro('pagamentos_falhou', { erro: pagsR.error.message });
+  if (docsR.error) log.erro('documentos_falhou', { erro: docsR.error.message });
+
   const comDocumento = new Set((docsR.data ?? []).map((d) => d.pagamento_id).filter(Boolean));
-  const obras: ObraResumida[] = (obrasR.data ?? []).map((o) => ({
+  const obras: ObraResumida[] = linhasDeObras.map((o) => ({
     id: o.id,
     nome: o.nome,
     valor_contrato: o.valor_contrato == null ? null : Number(o.valor_contrato),

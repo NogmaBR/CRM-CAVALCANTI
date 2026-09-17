@@ -69,10 +69,8 @@ export async function AbaFornecedores() {
           data={d.ranking.map((l) => ({
             nome: l.fornecedor,
             valor: l.total,
-            pagamentos: l.pagamentos,
-            pct: l.pct,
+            detalhe: `${l.pagamentos} pagamento(s) · ${pct(l.pct)} do total`,
           }))}
-          rodape={(x) => `${x.pagamentos} pagamento(s) · ${pct(Number(x.pct))} do total`}
         />
       </Cartao>
 
