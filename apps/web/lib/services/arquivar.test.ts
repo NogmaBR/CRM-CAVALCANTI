@@ -237,8 +237,10 @@ describe('registrarNaObra', () => {
 
 describe('respostas', () => {
   it('curtas, com o destino visível', () => {
-    expect(respostaArquivado('Garibaldi', 'fotos')).toBe('📁 Garibaldi › Fotos ✔');
-    expect(respostaArquivado('Casa EJ', 'nfs_pagamentos')).toBe('📁 Casa EJ › NFs/Pagamentos ✔');
-    expect(respostaRegistrado('Garibaldi')).toBe('📝 Anotado em Garibaldi ✔');
+    expect(respostaArquivado('Garibaldi', 'fotos')).toContain(
+      'Guardei na obra *Garibaldi*, pasta *Fotos*',
+    );
+    expect(respostaArquivado('Casa EJ', 'nfs_pagamentos')).toContain('pasta *NFs/Pagamentos*');
+    expect(respostaRegistrado('Garibaldi')).toContain('Anotei no diário da obra *Garibaldi*');
   });
 });

@@ -4,8 +4,12 @@ import { obraRecente } from '@/lib/ia/memoria-curta';
 import { logger } from '@/lib/log';
 import { CATEGORIAS, type DocCategoria } from '@/lib/status-labels';
 import { hojeBR } from '@/lib/util/datas';
-import { formatarValorBR } from '@/lib/util/moeda';
-import { type Opcao, formatarOpcoes } from '@/lib/whatsapp/escolha';
+import type { Opcao } from '@/lib/whatsapp/escolha';
+import {
+  perguntaDeObraParaArquivo,
+  perguntaDePagamento,
+  perguntaDePagamentoSemObra,
+} from '@/lib/whatsapp/textos';
 import type { Database } from '@nogma/db';
 import type { Json } from '@nogma/db/types';
 import { createClient as createSbClient } from '@supabase/supabase-js';
@@ -216,7 +220,10 @@ export async function classifyAndPersist(mensagemId: string): Promise<
           confirmacao: null,
         };
       }
-      const pergunta = `${out.kind === 'documento_obra' ? 'De qual obra é esse arquivo?' : 'Anoto isso em qual obra?'}\n${formatarOpcoes(opcoes)}\nResponda com o número.`;
+      const pergunta = perguntaDeObraParaArquivo(
+        out.kind === 'documento_obra' ? 'documento' : 'registro',
+        opcoes,
+      );
       return abrirPendencia(supabase, {
         mensagemId,
         pergunta,
@@ -367,11 +374,16 @@ export async function classifyAndPersist(mensagemId: string): Promise<
         input.contexto.fornecedoresConhecidos.find((f) => f.id === out.extracted.fornecedor_id)
           ?.nome) ||
       out.extracted.fornecedor_nome_novo;
-    const partes = [`R$ ${formatarValorBR(out.extracted.valor as number)}`];
-    if (out.extracted.descricao) partes.push(out.extracted.descricao);
-    if (fornecedor) partes.push(`para ${fornecedor}`);
-    if (out.extracted.data_pagamento) partes.push(`em ${dataBR(out.extracted.data_pagamento)}`);
-    const pergunta = `${partes.join(' — ')}.\nDe qual obra é esse pagamento?\n${formatarOpcoes(opcoesDeObra)}\nResponda com o número para lançar, ou NÃO para cancelar.`;
+    const pergunta = perguntaDePagamentoSemObra(
+      {
+        valor: out.extracted.valor as number,
+        fornecedor: fornecedor ?? null,
+        descricao: out.extracted.descricao ?? null,
+        data: out.extracted.data_pagamento ?? null,
+        deAnexo: Boolean(input.midiaStoragePath),
+      },
+      opcoesDeObra,
+    );
     return abrirPendencia(supabase, {
       mensagemId,
       pergunta,
@@ -382,10 +394,33 @@ export async function classifyAndPersist(mensagemId: string): Promise<
     });
   }
 
-  // Caso default: confirmação pendente
+  // Caso default: confirmação pendente. A pergunta é template (cada dado em
+  // linha própria) — o que se pergunta é o que vai ser gravado. A frase do
+  // modelo só serve quando não há valor para montar o template.
   const pergunta =
-    out.perguntaConfirmacao ??
-    'Recebi sua mensagem mas preciso confirmar os dados antes de lançar. Pode revisar no painel?';
+    out.extracted.valor != null
+      ? perguntaDePagamento({
+          valor: out.extracted.valor,
+          obra: out.extracted.obra_id
+            ? (obrasAtivas.find((o) => o.id === out.extracted.obra_id)?.nome ?? null)
+            : null,
+          fornecedor:
+            (out.extracted.fornecedor_id &&
+              input.contexto.fornecedoresConhecidos.find(
+                (f) => f.id === out.extracted.fornecedor_id,
+              )?.nome) ||
+            out.extracted.fornecedor_nome_novo ||
+            null,
+          descricao: out.extracted.descricao ?? null,
+          data: out.extracted.data_pagamento ?? null,
+          categoria: out.extracted.categoria_id
+            ? (input.contexto.categorias?.find((c) => c.id === out.extracted.categoria_id)?.nome ??
+              null)
+            : null,
+          deAnexo: Boolean(input.midiaStoragePath),
+        })
+      : (out.perguntaConfirmacao ??
+        'Recebi sua mensagem, mas faltou o valor para lançar.\nMande de novo com o valor, ou o gestor completa no painel.');
 
   return abrirPendencia(supabase, {
     mensagemId,
@@ -394,12 +429,6 @@ export async function classifyAndPersist(mensagemId: string): Promise<
     tipo: 'pagamento',
     chatId: msg.chat_id,
   });
-}
-
-/** `2026-09-15` → `15/09/2026`. */
-function dataBR(iso: string): string {
-  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/u);
-  return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
 }
 
 function categoriaValida(c: string | undefined): DocCategoria {

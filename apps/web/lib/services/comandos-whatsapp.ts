@@ -1,6 +1,7 @@
 import 'server-only';
 import { hojeBR, inicioDoMesBR, inicioDoMesPassadoBR, nomeDoMesBR } from '@/lib/util/datas';
 import type { Comando } from '@/lib/whatsapp/comandos';
+import { AJUDA_TEXTO, valorLegivel } from '@/lib/whatsapp/textos';
 import type { Database } from '@nogma/db';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -21,14 +22,7 @@ function formatBRL(v: number): string {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-const AJUDA_TEXTO = [
-  'Posso ajudar com:',
-  '',
-  '• Mande a foto da nota ou o valor que eu lanço pra você',
-  '• *resumo* — quanto foi gasto no mês',
-  '• *pendências* — o que está esperando confirmação ou documento',
-  '• *quanto gastei na obra X* — total de uma obra',
-].join('\n');
+// O texto de ajuda vive em `lib/whatsapp/textos.ts`, com os demais.
 
 export async function executarComando(supabase: Client, comando: Comando): Promise<string> {
   switch (comando.tipo) {
@@ -78,9 +72,9 @@ async function resumo(supabase: Client): Promise<string> {
   const linhas = [
     `*Resumo de ${nomeDoMesBR()}*`,
     '',
-    `Gasto no mês: *${formatBRL(total)}*`,
-    `Lançamentos: ${qtd}`,
-    `Obras ativas: ${obrasAtivas.count ?? 0}`,
+    `Gasto no mês: *${valorLegivel(total)}*`,
+    `Pagamentos lançados: ${qtd}`,
+    `Obras em andamento: ${obrasAtivas.count ?? 0}`,
   ];
 
   // A comparação só entra quando há base — dizer "+100%" contra um mês
@@ -88,9 +82,10 @@ async function resumo(supabase: Client): Promise<string> {
   if (totalAnterior > 0) {
     const variacao = Math.round(((total - totalAnterior) / totalAnterior) * 100);
     const sinal = variacao >= 0 ? '+' : '';
-    linhas.push(`Mês anterior: ${formatBRL(totalAnterior)} (${sinal}${variacao}%)`);
+    linhas.push(`Mês anterior: ${valorLegivel(totalAnterior)} (${sinal}${variacao}%)`);
   }
 
+  linhas.push('', 'Quer ver uma obra? Pergunte: "como está a obra Garibaldi?"');
   return linhas.join('\n');
 }
 
@@ -121,7 +116,7 @@ async function pendencias(supabase: Client): Promise<string> {
   const aguardando = confirmacoes.count ?? 0;
 
   if (aguardando === 0 && faltando.length === 0) {
-    return 'Tudo em dia ✅ Nenhuma confirmação pendente e nenhum pagamento sem documento.';
+    return 'Tudo em dia ✅\nNenhuma confirmação esperando e nenhum pagamento sem nota.';
   }
 
   const linhas = ['*Pendências*', ''];
@@ -145,6 +140,7 @@ async function pendencias(supabase: Client): Promise<string> {
     );
   }
 
+  linhas.push('', 'Para resolver: mande a foto da nota aqui, ou abra Pendentes no painel.');
   return linhas.join('\n');
 }
 
