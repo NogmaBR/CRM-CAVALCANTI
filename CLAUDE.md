@@ -250,6 +250,13 @@ deliberada** e está comentada lá. Não reordene sem ler os comentários.
   Não a traga de volta, mesmo que pareça útil.
 - **`autorizados` vazio faz o sistema ignorar TUDO.** É o comportamento seguro. A tela
   `/config/autorizados` avisa isso em vermelho.
+- **Só grupo cadastrado entra no CRM (decisão do usuário, 2026-09-17).** Conversa no
+  privado — inclusive a do dono do número da instância com terceiros — é
+  `ignorada_privado`: nada gravado, nada respondido. Antes da trava, uma figurinha
+  mandada a um amigo virou "documento de obra" e o assistente respondeu no privado.
+  `WHATSAPP_ACEITA_PRIVADO=true` reabre (não ligue sem o usuário pedir). A limpeza
+  (`limpar-testes-whatsapp.mjs`) aceita o telefone em qualquer das duas formas (12/13
+  dígitos) e apaga também as conversas do assistente do período.
 
 ---
 

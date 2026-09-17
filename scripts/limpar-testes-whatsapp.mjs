@@ -69,8 +69,19 @@ const REP = { Prefer: 'return=representation' };
 // ---------------------------------------------------------------------------
 // O que existe
 // ---------------------------------------------------------------------------
+// O WhatsApp esconde o nono dígito: "(73) 99848-9747" chega como 557398489747
+// (12) e o cadastro tem 5573998489747 (13). As duas formas valem.
+function variantes(t) {
+  if (!t) return [];
+  const m = t.match(/^55(\d{2})(\d{8,9})$/u);
+  if (!m) return [t];
+  const [, ddd, resto] = m;
+  const sem9 = resto.length === 9 && resto.startsWith('9') ? resto.slice(1) : resto;
+  return [...new Set([`55${ddd}${sem9}`, `55${ddd}9${sem9}`])];
+}
+const formas = variantes(telefone);
 const filtros = [];
-if (telefone) filtros.push(`telefone_from.eq.${telefone}`);
+if (telefone) filtros.push(`telefone_from.in.(${formas.join(',')})`);
 if (grupo) filtros.push(`chat_id.eq.${encodeURIComponent(grupo)}`);
 let q = `mensagens_whats?select=id,msg_id_uazapi,telefone_from,chat_id,pagamento_id,documento_id,registro_id,midia_storage_path,created_at&or=(${filtros.join(',')})`;
 if (desde) q += `&created_at=gte.${desde}`;
@@ -113,14 +124,36 @@ const toolCalls = ids.length
   ? await rest('GET', `ai_tool_calls?select=id&message_id=in.${inList(ids)}`)
   : [];
 const eventosFiltro = [];
-if (telefone) eventosFiltro.push(`remetente.like.${telefone}*`);
+for (const f of formas) eventosFiltro.push(`remetente.like.${f}*`);
 if (grupo) eventosFiltro.push(`chat_id.eq.${encodeURIComponent(grupo)}`);
 const eventos = await rest(
   'GET',
   `webhook_eventos?select=id&or=(${eventosFiltro.join(',')})`,
 ).catch(() => []);
 const autorizado = telefone
-  ? await rest('GET', `autorizados?select=id,nome&telefone_norm=eq.${telefone}&deleted_at=is.null`)
+  ? await rest(
+      'GET',
+      `autorizados?select=id,nome&telefone_norm=in.(${formas.join(',')})&deleted_at=is.null`,
+    )
+  : [];
+// Conversas do assistente (perguntas/ações) não viram mensagens_whats: saem
+// pelo autorizado e pelo período. Sem --desde, tudo do autorizado.
+const conversas =
+  autorizado.length > 0
+    ? await rest(
+        'GET',
+        `ai_conversations?select=id&canal=eq.whatsapp&autorizado_id=eq.${autorizado[0].id}${desde ? `&created_at=gte.${desde}` : ''}`,
+      ).catch(() => [])
+    : [];
+const conversaIds = conversas.map((c) => c.id);
+const mensagensIA = conversaIds.length
+  ? await rest('GET', `ai_messages?select=id&conversation_id=in.${inList(conversaIds)}`)
+  : [];
+const toolCallsIA = mensagensIA.length
+  ? await rest(
+      'GET',
+      `ai_tool_calls?select=id&message_id=in.${inList(mensagensIA.map((m) => m.id))}`,
+    )
   : [];
 const grupoRow = grupo
   ? await rest(
@@ -137,6 +170,7 @@ console.log(`  pendências                  : ${pendencias.length}`);
 console.log(`  respostas (dedupe)          : ${respostas.length}`);
 console.log(`  chamadas de ferramenta IA   : ${toolCalls.length}`);
 console.log(`  eventos do webhook          : ${eventos.length}`);
+console.log(`  conversas do assistente     : ${conversas.length}`);
 if (TUDO) {
   console.log(`  autorizado a apagar         : ${autorizado.map((a) => a.nome).join(', ') || '—'}`);
   console.log(`  grupo a apagar              : ${grupoRow.map((g) => g.nome).join(', ') || '—'}`);
@@ -195,6 +229,17 @@ if (ids.length) {
 if (eventos.length) {
   console.log(
     `  webhook_eventos: ${await del('webhook_eventos', `id=in.${inList(eventos.map((e) => e.id))}`)}`,
+  );
+}
+if (conversaIds.length) {
+  if (toolCallsIA.length) {
+    await del('ai_tool_calls', `id=in.${inList(toolCallsIA.map((t) => t.id))}`);
+  }
+  if (mensagensIA.length) {
+    await del('ai_messages', `id=in.${inList(mensagensIA.map((m) => m.id))}`);
+  }
+  console.log(
+    `  ai_conversations: ${await del('ai_conversations', `id=in.${inList(conversaIds)}`)}`,
   );
 }
 if (TUDO) {

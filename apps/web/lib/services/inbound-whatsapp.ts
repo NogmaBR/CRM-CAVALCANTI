@@ -60,6 +60,7 @@ const log = logger('inbound');
 export type AcaoInbound =
   | 'ignorada_nao_autorizada'
   | 'ignorada_grupo_nao_autorizado'
+  | 'ignorada_privado'
   | 'duplicada'
   | 'confirmou_pendencia'
   | 'recusou_pendencia'
@@ -110,6 +111,20 @@ export async function processarInbound(
       dica: 'Cadastre o número em /config/autorizados para que ele possa lançar pagamentos.',
     });
     return { acao: 'ignorada_nao_autorizada' };
+  }
+
+  // Só grupo cadastrado (decisão do usuário, 2026-09-17). A instância é o
+  // número pessoal de alguém: conversa no privado — inclusive a do dono do
+  // número com terceiros — NÃO é do CRM. Antes de existir esta trava, uma
+  // figurinha mandada a um amigo virou "documento de obra" e o assistente
+  // respondeu no privado. Nada é gravado nem respondido; só o rastro em
+  // `webhook_eventos` (sem conteúdo). `WHATSAPP_ACEITA_PRIVADO=true` reabre.
+  if (!emGrupo && process.env.WHATSAPP_ACEITA_PRIVADO !== 'true') {
+    log.aviso('ignorada_privado', {
+      telefone,
+      dica: 'Só mensagens em grupo cadastrado entram no CRM. Cadastre um grupo em /config/autorizados › Grupos.',
+    });
+    return { acao: 'ignorada_privado' };
   }
 
   // Grupo também é lista fechada: pessoa autorizada num grupo desconhecido é

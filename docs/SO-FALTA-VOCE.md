@@ -746,6 +746,10 @@ isso mataria as mensagens de grupo. `addUrlEvents` e `addUrlTypesMessages` ficam
    grupo que não está cadastrado: `1203…@g.us` → cadastrar". Clique, dê um nome
    (ex.: "Teste"), escolha ou não uma obra dedicada, salve.
 
+> **17/09 — só grupo cadastrado.** Depois do PR `fix/somente-grupos-cadastrados`, mensagem no
+> privado (de quem for, inclusive do dono do número) é ignorada sem resposta. Os testes são
+> **sempre no grupo cadastrado**. O passo 5 da §13.2 ("mande oi de cada um") passa a ser no grupo.
+
 ### 13.3 — Roteiro de testes (o que mandar, o que tem que acontecer)
 
 Faça no grupo, pelo segundo celular; repita 2 ou 3 pelo número da instância.
