@@ -46,7 +46,12 @@ const apelidosOptional = z
   .trim()
   .optional()
   .transform((v) =>
-    v == null || v === '' ? [] : v.split(',').map((s) => s.trim()).filter(Boolean),
+    v == null || v === ''
+      ? []
+      : v
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
   );
 
 export const ObraCreateSchema = z.object({

@@ -1,9 +1,9 @@
 import 'server-only';
+import { type ResumoFinanceiroDaObra, montarResumo } from '@/lib/financeiro/resumo-obra';
 import { STATUS_QUE_CONTAM } from '@/lib/status-labels';
 import { createClient } from '@/lib/supabase/server';
 import { pareceUuid } from '@/lib/util/uuid';
 import type { Database } from '@nogma/db';
-import { type ResumoFinanceiroDaObra, montarResumo } from '@/lib/financeiro/resumo-obra';
 
 export type Recebimento = Database['public']['Tables']['recebimentos']['Row'];
 

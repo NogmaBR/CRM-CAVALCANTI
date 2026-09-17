@@ -103,9 +103,7 @@ export async function updateObra(formData: FormData) {
       ...(rest.tipo !== undefined ? { tipo: rest.tipo ?? null } : {}),
       ...(rest.status !== undefined ? { status: rest.status } : {}),
       ...(rest.orcamento !== undefined ? { orcamento: rest.orcamento ?? null } : {}),
-      ...(rest.valor_contrato !== undefined
-        ? { valor_contrato: rest.valor_contrato ?? null }
-        : {}),
+      ...(rest.valor_contrato !== undefined ? { valor_contrato: rest.valor_contrato ?? null } : {}),
       ...(rest.data_inicio !== undefined ? { data_inicio: rest.data_inicio || null } : {}),
       ...(rest.data_prevista_fim !== undefined
         ? { data_prevista_fim: rest.data_prevista_fim || null }

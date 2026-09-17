@@ -130,8 +130,7 @@ export default async function ObraDetailPage({
 
   const totalGasto = resumo.gasto;
   // Barra: orçamento planejado; sem ele, o contrato serve de teto.
-  const orcamento =
-    obra.orcamento != null ? Number(obra.orcamento) : (resumo.contrato ?? null);
+  const orcamento = obra.orcamento != null ? Number(obra.orcamento) : (resumo.contrato ?? null);
   const percentual = orcamento && orcamento > 0 ? Math.round((totalGasto / orcamento) * 100) : null;
 
   const status = obra.status ?? 'ativa';
