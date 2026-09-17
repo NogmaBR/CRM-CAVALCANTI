@@ -13,11 +13,12 @@ import { uploadDocumentBuffer } from '@/lib/storage/documents';
 import { interpretarComando } from '@/lib/whatsapp/comandos';
 import { interpretarEscolha } from '@/lib/whatsapp/escolha';
 import { nomeArquivoDaMidia } from '@/lib/whatsapp/nome-arquivo';
-import { ehPerguntaAoAssistente } from '@/lib/whatsapp/pergunta';
 import { interpretarResposta } from '@/lib/whatsapp/resposta';
+import { decidirDestino } from '@/lib/whatsapp/roteador';
 import { variantesTelefoneBR } from '@/lib/whatsapp/telefone-br';
 import type { Database } from '@nogma/db';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { RESPOSTA_ACAO_CANCELADA, abrirPendenciaDeAcao, aplicarAcao } from './acoes-whatsapp';
 import { classifyAndPersist } from './classify-and-persist';
 import { executarComando } from './comandos-whatsapp';
 import {
@@ -65,6 +66,8 @@ export type AcaoInbound =
   | 'classificada'
   | 'comando'
   | 'pergunta'
+  | 'acao_proposta'
+  | 'executou_acao'
   | 'erro';
 
 export interface ResultadoInbound {
@@ -172,6 +175,61 @@ export async function processarInbound(
   const pendencia = textoEfetivo
     ? await buscarConfirmacaoAberta(supabase, telefone, JANELA_RESPOSTA_HORAS)
     : null;
+
+  // Pendência de AÇÃO (criar obra, contrato, recebimento…): SIM executa o
+  // que está gravado na pendência; NÃO cancela. Outra coisa segue o fluxo —
+  // a pergunta continua aberta pelas 24 h.
+  if (pendencia && pendencia.tipo === 'acao') {
+    if (interpretacao === 'sim') {
+      const r = await aplicarAcao(supabase, {
+        confirmacaoId: pendencia.id,
+        via: 'whatsapp',
+        respostaBruta: textoEfetivo ?? '(sem texto)',
+      });
+      await gravarMensagem({
+        supabase,
+        payload,
+        telefone,
+        grupoId: grupo?.id ?? null,
+        autorizadoId: autorizado.id,
+        midia,
+        tipoDb,
+        status: r.ok ? 'confirmada' : 'recebida',
+      });
+      if (r.ok) {
+        await enviarTexto(destino, r.texto);
+        return { acao: 'executou_acao', detalhe: r.proposta.tipo };
+      }
+      log.aviso('acao_nao_executada', { codigo: r.codigo, motivo: r.motivo });
+      await enviarTexto(
+        destino,
+        r.codigo === 'ja_resolvida'
+          ? 'Essa ação já foi resolvida. Se precisar, peça de novo.'
+          : RESPOSTAS.falhaTemporaria,
+      );
+      return { acao: 'executou_acao', detalhe: r.codigo };
+    }
+    if (interpretacao === 'nao') {
+      await recusarConfirmacao(supabase, {
+        confirmacaoId: pendencia.id,
+        via: 'whatsapp',
+        respostaBruta: textoEfetivo ?? '(sem texto)',
+        motivo: 'Remetente cancelou a ação',
+      });
+      await gravarMensagem({
+        supabase,
+        payload,
+        telefone,
+        grupoId: grupo?.id ?? null,
+        autorizadoId: autorizado.id,
+        midia,
+        tipoDb,
+        status: 'recusada',
+      });
+      await enviarTexto(destino, RESPOSTA_ACAO_CANCELADA);
+      return { acao: 'recusou_pendencia', detalhe: 'acao' };
+    }
+  }
 
   // Pendência de pagamento que perguntou a obra (veio sem obra): o número
   // escolhe a obra e confirma de uma vez. "sim" sozinho não basta — falta a
@@ -301,25 +359,30 @@ export async function processarInbound(
   }
 
   // ---------------------------------------------------------------------
-  // 5b. É uma pergunta livre sobre os dados?
+  // 5b. É para o assistente (pergunta, ação ou conversa)?
   // ---------------------------------------------------------------------
-  // Depois dos comandos fixos (que são exatos e baratos) e antes da
-  // classificação (que trata a mensagem como lançamento).
+  // Depois dos comandos fixos (exatos e baratos) e antes da classificação
+  // (que trata a mensagem como lançamento). O roteador decide em três
+  // camadas — código puro, padrão de ação, modelo — e tudo que cheira a
+  // lançamento vai ao classificador SEM consultar o modelo: perder um
+  // pagamento custa dinheiro; uma pergunta virando pendência custa um clique.
   //
-  // A ordem é obrigatória: uma pergunta que chegasse à classificação viraria
-  // `nao_identificado` e uma pendência boba no painel. E o reconhecimento é
-  // estreito de propósito — `ehPerguntaAoAssistente` recusa qualquer coisa que
-  // cheire a lançamento, porque o erro contrário perde um pagamento.
-  //
-  // Só age com o modelo configurado. Embeddings são opcionais desde a versão
-  // com ferramentas: sem eles a busca devolve zero trechos e os agregados
-  // (totais, períodos, pendências) saem das ferramentas mesmo assim. Sem
-  // chave da Anthropic, a mensagem segue o caminho de sempre — este bloco é
-  // invisível.
-  if (ehPerguntaAoAssistente(textoEfetivo)) {
-    const { assistenteDisponivel, perguntar } = await import('@/lib/ia/assistente');
+  // Sem chave de modelo, o assistente não age e a mensagem segue o caminho
+  // de sempre — este bloco é invisível.
+  const { assistenteDisponivel, perguntar } = await import('@/lib/ia/assistente');
+  if (assistenteDisponivel()) {
+    const { classificarIntencao, intencaoDisponivel } = await import('@/lib/ia/intencao');
+    const decisao = await decidirDestino(
+      { texto: textoEfetivo, temMidia: Boolean(midia.storagePath) },
+      intencaoDisponivel() ? { classificarIntencao: (t) => classificarIntencao(t) } : {},
+    );
+    log.info('roteador', {
+      destino: decisao.destino,
+      motivo: decisao.motivo,
+      intencao: decisao.intencao,
+    });
 
-    if (assistenteDisponivel()) {
+    if (decisao.destino === 'assistente') {
       // Mesma dedupe dos comandos: 4 rodadas de modelo é onde o provider
       // mais dá timeout e reenvia — e a segunda resposta seria diferente.
       if (await jaRespondida(supabase, payload.id, 'pergunta')) {
@@ -329,14 +392,46 @@ export async function processarInbound(
         pergunta: textoEfetivo ?? '',
         canal: 'whatsapp',
         autorizadoId: autorizado.id,
+        chatId: payload.chatId ?? null,
+        telefone,
       }).catch((err) => {
         log.erro('assistente_falhou', { err });
         return null;
       });
 
-      // Só responde se o assistente respondeu. Falhou? Cai para a
-      // classificação — melhor a pergunta virar pendência no painel do que
-      // a pessoa receber silêncio.
+      // Falhou? Cai para a classificação — melhor a pergunta virar pendência
+      // no painel do que a pessoa receber silêncio.
+      if (resposta?.proposta) {
+        // Ação proposta: a mensagem vira registro (para a pendência ter
+        // origem e para o retry não repetir), a pendência guarda a proposta e
+        // a pergunta é template — o texto do modelo é só a introdução.
+        const gravada = await gravarMensagem({
+          supabase,
+          payload,
+          telefone,
+          grupoId: grupo?.id ?? null,
+          autorizadoId: autorizado.id,
+          midia,
+          tipoDb,
+          status: 'recebida',
+        });
+        if (gravada.duplicada) return { acao: 'duplicada', mensagemId: gravada.id ?? undefined };
+        if (!gravada.id) {
+          await enviarTexto(destino, RESPOSTAS.falhaTemporaria);
+          return { acao: 'erro', detalhe: 'mensagem_nao_gravada' };
+        }
+        const aberta = await abrirPendenciaDeAcao(supabase, {
+          mensagemId: gravada.id,
+          proposta: resposta.proposta,
+          chatId: payload.chatId ?? null,
+        });
+        if (!aberta.ok) {
+          await enviarTexto(destino, RESPOSTAS.falhaTemporaria);
+          return { acao: 'erro', mensagemId: gravada.id, detalhe: 'pendencia_acao_nao_aberta' };
+        }
+        await enviarTexto(destino, aberta.pergunta);
+        return { acao: 'acao_proposta', mensagemId: gravada.id, detalhe: resposta.proposta.tipo };
+      }
       if (resposta) {
         await enviarTexto(destino, resposta.texto);
         return {

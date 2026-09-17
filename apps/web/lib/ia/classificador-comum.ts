@@ -153,8 +153,8 @@ export function montarContextoTexto(input: ClassifierInput): string {
     '',
     `Telefone do remetente: ${input.telefone}`,
     obraDoGrupo(input)
-      ? `Obra do grupo de origem (default quando a mensagem não cita outra): ${obraDoGrupo(input)?.nome}`
-      : 'Mensagem sem grupo dedicado a uma obra.',
+      ? `Obra desta conversa (a do grupo, ou a de que se estava falando; use como default quando a mensagem não cita outra): ${obraDoGrupo(input)?.nome}`
+      : 'Conversa sem obra definida: se a mensagem não citar obra, deixe obra_nome null.',
     input.midiaMime ? `Anexo recebido, tipo: ${input.midiaMime}` : 'Sem anexo.',
     '',
     'Mensagem:',
