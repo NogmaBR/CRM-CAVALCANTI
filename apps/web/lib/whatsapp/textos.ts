@@ -191,6 +191,12 @@ export const RESPOSTAS = {
     'Não consegui processar agora. A mensagem ficou guardada.',
     'Tente de novo daqui a alguns minutos, ou peça ao gestor pelo painel.',
   ].join('\n'),
+  saudacao: [
+    'Oi! Estou aqui. 👋',
+    'Mande a foto da nota ou o valor de um pagamento.',
+    'Ou pergunte: "como está a obra Garibaldi?"',
+    'Para ver tudo que eu faço, mande: ajuda',
+  ].join(String.fromCharCode(10)),
   naoEntendi: [
     'Não entendi o que fazer com essa mensagem.',
     '',

@@ -384,6 +384,12 @@ export async function processarInbound(
       intencao: decisao.intencao,
     });
 
+    if (decisao.destino === 'saudacao') {
+      if (await jaRespondida(supabase, payload.id, 'saudacao')) return { acao: 'duplicada' };
+      await enviarTexto(destino, RESPOSTAS.saudacao);
+      return { acao: 'comando', detalhe: 'saudacao' };
+    }
+
     if (decisao.destino === 'assistente') {
       // Mesma dedupe dos comandos: 4 rodadas de modelo é onde o provider
       // mais dá timeout e reenvia — e a segunda resposta seria diferente.

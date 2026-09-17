@@ -22,7 +22,7 @@ import { ehPerguntaAoAssistente } from './pergunta';
  * isso tudo que cheira a lançamento **nunca** chega ao modelo.
  */
 
-export type Destino = 'assistente' | 'classificador';
+export type Destino = 'assistente' | 'classificador' | 'saudacao';
 
 export interface EntradaDoRoteador {
   texto: string | null | undefined;
@@ -37,6 +37,7 @@ export interface DepsRoteador {
 }
 
 export type Motivo =
+  | 'saudacao'
   | 'midia'
   | 'cheiro_de_lancamento'
   | 'curta'
@@ -61,6 +62,47 @@ const CHEIRO_DE_LANCAMENTO =
   /(r\$|\breais\b|\bconto\b|\bpila\b|\bpaguei\b|\bpagamos\b|\bpagou\b|\bcomprei\b|\bcompramos\b|\btransferi\b|\bpix\b|\bboleto\b|\bnota fiscal\b|\bnf\b)/iu;
 
 const TEM_NUMERO = /\d/u;
+
+/** Saudação/agradecimento curto: resposta fixa, sem modelo e sem pendência. */
+const SAUDACOES = new Set([
+  'oi',
+  'oie',
+  'oii',
+  'ola',
+  'ola!',
+  'opa',
+  'e ai',
+  'eai',
+  'salve',
+  'bom dia',
+  'boa tarde',
+  'boa noite',
+  'valeu',
+  'obrigado',
+  'obrigada',
+  'brigado',
+  'vlw',
+  'ok',
+  'okay',
+  'beleza',
+  'blz',
+  'show',
+  'top',
+  'oi tudo bem',
+  'oi bom dia',
+  'bom dia pessoal',
+  'boa tarde pessoal',
+  'boa noite pessoal',
+  'teste',
+  'testando',
+]);
+
+export function ehSaudacao(texto: string): boolean {
+  const t = normalizar(texto)
+    .replace(/[!?.,]+$/u, '')
+    .trim();
+  return SAUDACOES.has(t);
+}
 
 /**
  * Verbo de cadastro no começo (com ou sem vocativo/"aí"/"por favor"), seguido,
@@ -93,6 +135,7 @@ export async function decidirDestino(
   const texto = entrada.texto?.trim() ?? '';
   const t = normalizar(texto);
   if (!t) return { destino: 'classificador', motivo: 'curta' };
+  if (ehSaudacao(t)) return { destino: 'saudacao', motivo: 'saudacao' };
 
   // "recebi 50 mil" é entrada de dinheiro, não saída — a exceção ao cheiro.
   const cheira =
