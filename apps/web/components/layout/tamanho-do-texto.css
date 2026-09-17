@@ -1,0 +1,47 @@
+/* A / A+ / A++ — um grupo de botões, o ativo preenchido. Tamanhos em px de
+   propósito: o controle não pode crescer junto com o texto que ele controla. */
+.texto-tamanho {
+  margin: 0;
+  padding: 0;
+  display: inline-flex;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-card);
+}
+
+.texto-tamanho__botao {
+  min-width: 40px;
+  height: 40px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.texto-tamanho__botao--normal { font-size: 13px; }
+.texto-tamanho__botao--grande { font-size: 15px; }
+.texto-tamanho__botao--maior { font-size: 17px; }
+
+.texto-tamanho__botao + .texto-tamanho__botao {
+  border-left: 1px solid var(--border-default);
+}
+
+.texto-tamanho__botao:hover {
+  color: var(--text-strong);
+  background: var(--surface-2);
+}
+
+.texto-tamanho__botao[aria-pressed='true'] {
+  background: var(--chart-1);
+  color: var(--mark-fg, #fff);
+}
+
+.texto-tamanho__botao:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--chart-1) 50%, transparent);
+  outline-offset: -3px;
+}

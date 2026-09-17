@@ -138,6 +138,17 @@
   --chart-1-soft: color-mix(in srgb, var(--cavalcanti-blue-500) 14%, transparent);
   --chart-grid: color-mix(in srgb, var(--petroleum-950) 8%, transparent);
 
+  /* Séries categóricas (uma cor por obra, em ordem alfabética — nunca por
+     ranking). Validadas com o validate_palette.js do skill dataviz contra
+     a superfície clara: banda de luminosidade, CVD e contraste OK. */
+  --serie-1: #3c4aa8;
+  --serie-2: #c8761a;
+  --serie-3: #1f7a4d;
+  --serie-4: #8e3b8e;
+  /* Entrou (verde) × saiu (laranja): as mesmas duas cores, sempre. */
+  --serie-entra: var(--serie-3);
+  --serie-sai: var(--serie-2);
+
   /* Topbar translúcida sobre o conteúdo. */
   --topbar-bg: color-mix(in srgb, var(--surface-card) 86%, transparent);
 }
@@ -198,6 +209,16 @@
   --chart-1-soft: color-mix(in srgb, var(--lime-500) 12%, transparent);
   --chart-grid: color-mix(in srgb, var(--white) 7%, transparent);
 
+  /* Séries no escuro: passos próprios (validados contra #0e0e0e e #115965).
+     Par verde/laranja fica em ΔE 7,5 — por isso todo gráfico com 2+ séries
+     tem rótulo direto, gap de 2 px e a tabela "Ver os números". */
+  --serie-1: #5f6fd6;
+  --serie-2: #c07a22;
+  --serie-3: #2f9d62;
+  --serie-4: #a85fa9;
+  --serie-entra: var(--serie-3);
+  --serie-sai: var(--serie-2);
+
   --topbar-bg: color-mix(in srgb, var(--black) 78%, transparent);
 }
 
@@ -254,6 +275,13 @@
   --chart-1: var(--lime-500);
   --chart-1-soft: color-mix(in srgb, var(--lime-500) 14%, transparent);
   --chart-grid: color-mix(in srgb, var(--white) 9%, transparent);
+
+  --serie-1: #5f6fd6;
+  --serie-2: #c07a22;
+  --serie-3: #2f9d62;
+  --serie-4: #a85fa9;
+  --serie-entra: var(--serie-3);
+  --serie-sai: var(--serie-2);
 
   --topbar-bg: color-mix(in srgb, var(--petroleum-800) 82%, transparent);
 }

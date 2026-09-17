@@ -21,7 +21,13 @@ export default function PainelLoading() {
 
       <div style={{ padding: 24, display: 'grid', gap: 16 }}>
         {/* KPI row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: 12,
+          }}
+        >
           {Array.from({ length: 4 }).map((_, i) => (
             <div
               key={i}
@@ -57,7 +63,13 @@ export default function PainelLoading() {
         </div>
 
         {/* Two-column grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: 16,
+          }}
+        >
           {Array.from({ length: 2 }).map((_, i) => (
             <div
               key={i}

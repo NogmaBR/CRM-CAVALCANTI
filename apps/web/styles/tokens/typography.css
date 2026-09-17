@@ -22,6 +22,8 @@
   --fw-black:     900;  /* @kind other */
 
   /* ---- Fluid type scale (mobile-first, clamps to desktop) ---- */
+  /* Tamanho do texto (A / A+ / A++): a base do rem cresce e tudo acompanha.
+     Escolhido no TopBar, gravado em cookie, aplicado no <html> pelo servidor. */
   --text-2xs:   0.6875rem;  /* 11px — micro labels                    */
   --text-xs:    0.75rem;    /* 12px — captions, meta                  */
   --text-sm:    0.875rem;   /* 14px — secondary UI                    */
@@ -65,4 +67,13 @@
   --body-family:     var(--font-sans);
   --body-weight:     var(--fw-regular);
   --body-leading:    var(--leading-relaxed);
+}
+
+/* A+ = 18px, A++ = 20px de base. Fica fora do :root para valer em qualquer tema. */
+html[data-texto="grande"] {
+  font-size: 112.5%;
+}
+
+html[data-texto="maior"] {
+  font-size: 125%;
 }

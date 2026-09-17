@@ -1,3 +1,4 @@
+import { getServerTexto } from '@/lib/texto';
 import { getServerTheme } from '@/lib/theme';
 import type { Metadata, Viewport } from 'next';
 import '@/styles/globals.css';
@@ -80,9 +81,14 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const theme = await getServerTheme();
+  const [theme, texto] = await Promise.all([getServerTheme(), getServerTexto()]);
   return (
-    <html lang="pt-BR" data-theme={theme === 'light' ? undefined : theme} suppressHydrationWarning>
+    <html
+      lang="pt-BR"
+      data-theme={theme === 'light' ? undefined : theme}
+      data-texto={texto === 'normal' ? undefined : texto}
+      suppressHydrationWarning
+    >
       <body>
         <a href="#main-content" className="a11y-skip-link">
           Pular para o conteúdo principal

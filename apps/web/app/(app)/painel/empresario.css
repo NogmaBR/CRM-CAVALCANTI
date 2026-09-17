@@ -1,0 +1,513 @@
+/* ===========================================================================
+   Painel do empresário (2026-09-17): abas grandes, cartões com frase de
+   leitura e tabela, alertas em frases. Tudo em rem para acompanhar o
+   ajuste de tamanho de texto (A / A+ / A++).
+   =========================================================================== */
+
+.painel-alertas__todos {
+  margin-left: auto;
+  align-self: center;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Abas: botões grandes, nome por extenso, ícone junto. */
+.painel-abas {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+  padding-bottom: 4px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.painel-abas__aba {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 18px;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  background: var(--surface-card);
+  color: var(--text-secondary);
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+.painel-abas__aba:hover {
+  color: var(--text-strong);
+  border-color: var(--text-muted);
+}
+
+.painel-abas__aba--ativa,
+.painel-abas__aba--ativa:hover {
+  background: var(--chart-1);
+  border-color: var(--chart-1);
+  color: var(--mark-fg, #fff);
+}
+
+.painel-abas__aba:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--chart-1) 50%, transparent);
+  outline-offset: 2px;
+}
+
+/* Grade de cartões: 2 colunas no desktop, cartão "largo" ocupa as duas. */
+.painel-abas__grade {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+@media (min-width: 900px) {
+  .painel-abas__grade {
+    grid-template-columns: 1fr 1fr;
+  }
+  .cartao--largo {
+    grid-column: 1 / -1;
+  }
+}
+
+.cartao {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg, 12px);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.cartao__cabeca {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cartao__titulo {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--text-strong);
+}
+
+.cartao__link {
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--chart-1);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.cartao__corpo {
+  min-width: 0;
+}
+
+.cartao__leitura {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--text-primary);
+}
+
+.cartao__leitura strong {
+  color: var(--text-strong);
+}
+
+.cartao__tabela > summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  list-style: none;
+}
+
+.cartao__tabela > summary::before {
+  content: "\25B8";
+  display: inline-block;
+  width: 1.2em;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.cartao__tabela[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.cartao__tabela-rolagem {
+  overflow-x: auto;
+}
+
+/* Tabela legível: linhas altas, números à direita, zebra leve. */
+.tabela-legivel {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.tabela-legivel th,
+.tabela-legivel td {
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.tabela-legivel thead th {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.tabela-legivel tbody th {
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.tabela-legivel tbody tr:nth-child(even) {
+  background: color-mix(in srgb, var(--surface-2) 60%, transparent);
+}
+
+.tabela-legivel tfoot td {
+  font-weight: 700;
+  color: var(--text-strong);
+  border-top: 2px solid var(--border-default);
+}
+
+.tabela-legivel__num {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.tabela-legivel a {
+  color: var(--text-strong);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.tabela-legivel__celula-mapa {
+  border-radius: 6px;
+}
+
+.tabela-legivel__zero {
+  color: var(--text-muted);
+}
+
+/* Etapas por obra: barra horizontal em CSS, uma cor. */
+.lista-etapas {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lista-etapas__item {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 2fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 32px;
+  font-size: 0.9375rem;
+}
+
+.lista-etapas__nome {
+  color: var(--text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lista-etapas__barra {
+  display: block;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--chart-grid);
+  overflow: hidden;
+}
+
+.lista-etapas__preenchida {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--chart-1);
+}
+
+.lista-etapas__valor {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--text-primary);
+}
+
+.lista-etapas__valor small {
+  color: var(--text-muted);
+}
+
+/* Resumo do caixa: quatro números grandes. */
+.painel-resumo-caixa {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (min-width: 900px) {
+  .painel-resumo-caixa {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.painel-resumo-caixa__item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--surface-card);
+}
+
+.painel-resumo-caixa__item strong {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.painel-resumo-caixa__item--ok {
+  border-color: color-mix(in srgb, var(--serie-entra) 50%, var(--border-default));
+}
+
+.painel-resumo-caixa__item--alerta {
+  border-color: color-mix(in srgb, var(--danger) 50%, var(--border-default));
+}
+
+.painel-resumo-caixa__rotulo {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.painel-aviso {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px dashed var(--border-default);
+  border-radius: 12px;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.painel-numero-grande {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.painel-numero-grande__rotulo {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.valor--ok {
+  color: var(--serie-entra);
+  font-weight: 600;
+}
+
+.valor--alerta {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* Alertas em frases. */
+.lista-alertas {
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.alerta {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--border-default);
+  border-left-width: 6px;
+  border-radius: 12px;
+  background: var(--surface-card);
+}
+
+.alerta--alta {
+  border-left-color: var(--danger);
+}
+
+.alerta--media {
+  border-left-color: var(--warning);
+}
+
+.alerta--baixa {
+  border-left-color: var(--text-muted);
+}
+
+.alerta__numero {
+  min-width: 3.5rem;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.alerta__corpo {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.alerta__gravidade {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.alerta__titulo {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--text-strong);
+}
+
+.alerta__explicacao {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.alerta__acao {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--chart-1);
+  color: var(--mark-fg, #fff);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .alerta {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .alerta__acao {
+    grid-column: 1 / -1;
+    justify-content: center;
+  }
+}
+
+/* Gráficos: tooltip, legenda e rótulos diretos em token de texto. */
+.painel-tooltip {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+  box-shadow: var(--shadow-md, 0 4px 16px rgba(0, 0, 0, 0.12));
+}
+
+.painel-tooltip__titulo {
+  font-weight: 700;
+  color: var(--text-strong);
+  margin-bottom: 4px;
+}
+
+.painel-tooltip__linha {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.painel-tooltip__cor,
+.painel-legenda__cor {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: 0 0 auto;
+}
+
+.painel-tooltip__nome {
+  color: var(--text-secondary);
+}
+
+.painel-tooltip__valor {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.painel-tooltip__rodape {
+  margin-top: 4px;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.painel-legenda {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.painel-legenda__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.painel-rotulo {
+  fill: var(--text-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}

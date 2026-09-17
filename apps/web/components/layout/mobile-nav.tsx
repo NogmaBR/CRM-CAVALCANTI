@@ -20,9 +20,11 @@ import { SidebarNav } from './sidebar-nav';
 export function MobileNav({
   userMenu,
   themeToggle,
+  textoToggle,
 }: {
   userMenu?: ReactNode;
   themeToggle?: ReactNode;
+  textoToggle?: ReactNode;
 }) {
   return (
     <Dialog.Root>
@@ -65,6 +67,12 @@ export function MobileNav({
             </div>
           </Dialog.Close>
           <div className="nos-drawer__foot">
+            {textoToggle ? (
+              <div className="nos-drawer__tema">
+                <span>Tamanho do texto</span>
+                {textoToggle}
+              </div>
+            ) : null}
             {themeToggle ? (
               <div className="nos-drawer__tema">
                 <span>Tema</span>
