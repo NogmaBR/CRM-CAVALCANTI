@@ -1,3 +1,4 @@
+
 # Projeto Status — CRM Nogma Cavalcanti
 
 Atualizado: 2026-09-04 (fim da sessão de handoff Fase 0)

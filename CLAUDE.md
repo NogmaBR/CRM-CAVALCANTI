@@ -877,7 +877,17 @@ Regras para quem for mexer:
   "Sheet1" com lixo em vez de lançar; `lerPlanilha` confere a assinatura (zip/OLE2)
   antes. E `jszip`/`xlsx` precisam estar em `package.json` do `apps/web` — o pnpm não
   deixa importar dependência transitiva.
-- **Estado da fase de testes (2026-09-16 03:40):** instância UAZAPI de teste = número do
+- **Estado da fase de testes (2026-09-17, fim do dia):** em produção `main` = #43
+  (`7f83dcd`): #40 agente CRM inteiro, #41 textos claros, #42 painel do empresário, #43 só
+  grupo cadastrado. Migration `20260916230000` aplicada e conferida. **PR #44 (saudação com
+  resposta fixa) aberto, aguardando merge do usuário.** Grupo de teste atual: **"Teste - 2"
+  `120363411716292305@g.us`**, sem obra dedicada; autorizados: Társis 5573998489747, Hugo
+  5532988068174, Guilherme Marcon 5551991206951. O grupo "Teste" antigo foi removido. Privado
+  do usuário foi limpo (9 msgs + 6 conversas + mídia) e agora é ignorado. **Próximo passo:
+  usuário mergeia #44 → READY → roteiro 1–19 no grupo Teste - 2, um por vez** (tabela na
+  §15.3 do SO-FALTA-VOCE + saudação = teste 16). Contratos das 4 obras ainda não informados
+  (usuário disse que faz depois); troca para o número do Cavalcanti fica para o fim.
+- **Estado da fase de testes (2026-09-16 03:40, histórico):** instância UAZAPI de teste = número do
   usuário (557398489747, "Cavalcanti"/Társis) conectada, webhook certo, `UAZAPI_*` na
   Vercel, `whatsapp: true`. Testes 1–7 do roteiro §13.3 passaram; 8 e 9 pendentes. Limpeza
   aplicada; **autorizados (Társis + Hugo) e o grupo "Teste" `120363412955381272@g.us`
