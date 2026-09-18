@@ -55,10 +55,18 @@
   border-radius: inherit;
   transition: width 400ms ease;
 }
-.medidor--fisico .medidor__preenchida { background: var(--serie-entra); }
-.medidor--financeiro .medidor__preenchida { background: var(--serie-sai); }
-.medidor--prazo .medidor__preenchida { background: var(--chart-1); }
-.medidor__preenchida--estouro { background: var(--danger) !important; }
+.medidor--fisico .medidor__preenchida {
+  background: var(--serie-entra);
+}
+.medidor--financeiro .medidor__preenchida {
+  background: var(--serie-sai);
+}
+.medidor--prazo .medidor__preenchida {
+  background: var(--chart-1);
+}
+.medidor__preenchida--estouro {
+  background: var(--danger) !important;
+}
 
 .cronograma__leitura {
   margin: 0;
@@ -140,7 +148,9 @@
   border-radius: inherit;
   transition: width 400ms ease;
 }
-.etapa--concluida .etapa__preenchida { background: var(--success); }
+.etapa--concluida .etapa__preenchida {
+  background: var(--success);
+}
 .etapa__acoes {
   grid-area: acoes;
   display: flex;
@@ -235,10 +245,18 @@
   border-radius: 10px;
   background: var(--surface-1);
 }
-.orcado__linha--ok { border-left-color: var(--success); }
-.orcado__linha--atencao { border-left-color: var(--warning); }
-.orcado__linha--estourado { border-left-color: var(--danger); }
-.orcado__linha--sem_orcado { border-left-color: var(--border-default); }
+.orcado__linha--ok {
+  border-left-color: var(--success);
+}
+.orcado__linha--atencao {
+  border-left-color: var(--warning);
+}
+.orcado__linha--estourado {
+  border-left-color: var(--danger);
+}
+.orcado__linha--sem_orcado {
+  border-left-color: var(--border-default);
+}
 .orcado__cabeca {
   display: flex;
   justify-content: space-between;
@@ -257,13 +275,23 @@
   letter-spacing: 0.04em;
   color: var(--text-secondary);
 }
-.orcado__situacao--estourado { color: var(--danger); }
-.orcado__situacao--atencao { color: #8a5d00; }
+.orcado__situacao--estourado {
+  color: var(--danger);
+}
+.orcado__situacao--atencao {
+  color: #8a5d00;
+}
 [data-theme="dark"] .orcado__situacao--atencao,
-[data-theme="black"] .orcado__situacao--atencao { color: #f2c14e; }
-.orcado__situacao--ok { color: #1f7a4d; }
+[data-theme="black"] .orcado__situacao--atencao {
+  color: #f2c14e;
+}
+.orcado__situacao--ok {
+  color: #1f7a4d;
+}
 [data-theme="dark"] .orcado__situacao--ok,
-[data-theme="black"] .orcado__situacao--ok { color: #6fd39a; }
+[data-theme="black"] .orcado__situacao--ok {
+  color: #6fd39a;
+}
 .orcado__barras {
   display: flex;
   flex-direction: column;
@@ -285,7 +313,9 @@
   background: var(--serie-sai);
   border-radius: inherit;
 }
-.orcado__realizado--estouro { background: var(--danger); }
+.orcado__realizado--estouro {
+  background: var(--danger);
+}
 .orcado__numeros {
   display: flex;
   flex-wrap: wrap;

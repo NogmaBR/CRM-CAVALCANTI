@@ -1,7 +1,7 @@
 import { FiltroDeSituacao } from '@/components/completude/filtro-situacao';
-import { corDaCategoria } from '@/lib/categorias/cor';
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
+import { corDaCategoria } from '@/lib/categorias/cor';
 import {
   type FiltroDeSituacao as Situacao,
   avaliarFornecedor,

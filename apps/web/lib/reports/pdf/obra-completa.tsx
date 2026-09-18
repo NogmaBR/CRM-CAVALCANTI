@@ -1,18 +1,18 @@
 import 'server-only';
-import type { ReactElement } from 'react';
-import { Text, View } from '@react-pdf/renderer';
-import type { ObraCompletaData } from '@/lib/data/reports';
 import { fraseDoNivel } from '@/lib/completude/regras';
+import type { ObraCompletaData } from '@/lib/data/reports';
 import { fraseDoTripe } from '@/lib/financeiro/cronograma';
+import { Text, View } from '@react-pdf/renderer';
+import type { ReactElement } from 'react';
 import {
+  KpiCard,
+  KpiGrid,
   NogmaDoc,
   ReportTitle,
   Section,
-  KpiGrid,
-  KpiCard,
-  styles,
   formatBRL,
   formatDate,
+  styles,
 } from './primitives';
 
 // ---------------------------------------------------------------------------
@@ -50,7 +50,11 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 // Public export
 // ---------------------------------------------------------------------------
 const COR_NIVEL = { completo: '#1F7A4D', parcial: '#B8790A', critico: '#C73F33' } as const;
-const ROTULO_NIVEL = { completo: 'COMPLETO', parcial: 'FALTA POUCO', critico: 'FALTA MUITO' } as const;
+const ROTULO_NIVEL = {
+  completo: 'COMPLETO',
+  parcial: 'FALTA POUCO',
+  critico: 'FALTA MUITO',
+} as const;
 const ROTULO_GRAVIDADE = { critica: 'Grave', importante: 'Importante', leve: 'Leve' } as const;
 const ROTULO_SITUACAO = {
   ok: 'dentro do orçado',
@@ -67,9 +71,7 @@ export function renderObraCompletaPdf(data: ObraCompletaData): ReactElement {
   const { obra, pagamentos, documentos, totais, completude, cronograma, ritmo } = data;
 
   const kpiPct =
-    totais.percentualOrcamento != null
-      ? `${(totais.percentualOrcamento * 100).toFixed(1)}%`
-      : null;
+    totais.percentualOrcamento != null ? `${(totais.percentualOrcamento * 100).toFixed(1)}%` : null;
 
   // Build consolidado arrays from Record
   const porCategoria = Object.entries(totais.valorPorCategoria).sort((a, b) => b[1] - a[1]);
@@ -109,14 +111,8 @@ export function renderObraCompletaPdf(data: ObraCompletaData): ReactElement {
             sub={`Orçamento: ${formatBRL(obra.orcamento)}`}
           />
         )}
-        <KpiCard
-          label="Pagamentos"
-          value={String(totais.quantidadePagamentos)}
-        />
-        <KpiCard
-          label="Documentos"
-          value={String(documentos.length)}
-        />
+        <KpiCard label="Pagamentos" value={String(totais.quantidadePagamentos)} />
+        <KpiCard label="Documentos" value={String(documentos.length)} />
       </KpiGrid>
 
       {/* PM6: situação da obra (semáforo) — o que falta, com gravidade */}
@@ -168,7 +164,11 @@ export function renderObraCompletaPdf(data: ObraCompletaData): ReactElement {
           <KpiCard
             label="Contrato gasto"
             value={pct(ritmo.gastoPct)}
-            sub={obra.valor_contrato != null ? `Contrato: ${formatBRL(obra.valor_contrato)}` : 'sem contrato'}
+            sub={
+              obra.valor_contrato != null
+                ? `Contrato: ${formatBRL(obra.valor_contrato)}`
+                : 'sem contrato'
+            }
           />
           <KpiCard
             label="Prazo usado"
@@ -196,7 +196,9 @@ export function renderObraCompletaPdf(data: ObraCompletaData): ReactElement {
             <View style={styles.tableHeader}>
               <Text style={[styles.tableHeaderCell, { flex: 5 }]}>Etapa</Text>
               <Text style={[styles.tableHeaderCell, { flex: 1, textAlign: 'right' }]}>Peso</Text>
-              <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'right' }]}>Concluído</Text>
+              <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'right' }]}>
+                Concluído
+              </Text>
               <Text style={[styles.tableHeaderCell, { flex: 2 }]}>Medido em</Text>
               <Text style={[styles.tableHeaderCell, { flex: 2 }]}>Previsto</Text>
             </View>
@@ -207,8 +209,12 @@ export function renderObraCompletaPdf(data: ObraCompletaData): ReactElement {
                 <Text style={[styles.tableCell, { flex: 2 }, styles.cellRight, styles.cellStrong]}>
                   {e.percentual_concluido}%
                 </Text>
-                <Text style={[styles.tableCell, { flex: 2 }, styles.cellMuted]}>{formatDate(e.medido_em)}</Text>
-                <Text style={[styles.tableCell, { flex: 2 }, styles.cellMuted]}>{formatDate(e.data_prevista)}</Text>
+                <Text style={[styles.tableCell, { flex: 2 }, styles.cellMuted]}>
+                  {formatDate(e.medido_em)}
+                </Text>
+                <Text style={[styles.tableCell, { flex: 2 }, styles.cellMuted]}>
+                  {formatDate(e.data_prevista)}
+                </Text>
               </View>
             ))}
           </View>
@@ -224,15 +230,24 @@ export function renderObraCompletaPdf(data: ObraCompletaData): ReactElement {
             <View style={styles.tableHeader}>
               <Text style={[styles.tableHeaderCell, { flex: 4 }]}>Etapa</Text>
               <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'right' }]}>Orçado</Text>
-              <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'right' }]}>Realizado</Text>
+              <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'right' }]}>
+                Realizado
+              </Text>
               <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'right' }]}>Saldo</Text>
               <Text style={[styles.tableHeaderCell, { flex: 3 }]}>Situação</Text>
             </View>
             {cronograma.orcado.linhas.map((l, i) => (
-              <View key={l.categoria_id} style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}>
+              <View
+                key={l.categoria_id}
+                style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}
+              >
                 <Text style={[styles.tableCell, { flex: 4 }]}>{l.categoria}</Text>
-                <Text style={[styles.tableCell, { flex: 2 }, styles.cellRight]}>{formatBRL(l.orcado)}</Text>
-                <Text style={[styles.tableCell, { flex: 2 }, styles.cellRight]}>{formatBRL(l.realizado)}</Text>
+                <Text style={[styles.tableCell, { flex: 2 }, styles.cellRight]}>
+                  {formatBRL(l.orcado)}
+                </Text>
+                <Text style={[styles.tableCell, { flex: 2 }, styles.cellRight]}>
+                  {formatBRL(l.realizado)}
+                </Text>
                 <Text
                   style={[
                     styles.tableCell,
@@ -296,15 +311,14 @@ export function renderObraCompletaPdf(data: ObraCompletaData): ReactElement {
               <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'right' }]}>Valor</Text>
             </View>
             {pagamentos.map((p, i) => (
-              <View
-                key={p.id}
-                style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}
-              >
+              <View key={p.id} style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}>
                 <Text style={[styles.tableCell, { flex: 2 }]}>{formatDate(p.data_pagamento)}</Text>
                 <Text style={[styles.tableCell, { flex: 3 }]}>{p.fornecedor_nome ?? '—'}</Text>
                 <Text style={[styles.tableCell, { flex: 3 }]}>{p.categoria_nome ?? '—'}</Text>
                 <Text style={[styles.tableCell, { flex: 2 }, styles.cellMuted]}>{p.origem}</Text>
-                <Text style={[styles.tableCell, { flex: 2 }, styles.cellRight]}>{formatBRL(p.valor)}</Text>
+                <Text style={[styles.tableCell, { flex: 2 }, styles.cellRight]}>
+                  {formatBRL(p.valor)}
+                </Text>
               </View>
             ))}
             <View style={styles.totalRow}>
@@ -331,10 +345,7 @@ export function renderObraCompletaPdf(data: ObraCompletaData): ReactElement {
               <Text style={[styles.tableHeaderCell, { flex: 2 }]}>Nº NF</Text>
             </View>
             {documentos.map((d, i) => (
-              <View
-                key={d.id}
-                style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}
-              >
+              <View key={d.id} style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}>
                 <Text style={[styles.tableCell, { flex: 2 }]}>{formatDate(d.created_at)}</Text>
                 <Text style={[styles.tableCell, { flex: 2 }, styles.cellMuted]}>{d.tipo}</Text>
                 <Text style={[styles.tableCell, { flex: 4 }]}>{d.nome_arquivo}</Text>
@@ -354,15 +365,16 @@ export function renderObraCompletaPdf(data: ObraCompletaData): ReactElement {
           <View style={styles.table}>
             <View style={styles.tableHeader}>
               <Text style={[styles.tableHeaderCell, { flex: 5 }]}>Categoria</Text>
-              <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'right' }]}>Total (R$)</Text>
+              <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'right' }]}>
+                Total (R$)
+              </Text>
             </View>
             {porCategoria.map(([cat, val], i) => (
-              <View
-                key={cat}
-                style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}
-              >
+              <View key={cat} style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}>
                 <Text style={[styles.tableCell, { flex: 5 }]}>{cat}</Text>
-                <Text style={[styles.tableCell, { flex: 2 }, styles.cellRight]}>{formatBRL(val)}</Text>
+                <Text style={[styles.tableCell, { flex: 2 }, styles.cellRight]}>
+                  {formatBRL(val)}
+                </Text>
               </View>
             ))}
           </View>
@@ -377,15 +389,16 @@ export function renderObraCompletaPdf(data: ObraCompletaData): ReactElement {
           <View style={styles.table}>
             <View style={styles.tableHeader}>
               <Text style={[styles.tableHeaderCell, { flex: 5 }]}>Fornecedor</Text>
-              <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'right' }]}>Total (R$)</Text>
+              <Text style={[styles.tableHeaderCell, { flex: 2, textAlign: 'right' }]}>
+                Total (R$)
+              </Text>
             </View>
             {porFornecedor.map(([forn, val], i) => (
-              <View
-                key={forn}
-                style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}
-              >
+              <View key={forn} style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}>
                 <Text style={[styles.tableCell, { flex: 5 }]}>{forn}</Text>
-                <Text style={[styles.tableCell, { flex: 2 }, styles.cellRight]}>{formatBRL(val)}</Text>
+                <Text style={[styles.tableCell, { flex: 2 }, styles.cellRight]}>
+                  {formatBRL(val)}
+                </Text>
               </View>
             ))}
           </View>

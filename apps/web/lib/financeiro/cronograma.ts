@@ -17,7 +17,10 @@ export function avancoFisico(etapas: readonly EtapaResumida[]): number | null {
   const vivas = etapas.filter((e) => e.peso > 0);
   if (vivas.length === 0) return null;
   const pesoTotal = vivas.reduce((a, e) => a + e.peso, 0);
-  const soma = vivas.reduce((a, e) => a + e.peso * Math.min(100, Math.max(0, e.percentual_concluido)), 0);
+  const soma = vivas.reduce(
+    (a, e) => a + e.peso * Math.min(100, Math.max(0, e.percentual_concluido)),
+    0,
+  );
   return Math.round((soma / pesoTotal) * 10) / 10;
 }
 
@@ -103,7 +106,10 @@ export function orcadoVsRealizado(
   orcamentos: readonly OrcamentoResumido[],
   gastoPorCategoria: ReadonlyMap<string, number>,
   nomes: ReadonlyMap<string, string>,
-): { linhas: LinhaOrcadoRealizado[]; totais: { orcado: number; realizado: number; estouradas: number } } {
+): {
+  linhas: LinhaOrcadoRealizado[];
+  totais: { orcado: number; realizado: number; estouradas: number };
+} {
   const ids = new Set<string>([
     ...orcamentos.map((o) => o.categoria_id),
     ...gastoPorCategoria.keys(),

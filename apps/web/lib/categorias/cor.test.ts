@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { PALETA_AUTO as PALETA_MJS, corAutomatica as corMjs } from '../../../../scripts/lib/cor-categoria-core.mjs';
+import {
+  PALETA_AUTO as PALETA_MJS,
+  corAutomatica as corMjs,
+} from '../../../../scripts/lib/cor-categoria-core.mjs';
 import { PALETA_AUTO, corAutomatica, corDaCategoria, hashTexto } from './cor';
 
 describe('corDaCategoria', () => {

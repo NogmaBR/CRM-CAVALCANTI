@@ -44,7 +44,13 @@ export function FormularioDeComprovante({
       </label>
       <label className="form-comprovante__nf">
         <span className="form-comprovante__rotulo">Nº da NF (se tiver)</span>
-        <input type="text" name="numero_nf" inputMode="numeric" placeholder="ex.: 1234" maxLength={50} />
+        <input
+          type="text"
+          name="numero_nf"
+          inputMode="numeric"
+          placeholder="ex.: 1234"
+          maxLength={50}
+        />
       </label>
       <div className="form-comprovante__acao">
         <Button type="submit" variant={compacto ? 'secondary' : 'primary'}>

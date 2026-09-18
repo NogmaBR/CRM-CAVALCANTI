@@ -116,7 +116,10 @@ export async function subirDocumento(
     return { ok: false, erro: 'Falha ao enviar o arquivo. Tente de novo.', campo: 'file' };
   }
 
-  const upd = await supabase.from('documentos').update({ storage_path: path }).eq('id', documentoId);
+  const upd = await supabase
+    .from('documentos')
+    .update({ storage_path: path })
+    .eq('id', documentoId);
   if (upd.error) {
     try {
       await deleteDocumentFile(path);

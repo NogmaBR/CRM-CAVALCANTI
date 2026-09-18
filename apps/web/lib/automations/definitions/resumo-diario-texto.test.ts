@@ -27,8 +27,24 @@ describe('montarResumoDiario', () => {
         documentos: { completo: 320, parcial: 16, critico: 0, total: 336 },
       },
       alertas: [
-        { chave: 'a', gravidade: 'alta', numero: 53, titulo: '53 pagamentos sem nota há mais de 7 dias', explicacao: '', href: '/', acao: '' },
-        { chave: 'b', gravidade: 'media', numero: 4, titulo: '4 obras sem valor de contrato', explicacao: '', href: '/', acao: '' },
+        {
+          chave: 'a',
+          gravidade: 'alta',
+          numero: 53,
+          titulo: '53 pagamentos sem nota há mais de 7 dias',
+          explicacao: '',
+          href: '/',
+          acao: '',
+        },
+        {
+          chave: 'b',
+          gravidade: 'media',
+          numero: 4,
+          titulo: '4 obras sem valor de contrato',
+          explicacao: '',
+          href: '/',
+          acao: '',
+        },
       ],
       appUrl: 'https://crm.exemplo',
     });

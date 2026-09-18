@@ -7,7 +7,10 @@ const isoDate = z
   .regex(/^\d{4}-\d{2}-\d{2}$/u, 'Data inválida (use AAAA-MM-DD)');
 
 const opcional = <T extends z.ZodTypeAny>(schema: T) =>
-  z.preprocess((v) => (typeof v === 'string' && v.trim() === '' ? undefined : v), schema.optional());
+  z.preprocess(
+    (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
+    schema.optional(),
+  );
 
 /** 0–100, aceita "45", "45,5" e "45%". */
 const percentual = z.preprocess(

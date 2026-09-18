@@ -101,7 +101,12 @@ export function InstalarApp() {
           Instalar
         </button>
       ) : null}
-      <button type="button" className="instalar-app__fechar" onClick={fechar} aria-label="Agora não">
+      <button
+        type="button"
+        className="instalar-app__fechar"
+        onClick={fechar}
+        aria-label="Agora não"
+      >
         <X size={16} aria-hidden="true" />
       </button>
     </div>

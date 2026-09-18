@@ -319,7 +319,12 @@ export const proporRegistrarMedicao = ferramenta({
     'Prepara a MEDIÇÃO de uma etapa do cronograma físico da obra: quantos % daquela etapa estão feitos. Use para "laje 100%", "a alvenaria da casa ej tá em 60%", "fundação terminou", "pintura pela metade". Se a etapa não existir na obra, ela é criada no SIM. Só propõe: grava depois do SIM. NÃO é pagamento nem valor em reais.',
   schema: z.object({
     obra: NomeObra,
-    etapa: z.string().trim().min(2).max(120).describe('Nome da etapa como a pessoa disse (ex.: "laje", "alvenaria")'),
+    etapa: z
+      .string()
+      .trim()
+      .min(2)
+      .max(120)
+      .describe('Nome da etapa como a pessoa disse (ex.: "laje", "alvenaria")'),
     percentual: z
       .number()
       .min(0)

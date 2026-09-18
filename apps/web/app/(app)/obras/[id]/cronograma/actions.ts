@@ -107,7 +107,11 @@ export async function criarEtapasDoPlano(formData: FormData) {
   const [gasto, catsR, existentesR] = await Promise.all([
     gastoPorCategoriaDaObra(obraId, supabase),
     supabase.from('categorias').select('id, nome').is('deleted_at', null).order('nome'),
-    supabase.from('etapas_obra').select('categoria_id, nome').eq('obra_id', obraId).is('deleted_at', null),
+    supabase
+      .from('etapas_obra')
+      .select('categoria_id, nome')
+      .eq('obra_id', obraId)
+      .is('deleted_at', null),
   ]);
   const categorias = catsR.data ?? [];
   const comGasto = categorias.filter((c) => (gasto.get(c.id) ?? 0) > 0);
@@ -139,7 +143,10 @@ export async function criarEtapasDoPlano(formData: FormData) {
       `/obras/${obraId}?error=${encodeURIComponent(mapDbErrorWithContext(error, ERROS_DB))}#cronograma`,
     );
   }
-  sucesso(obraId, `${novas.length} ${novas.length === 1 ? 'etapa criada' : 'etapas criadas'} a partir do plano de contas.`);
+  sucesso(
+    obraId,
+    `${novas.length} ${novas.length === 1 ? 'etapa criada' : 'etapas criadas'} a partir do plano de contas.`,
+  );
 }
 
 export async function medirEtapa(formData: FormData) {

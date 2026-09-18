@@ -85,7 +85,9 @@ describe('resumo-diario-semaforo', () => {
   });
 
   it('"enviar quando tudo ok" ligado passa sem consultar o banco', async () => {
-    const r = await regra.condicao(ctx({ telefones: '5573998489747', enviar_quando_tudo_ok: true }));
+    const r = await regra.condicao(
+      ctx({ telefones: '5573998489747', enviar_quando_tudo_ok: true }),
+    );
     expect(r).toEqual({ passa: true });
   });
 });

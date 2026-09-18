@@ -51,7 +51,9 @@ export function montarResumoDiario(e: EntradaDoResumoDiario): string {
   const total = totalDePendencias(e.saude);
 
   if (total === 0 && e.alertas.length === 0) {
-    linhas.push('🟢 Tudo em dia: nenhum pagamento sem nota, nenhuma obra sem contrato, nenhum alerta.');
+    linhas.push(
+      '🟢 Tudo em dia: nenhum pagamento sem nota, nenhuma obra sem contrato, nenhum alerta.',
+    );
     linhas.push('', `Painel: ${e.appUrl}/painel`);
     return linhas.join('\n');
   }

@@ -34,5 +34,5 @@ export function corAutomatica(id: string): string {
 }
 
 export function corDaCategoria(cat: { id: string; cor?: string | null }): string {
-  return cat.cor && cat.cor.trim() ? cat.cor : corAutomatica(cat.id);
+  return cat.cor?.trim() ? cat.cor : corAutomatica(cat.id);
 }

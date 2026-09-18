@@ -66,7 +66,7 @@ export function FornecedoresTable({
                 fontSize: 13,
               }}
             >
-              {(
+              {
                 <span
                   aria-hidden="true"
                   style={{
@@ -77,7 +77,7 @@ export function FornecedoresTable({
                     background: corDaCategoria(cat),
                   }}
                 />
-              )}
+              }
               {cat.nome}
             </span>
           );

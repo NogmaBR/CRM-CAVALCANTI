@@ -1,6 +1,6 @@
 import { TopBar } from '@/components/layout/topbar';
-import { corDaCategoria } from '@/lib/categorias/cor';
 import { Button } from '@/components/nogma/Button';
+import { corDaCategoria } from '@/lib/categorias/cor';
 import { type CategoriaComContagem, listCategoriasComContagem } from '@/lib/data/categorias';
 import { createClient } from '@/lib/supabase/server';
 import { Archive, Pencil, Plus, RotateCcw, Tag } from 'lucide-react';

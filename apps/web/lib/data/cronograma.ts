@@ -100,7 +100,10 @@ export interface ResumoDoCronograma {
   orcamentos: OrcamentoEtapa[];
   /** 0–100 ponderado pelo peso; nulo sem etapas. */
   avancoFisico: number | null;
-  orcado: { linhas: LinhaOrcadoRealizado[]; totais: { orcado: number; realizado: number; estouradas: number } };
+  orcado: {
+    linhas: LinhaOrcadoRealizado[];
+    totais: { orcado: number; realizado: number; estouradas: number };
+  };
   /** Categorias vivas (id → nome), para os selects e para as linhas. */
   categorias: Array<{ id: string; nome: string; cor: string | null }>;
 }
@@ -133,7 +136,11 @@ export async function resumoDoCronograma(
 export async function etapasEstouradasPorObra(supabase?: Client): Promise<Map<string, number>> {
   const db = supabase ?? (await createClient());
   const [orcR, pagsR] = await Promise.all([
-    db.from('orcamentos_etapa').select('obra_id, categoria_id, valor').is('deleted_at', null).limit(5000),
+    db
+      .from('orcamentos_etapa')
+      .select('obra_id, categoria_id, valor')
+      .is('deleted_at', null)
+      .limit(5000),
     db
       .from('pagamentos')
       .select('obra_id, categoria_id, valor')

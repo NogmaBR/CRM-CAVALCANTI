@@ -26,7 +26,11 @@ import './cronograma.css';
 
 function brl(n: number | null | undefined): string {
   if (n == null) return '—';
-  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+  return n.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    maximumFractionDigits: 0,
+  });
 }
 
 function dataBR(iso: string | null): string {
@@ -76,8 +80,8 @@ export function CronogramaFisico({
         <div className="cronograma__vazio">
           <p>
             Nenhuma etapa ainda. Crie as etapas a partir do plano de contas (uma por categoria que
-            já tem gasto) ou adicione uma a uma. Depois, atualize o % pelo painel ou mande no
-            grupo: <em>"laje 100%"</em>.
+            já tem gasto) ou adicione uma a uma. Depois, atualize o % pelo painel ou mande no grupo:{' '}
+            <em>"laje 100%"</em>.
           </p>
           {podeEscrever ? (
             <form action={criarEtapasDoPlano}>
@@ -91,7 +95,13 @@ export function CronogramaFisico({
       ) : (
         <ol className="cronograma__etapas" aria-label="Etapas da obra">
           {resumo.etapas.map((e) => (
-            <EtapaLinha key={e.id} etapa={e} obraId={obraId} podeEscrever={podeEscrever} estado={estado} />
+            <EtapaLinha
+              key={e.id}
+              etapa={e}
+              obraId={obraId}
+              podeEscrever={podeEscrever}
+              estado={estado}
+            />
           ))}
         </ol>
       )}
@@ -126,7 +136,11 @@ export function CronogramaFisico({
           />
           <label className="ng-field">
             <span className="ng-field__label">Etapa do plano de contas</span>
-            <select name="categoria_id" className="cronograma__select" defaultValue={v.categoria_id ?? ''}>
+            <select
+              name="categoria_id"
+              className="cronograma__select"
+              defaultValue={v.categoria_id ?? ''}
+            >
               <option value="">— nenhuma —</option>
               {resumo.categorias.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -211,7 +225,14 @@ function EtapaLinha({
           {etapa.origem === 'whatsapp' ? ' · via WhatsApp' : ''}
         </span>
       </div>
-      <div className="etapa__barra" role="meter" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`${etapa.nome}: ${pct}% concluído`}>
+      <div
+        className="etapa__barra"
+        role="meter"
+        aria-valuenow={pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`${etapa.nome}: ${pct}% concluído`}
+      >
         <div className="etapa__preenchida" style={{ width: `${Math.min(100, pct)}%` }} />
       </div>
       {podeEscrever ? (
@@ -276,8 +297,8 @@ export function OrcadoVsRealizado({
     <div className="orcado">
       {linhas.length === 0 ? (
         <p className="cronograma__vazio">
-          Nenhum orçado por etapa e nenhum gasto com etapa ainda. Informe quanto planejou gastar
-          em cada etapa para ver onde está estourando.
+          Nenhum orçado por etapa e nenhum gasto com etapa ainda. Informe quanto planejou gastar em
+          cada etapa para ver onde está estourando.
         </p>
       ) : (
         <>
@@ -302,7 +323,14 @@ export function OrcadoVsRealizado({
           </p>
           <ul className="orcado__lista" aria-label="Orçado e realizado por etapa">
             {linhas.map((l) => (
-              <LinhaOrcado key={l.categoria_id} linha={l} teto={teto} obraId={obraId} podeEscrever={podeEscrever} idPorCategoria={idPorCategoria} />
+              <LinhaOrcado
+                key={l.categoria_id}
+                linha={l}
+                teto={teto}
+                obraId={obraId}
+                podeEscrever={podeEscrever}
+                idPorCategoria={idPorCategoria}
+              />
             ))}
           </ul>
         </>
@@ -313,7 +341,12 @@ export function OrcadoVsRealizado({
           <input type="hidden" name="obra_id" value={obraId} />
           <label className="ng-field">
             <span className="ng-field__label">Etapa</span>
-            <select name="categoria_id" className="cronograma__select" defaultValue={v.categoria_id ?? ''} required>
+            <select
+              name="categoria_id"
+              className="cronograma__select"
+              defaultValue={v.categoria_id ?? ''}
+              required
+            >
               <option value="">— escolha —</option>
               {resumo.categorias.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -321,7 +354,9 @@ export function OrcadoVsRealizado({
                 </option>
               ))}
             </select>
-            {erroDe('categoria_id') ? <span className="ng-field__error">{erroDe('categoria_id')}</span> : null}
+            {erroDe('categoria_id') ? (
+              <span className="ng-field__error">{erroDe('categoria_id')}</span>
+            ) : null}
           </label>
           <Input
             label="Valor orçado (R$)"
@@ -373,7 +408,10 @@ function LinhaOrcado({
           <div className="orcado__orcado" style={{ width: `${pctOrcado}%` }} />
         </div>
         <div className="orcado__trilho">
-          <div className={`orcado__realizado${l.situacao === 'estourado' ? ' orcado__realizado--estouro' : ''}`} style={{ width: `${Math.min(100, pctReal)}%` }} />
+          <div
+            className={`orcado__realizado${l.situacao === 'estourado' ? ' orcado__realizado--estouro' : ''}`}
+            style={{ width: `${Math.min(100, pctReal)}%` }}
+          />
         </div>
       </div>
       <div className="orcado__numeros">
@@ -384,7 +422,11 @@ function LinhaOrcado({
           Realizado <strong>{brl(l.realizado)}</strong>
         </span>
         <span className={l.saldo != null && l.saldo < 0 ? 'orcado__saldo--negativo' : undefined}>
-          {l.saldo == null ? '' : l.saldo < 0 ? `Estourou ${brl(-l.saldo)}` : `Sobram ${brl(l.saldo)}`}
+          {l.saldo == null
+            ? ''
+            : l.saldo < 0
+              ? `Estourou ${brl(-l.saldo)}`
+              : `Sobram ${brl(l.saldo)}`}
         </span>
         {podeEscrever && id ? (
           <form action={arquivarOrcamentoEtapa} className="orcado__remover">

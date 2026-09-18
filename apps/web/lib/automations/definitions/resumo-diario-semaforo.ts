@@ -88,7 +88,9 @@ export const resumoDiarioSemaforo: AutomacaoAgendada = {
         const r = await enviarWhatsapp(ctx, telefone, texto);
         resultados.push(r.resumo);
       } catch (err) {
-        falhas.push(`***${telefone.slice(-4)}: ${err instanceof Error ? err.message : String(err)}`);
+        falhas.push(
+          `***${telefone.slice(-4)}: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
     }
     // Um número que falhou não pode esconder os que receberam — mas se

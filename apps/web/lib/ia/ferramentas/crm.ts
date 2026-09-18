@@ -313,7 +313,10 @@ export const resumoDaObra = ferramenta({
       margem_prevista: resumo.margemPrevista,
       percentual_gasto_do_contrato: resumo.percentualGastoDoContrato,
       avanco_fisico_percentual: avancoFisico(etapas),
-      etapas_do_cronograma: etapas.map((e) => ({ etapa: e.nome, concluido: e.percentual_concluido })),
+      etapas_do_cronograma: etapas.map((e) => ({
+        etapa: e.nome,
+        concluido: e.percentual_concluido,
+      })),
       aviso_contrato:
         resumo.contrato == null
           ? 'Sem valor de contrato: lucro e margem não podem ser calculados. Peça o valor ("o contrato da obra é 850 mil").'

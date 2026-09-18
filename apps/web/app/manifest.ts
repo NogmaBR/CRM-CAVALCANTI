@@ -37,9 +37,21 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     shortcuts: [
       { name: 'Painel', url: '/painel', icons: [{ src: '/logos/pwa-192.png', sizes: '192x192' }] },
-      { name: 'Pendentes', url: '/pendentes', icons: [{ src: '/logos/pwa-192.png', sizes: '192x192' }] },
-      { name: 'Pagamentos', url: '/pagamentos', icons: [{ src: '/logos/pwa-192.png', sizes: '192x192' }] },
-      { name: 'Nova obra', url: '/obras/novo', icons: [{ src: '/logos/pwa-192.png', sizes: '192x192' }] },
+      {
+        name: 'Pendentes',
+        url: '/pendentes',
+        icons: [{ src: '/logos/pwa-192.png', sizes: '192x192' }],
+      },
+      {
+        name: 'Pagamentos',
+        url: '/pagamentos',
+        icons: [{ src: '/logos/pwa-192.png', sizes: '192x192' }],
+      },
+      {
+        name: 'Nova obra',
+        url: '/obras/novo',
+        icons: [{ src: '/logos/pwa-192.png', sizes: '192x192' }],
+      },
     ],
   };
 }

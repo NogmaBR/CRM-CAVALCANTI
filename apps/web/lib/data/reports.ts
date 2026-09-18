@@ -4,8 +4,8 @@ import { contextoDaObra } from '@/lib/data/completude';
 import { type ResumoDoCronograma, resumoDoCronograma } from '@/lib/data/cronograma';
 import { type RitmoDaObra, ritmoDaObra } from '@/lib/financeiro/agregacoes';
 import { STATUS_QUE_CONTAM } from '@/lib/status-labels';
-import { hojeBR } from '@/lib/util/datas';
 import { createClient } from '@/lib/supabase/server';
+import { hojeBR } from '@/lib/util/datas';
 import type { Database } from '@nogma/db';
 
 /**
