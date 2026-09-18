@@ -183,7 +183,9 @@
 /* Formulários */
 .cronograma__form {
   display: grid;
-  grid-template-columns: 2fr 0.7fr 0.8fr 1.6fr 1.1fr auto;
+  /* Colunas que quebram sozinhas: com a sidebar aberta em 1440 px, seis
+     colunas fixas cortavam o botão "Adicionar etapa" na borda direita. */
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 12px;
   align-items: end;
   padding: 14px;
@@ -201,11 +203,6 @@
   border-radius: 12px;
   background: var(--surface-2);
 }
-@media (max-width: 1100px) {
-  .cronograma__form {
-    grid-template-columns: 1fr 1fr;
-  }
-}
 @media (max-width: 720px) {
   .cronograma__form,
   .orcado__form {
@@ -215,6 +212,10 @@
 .cronograma__form-acao {
   display: flex;
   align-items: flex-end;
+}
+.cronograma__form .cronograma__form-acao {
+  grid-column: 1 / -1;
+  justify-content: flex-end;
 }
 .cronograma__select {
   height: 44px;
