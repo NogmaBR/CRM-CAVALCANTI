@@ -1,8 +1,8 @@
+import { saudeDoCadastro } from '@/lib/data/completude';
+import { alertasDoEmpresario } from '@/lib/data/painel-empresario';
 import type { Database } from '@nogma/db';
 import { createClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
-import { saudeDoCadastro } from '@/lib/data/completude';
-import { alertasDoEmpresario } from '@/lib/data/painel-empresario';
 import { resumoDiarioSemaforo } from './resumo-diario-semaforo';
 import { montarResumoDiario } from './resumo-diario-texto';
 
