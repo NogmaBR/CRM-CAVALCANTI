@@ -382,17 +382,6 @@
   margin-left: -1px;
   background: var(--text-strong);
 }
-.progresso__hoje-rotulo {
-  position: absolute;
-  top: -18px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 0.6875rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-strong);
-}
 .progresso__legenda {
   font-size: 0.8125rem;
   color: var(--text-secondary);

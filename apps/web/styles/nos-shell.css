@@ -218,6 +218,16 @@
     min-height: 72px;
   }
 }
+/* No desktop a coluna da direita nunca é menor que o seu conteúdo: com
+   "1fr auto 1fr" as ações (Voltar · Editar · Arquivar + sino + A/A+/A++)
+   transbordavam por cima do título quando o nome da obra era longo. O
+   título continua centrado quando há espaço e recua para a esquerda quando
+   não há — nunca por baixo dos botões. */
+@media (min-width: 900px) {
+  .nos-topbar {
+    grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(max-content, 1fr);
+  }
+}
 
 .nos-topbar__left {
   grid-area: left;

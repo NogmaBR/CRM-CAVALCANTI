@@ -43,7 +43,7 @@ export function FiltroDeSituacao({
               aria-current={active ? 'page' : undefined}
             >
               {opt.label}
-              {n != null ? <span className="filtro-situacao__n"> {n}</span> : null}
+              {n != null ? <span className="filtro-situacao__n">({n})</span> : null}
             </Link>
           );
         })}

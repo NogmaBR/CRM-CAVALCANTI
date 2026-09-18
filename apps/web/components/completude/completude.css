@@ -342,6 +342,7 @@
   padding-bottom: 0;
 }
 .filtro-situacao__n {
+  margin-left: 6px;
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }

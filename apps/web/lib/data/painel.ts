@@ -330,7 +330,9 @@ export async function getGastoPorCategoria(
   for (const p of pagsR.data ?? []) {
     const meta = p.categoria_id ? catMap.get(p.categoria_id) : null;
     const nome = meta?.nome ?? 'Sem categoria';
-    const cor = meta?.cor ?? '#A1A1A1';
+    // Categoria sem cor cadastrada recebe uma da paleta categórica abaixo,
+    // pela ordem de tamanho — antes o donut inteiro saía cinza.
+    const cor = meta?.cor ?? null;
     const cur = stats.get(nome);
     stats.set(nome, {
       nome,
@@ -340,19 +342,42 @@ export async function getGastoPorCategoria(
     });
   }
 
-  const sorted = [...stats.values()].sort((a, b) => b.total - a.total);
+  const sorted = [...stats.values()]
+    .sort((a, b) => b.total - a.total)
+    .map((c, i) => ({
+      ...c,
+      cor: c.cor ?? PALETA_CATEGORICA[i % PALETA_CATEGORICA.length] ?? '#8a8f94',
+    }));
   if (sorted.length <= topN) return sorted;
 
   const top = sorted.slice(0, topN);
   const rest = sorted.slice(topN);
+  // "Demais etapas", não "Outros": o cliente tem uma etapa chamada Outros e
+  // as duas apareciam juntas na legenda.
   const outros: CategoriaGasto = {
-    nome: 'Outros',
-    cor: '#565B5B',
+    nome: 'Demais etapas',
+    cor: '#8a8f94',
     total: rest.reduce((acc, x) => acc + x.total, 0),
     count: rest.reduce((acc, x) => acc + x.count, 0),
   };
   return [...top, outros];
 }
+
+/**
+ * Paleta categórica para etapa sem cor cadastrada: as quatro séries do tema
+ * (validadas no dataviz), a cor principal e dois neutros distinguíveis. A
+ * legenda escrita é o que identifica a fatia; a cor só separa vizinhas.
+ */
+const PALETA_CATEGORICA = [
+  'var(--serie-1)',
+  'var(--serie-2)',
+  'var(--serie-3)',
+  'var(--serie-4)',
+  'var(--chart-1)',
+  '#7a7f87',
+  '#b98a5c',
+  '#4f8fb3',
+];
 
 // ============================================================================
 // Atividade recente — pagamentos + documentos + mensagens (últimas 48h)

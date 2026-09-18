@@ -133,13 +133,11 @@ export function LinhaDoTempo({
             className={`progresso__preenchida progresso__preenchida--tempo${vencido ? ' progresso__preenchida--estouro' : ''}`}
             style={{ width: `${pct}%` }}
           />
-          <span className="progresso__hoje" style={{ left: `${pct}%` }}>
-            <span className="progresso__hoje-rotulo">hoje</span>
-          </span>
+          <span className="progresso__hoje" style={{ left: `${pct}%` }} title="hoje" />
         </div>
         <div className="progresso__topo">
           <span className="progresso__valor">
-            Dia {ritmo.diasDecorridos} de {ritmo.diasTotais}
+            Hoje: dia {ritmo.diasDecorridos} de {ritmo.diasTotais}
             <small> · {Math.round(pct)}% do prazo</small>
           </span>
           <span className={`progresso__valor${vencido ? ' progresso__valor--alerta' : ''}`}>
