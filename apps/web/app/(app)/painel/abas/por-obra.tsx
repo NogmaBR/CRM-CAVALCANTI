@@ -3,9 +3,9 @@ import { dadosPorObra } from '@/lib/data/painel-empresario';
 import { porExtensoCurto, rotuloDoMes } from '@/lib/financeiro/agregacoes';
 import { Building2 } from 'lucide-react';
 import Link from 'next/link';
-import { Cartao, Tabela, brl, pct } from '../cartao';
-import { BarrasPorObra } from '../charts/barras-por-obra';
-import { EmpilhadoMensal } from '../charts/empilhado-mensal';
+import { Cartao, Tabela, brl, pct } from '@/components/graficos/cartao';
+import { BarrasPorObra } from '@/components/graficos/barras-por-obra';
+import { EmpilhadoMensal } from '@/components/graficos/empilhado-mensal';
 
 export async function AbaPorObra() {
   const d = await dadosPorObra();

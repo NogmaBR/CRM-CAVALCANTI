@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import './graficos.css';
 
 /**
  * Cartão do painel do empresário: título em frase, o gráfico, **uma frase de

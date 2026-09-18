@@ -30,15 +30,6 @@
   }
 }
 
-/* Empty state */
-.painel-chart-card__empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 200px;
-  color: var(--text-muted);
-  font-size: 14px;
-}
 
 /* ---------------------------------------------------------------------------
    Banner de alertas — o que precisa de ação hoje.

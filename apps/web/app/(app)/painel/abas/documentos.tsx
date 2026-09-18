@@ -2,7 +2,7 @@ import { GradeDeArquivos } from '@/components/arquivos/grade';
 import { getUltimasFotosGerais } from '@/lib/data/acervo';
 import { dadosDocumentos } from '@/lib/data/painel-empresario';
 import Link from 'next/link';
-import { Cartao, brl } from '../cartao';
+import { Cartao, brl } from '@/components/graficos/cartao';
 
 /** Intensidade sequencial (uma cor, claro → escuro) pela contagem. */
 function intensidade(n: number, maximo: number): string {

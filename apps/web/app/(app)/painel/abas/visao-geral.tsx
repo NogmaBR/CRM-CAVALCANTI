@@ -26,10 +26,10 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
-import { Cartao, Tabela, brl } from '../cartao';
-import { BarSerieMensal } from '../charts/bar-serie-mensal';
-import { DonutCategoria } from '../charts/donut-categoria';
-import { LineAcumulado } from '../charts/line-acumulado';
+import { Cartao, Tabela, brl } from '@/components/graficos/cartao';
+import { BarSerieMensal } from '@/components/graficos/bar-serie-mensal';
+import { DonutCategoria } from '@/components/graficos/donut-categoria';
+import { LineAcumulado } from '@/components/graficos/line-acumulado';
 
 /**
  * Cartão de KPI. Delta só quando existe variação real contra o mês anterior;

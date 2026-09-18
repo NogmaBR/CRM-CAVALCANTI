@@ -3,8 +3,8 @@ import { dadosFornecedores } from '@/lib/data/painel-empresario';
 import { porExtensoCurto } from '@/lib/financeiro/agregacoes';
 import { Users } from 'lucide-react';
 import Link from 'next/link';
-import { Cartao, Tabela, brl, pct } from '../cartao';
-import { BarrasHorizontais } from '../charts/barras-horizontais';
+import { Cartao, Tabela, brl, pct } from '@/components/graficos/cartao';
+import { BarrasHorizontais } from '@/components/graficos/barras-horizontais';
 
 function dataBR(iso: string | null): string {
   if (!iso) return '—';

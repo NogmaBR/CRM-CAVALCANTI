@@ -1,8 +1,8 @@
 import { dadosCaixa } from '@/lib/data/painel-empresario';
 import { porExtensoCurto } from '@/lib/financeiro/agregacoes';
 import Link from 'next/link';
-import { Cartao, Tabela, brl, pct } from '../cartao';
-import { CaixaMensal, SaldoAcumulado } from '../charts/caixa';
+import { Cartao, Tabela, brl, pct } from '@/components/graficos/cartao';
+import { CaixaMensal, SaldoAcumulado } from '@/components/graficos/caixa';
 
 export async function AbaCaixa() {
   const d = await dadosCaixa();

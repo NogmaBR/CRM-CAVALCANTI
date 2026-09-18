@@ -1,0 +1,286 @@
+/* Semáforo de completude — badge, anel, painel de detalhe, aviso inline e
+   barra de saúde. As três cores vêm dos tokens de status; o texto fica
+   sempre em token de texto (a cor é acento, nunca o único sinal). */
+
+/* ---- badge ---------------------------------------------------------- */
+.semaforo {
+  cursor: help;
+}
+
+/* ---- anel ------------------------------------------------------------ */
+.anel {
+  flex: 0 0 auto;
+}
+.anel__trilho {
+  fill: none;
+  stroke: color-mix(in srgb, var(--text-secondary) 22%, transparent);
+  stroke-width: 6;
+}
+.anel__valor {
+  fill: none;
+  stroke-width: 6;
+  stroke-linecap: round;
+  transition: stroke-dasharray 400ms ease;
+}
+.anel--completo .anel__valor { stroke: var(--success); }
+.anel--parcial .anel__valor { stroke: var(--warning); }
+.anel--critico .anel__valor { stroke: var(--danger); }
+.anel__texto {
+  fill: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- painel de detalhe --------------------------------------------- */
+.painel-completude {
+  border: 1px solid var(--border-subtle);
+  border-left-width: 5px;
+  border-radius: var(--radius-lg, 12px);
+  background: var(--surface-1);
+  padding: 18px 20px;
+  margin-bottom: 20px;
+}
+.painel-completude--completo { border-left-color: var(--success); }
+.painel-completude--parcial { border-left-color: var(--warning); }
+.painel-completude--critico {
+  border-left-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 5%, var(--surface-1));
+}
+.painel-completude__cabeca {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.painel-completude__texto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.painel-completude__eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.painel-completude__frase {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+.painel-completude--completo .painel-completude__frase svg { color: var(--success); }
+.painel-completude--parcial .painel-completude__frase svg { color: var(--warning); }
+.painel-completude--critico .painel-completude__frase svg { color: var(--danger); }
+.painel-completude__contagem {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.painel-completude__lista {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.falta {
+  display: grid;
+  grid-template-columns: 12px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-size: 14px;
+  color: var(--text-primary);
+  min-height: 40px;
+}
+.falta__marca {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.falta--critica .falta__marca { background: var(--danger); }
+.falta--importante .falta__marca { background: var(--warning); }
+.falta--leve .falta__marca {
+  background: transparent;
+  border: 2px solid var(--text-secondary);
+}
+.falta--critica { border-left: 3px solid var(--danger); }
+.falta--importante { border-left: 3px solid var(--warning); }
+.falta__texto { min-width: 0; }
+.falta__acao {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chart-1);
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--chart-1) 40%, transparent);
+  white-space: nowrap;
+}
+.falta__acao:hover {
+  background: var(--chart-1-soft);
+}
+
+/* ---- aviso inline ----------------------------------------------------- */
+.aviso-falta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  color: var(--text-primary);
+  border: 1px solid transparent;
+}
+.aviso-falta--critica {
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+}
+.aviso-falta--critica svg { color: var(--danger); flex: 0 0 auto; }
+.aviso-falta--importante {
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  border-color: color-mix(in srgb, var(--warning) 45%, transparent);
+}
+.aviso-falta--importante svg { color: var(--warning); flex: 0 0 auto; }
+.aviso-falta--leve {
+  background: var(--surface-2);
+  border-color: var(--border-subtle);
+}
+.aviso-falta--leve svg { color: var(--text-secondary); flex: 0 0 auto; }
+.aviso-falta__texto { flex: 1 1 auto; min-width: 0; }
+.aviso-falta__acao {
+  font-weight: 600;
+  font-size: 13px;
+  text-decoration: none;
+  color: var(--chart-1-fg);
+  background: var(--chart-1);
+  padding: 8px 12px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+/* ---- valor faltante numa Row ---------------------------------------- */
+.row-falta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.row-falta__texto { color: var(--danger); font-weight: 600; }
+.row-falta--importante .row-falta__texto,
+.row-falta--leve .row-falta__texto { color: #8a5d00; }
+[data-theme="dark"] .row-falta--importante .row-falta__texto,
+[data-theme="black"] .row-falta--importante .row-falta__texto,
+[data-theme="dark"] .row-falta--leve .row-falta__texto,
+[data-theme="black"] .row-falta--leve .row-falta__texto { color: #f2c14e; }
+.row-falta__acao {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--chart-1);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ---- barra de saúde (painel) ---------------------------------------- */
+.barra-saude {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.barra-saude__topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 14px;
+}
+.barra-saude__rotulo { font-weight: 600; color: var(--text-primary); }
+.barra-saude__leitura { color: var(--text-secondary); font-size: 13px; }
+.barra-saude__trilho {
+  display: flex;
+  height: 28px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface-2);
+  gap: 2px;
+}
+.barra-saude__trecho {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--white, #fff);
+  transition: filter 120ms ease;
+}
+.barra-saude__trecho:hover { filter: brightness(1.1); }
+.barra-saude__trecho--completo { background: #1f7a4d; }
+.barra-saude__trecho--parcial { background: #b8790a; }
+.barra-saude__trecho--critico { background: var(--danger); }
+
+/* ---- legenda do semáforo (uma vez por lista) ------------------------- */
+.semaforo-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.semaforo-legenda li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.semaforo-legenda__cor {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+@media (max-width: 720px) {
+  .painel-completude__frase { font-size: 16px; }
+  .falta {
+    grid-template-columns: 12px 1fr;
+  }
+  .falta__acao {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
+/* ---- filtro de situação (listas) ------------------------------------- */
+.filtro-situacao {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 12px;
+}
+.filtro-situacao__rotulo {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.obras-filter-tabs--compacto {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.filtro-situacao__n {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
