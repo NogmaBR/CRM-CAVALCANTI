@@ -124,6 +124,26 @@
 - [x] **M12 Busca ⌘K numa RPC `busca_global`** — feito em `0971f4d`. (uma viagem em vez de três).
 - [ ] **A1 Números reais no login** (contagens por service_role), se quiser números.
 
+## Plano master de 2026-09-18 — o que ficou de backlog
+
+Spec: `docs/superpowers/specs/2026-09-18-semaforo-de-completude-e-painel-premium-design.md`
+(§4). O semáforo, os gráficos de obra/fornecedor e a saúde do cadastro entraram; isto não:
+
+- [ ] **PM1 Cronograma físico** — etapas da obra com % concluído (medição) ao lado do %
+  financeiro. Tabela nova (`etapas_obra`) + entrada pelo WhatsApp ("laje 100%").
+- [ ] **PM2 Orçamento por etapa** — orçado × realizado por categoria (hoje o orçamento é
+  um número só).
+- [ ] **PM3 Upload de comprovante direto na tela do pagamento** — o aviso vermelho leva a
+  `/documentos/novo?pagamento_id=`; um `<input type=file>` inline pouparia a ida.
+- [ ] **PM4 Resumo diário do semáforo no WhatsApp do gestor** — "3 pagamentos sem nota, 1
+  obra com prazo vencido", via automação (`lib/automations/`), reaproveitando
+  `saudeDoCadastro()` e `montarAlertas()`.
+- [ ] **PM5 PWA / atalho no celular** com ícone e tela cheia.
+- [ ] **PM6 Checklist de completude no PDF do relatório da obra.**
+- [ ] **PM7 Cor por categoria no cadastro** — as etapas do cliente vieram sem `cor`; a
+  paleta categórica de fallback (`PALETA_CATEGORICA` em `lib/data/painel.ts`) cobre, mas
+  cor fixa por etapa fica igual em todo gráfico.
+
 ## Decisões humanas em aberto (não são código)
 
 - Prazo de retenção de `mensagens_whats`/`ai_messages`.
