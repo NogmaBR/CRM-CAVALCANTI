@@ -816,6 +816,15 @@ nos fornecedores (`/fornecedores`) — hoje todos estão vazios de propósito.
 - [x] Instância de teste conectada e `/config/whatsapp` verde (2026-09-16)
 - [ ] Roteiro 13.3 completo no grupo de teste (1–7 ✓ em 16/09; faltam 8 e 9)
 - [x] Testes limpos (13.4, 2026-09-16 — grupo e autorizados mantidos para a próxima rodada)
+- [x] Testes de 17/09 limpos (13.4, em 2026-09-18 — grupo "Teste - 2", Társis + Hugo + Guilherme):
+  56 mensagens, 3 pagamentos, 16 documentos (14 do WhatsApp + 2 anexados pelo painel), 3 registros
+  de diário, 14 pendências, 20 conversas do assistente, 657 eventos do webhook, 34 miniaturas órfãs
+  no Storage e o resíduo do teste de 07/09 (número fictício). RAG: `removidos: 22`, de volta a 611.
+  Conferido: 250 pagamentos, 320 documentos, 0 mensagem, 0 pendência, 0 arquivo órfão. Autorizados
+  (3) e grupos mantidos. **Sobrou de propósito** (o classificador barra `DELETE` direto na API):
+  30 linhas em `whatsapp_respostas` (só dedupe de perguntas/comandos de 16–17/09, inofensivas) e
+  3 embeddings pendentes que o cron `indexar` fecha sozinho. Para zerar o dedupe agora:
+  `DELETE FROM whatsapp_respostas WHERE created_at >= '2026-09-16';` no SQL do Supabase.
 - [ ] Número oficial ligado (13.5) e roteiro repetido com o Cavalcanti
 
 ---
