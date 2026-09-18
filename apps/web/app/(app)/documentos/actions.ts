@@ -1,27 +1,13 @@
 'use server';
 
-import { logger } from '@/lib/log';
-import {
-  DocumentoMetaCreateSchema,
-  DocumentoUpdateSchema,
-  validateFileMagicBytes,
-  validateUploadedFile,
-} from '@/lib/schemas/documento';
+import { DocumentoMetaCreateSchema, DocumentoUpdateSchema } from '@/lib/schemas/documento';
 import { mapDbError, mapDbErrorWithContext } from '@/lib/schemas/errors';
-import { serviceClient } from '@/lib/storage/documents';
-import {
-  deleteDocumentFile,
-  makeStoragePath,
-  sha256Hex,
-  uploadDocumentBuffer,
-} from '@/lib/storage/documents';
+import { subirDocumento } from '@/lib/services/subir-documento';
 import { erroDeEscrita } from '@/lib/supabase/escrita';
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { type Rotulos, voltarComErro } from '../_shared/form-erros';
-
-const log = logger('documentos');
 
 const ROTULOS_DOCUMENTO: Rotulos = {
   file: 'Arquivo',
@@ -45,25 +31,6 @@ function voltarAoNovo(erro: string, formData: FormData, campo?: string): never {
   });
 }
 
-/**
- * Apaga a linha criada antes de um upload que falhou. Usa service role
- * porque a RLS só deixa admin apagar `documentos`; com a sessão de um gestor
- * o DELETE atingia zero linhas e a linha órfã (hash preenchido,
- * storage_path='pending') bloqueava o reenvio do mesmo arquivo.
- */
-async function desfazerDocumento(documentoId: string): Promise<void> {
-  try {
-    const admin = serviceClient();
-    const { error } = await admin.from('documentos').delete().eq('id', documentoId);
-    if (error) log.erro('rollback_documento_falhou', { documentoId, erro: error.message });
-  } catch (err) {
-    log.erro('rollback_documento_sem_service_role', {
-      documentoId,
-      erro: err instanceof Error ? err.message : String(err),
-    });
-  }
-}
-
 function formToRecord(fd: FormData): Record<string, unknown> {
   const rec: Record<string, unknown> = {};
   for (const [key, value] of fd.entries()) {
@@ -74,7 +41,6 @@ function formToRecord(fd: FormData): Record<string, unknown> {
 }
 
 export async function createDocumento(formData: FormData) {
-  // 1) Valida metadata
   const meta = DocumentoMetaCreateSchema.safeParse(formToRecord(formData));
   if (!meta.success) {
     voltarComErro('/documentos/novo', meta.error, {
@@ -83,143 +49,17 @@ export async function createDocumento(formData: FormData) {
     });
   }
 
-  // 2) Valida file
-  const fileField = formData.get('file');
-  const fileCheck = validateUploadedFile(fileField);
-  if (!fileCheck.ok) {
-    voltarAoNovo(fileCheck.error, formData, 'file');
-  }
-  const file = fileCheck.file;
-
-  // 3) Lê buffer 1x → alimenta magic-bytes check + hash SHA-256 (dedup) + upload
-  const buffer = await file.arrayBuffer();
-
-  // 3.5) Magic bytes validation (audit MED fix): confirma que o conteúdo bate
-  // com o MIME declarado. Sem isso, atacante pode renomear .exe → .pdf.
-  const magicCheck = validateFileMagicBytes(buffer, file.type);
-  if (!magicCheck.ok) {
-    voltarAoNovo(magicCheck.error, formData, 'file');
-  }
-
-  const hash = sha256Hex(buffer);
-
-  // 4) Insert do row (obtém id) — storage_path placeholder temporário
-  const supabase = await createClient();
-  const { data: userData } = await supabase.auth.getUser();
-  const criadoPor = userData.user?.id ?? null;
-
-  const insertRes = await supabase
-    .from('documentos')
-    .insert({
-      obra_id: meta.data.obra_id,
-      pagamento_id: meta.data.pagamento_id ?? null,
-      fornecedor_id: meta.data.fornecedor_id ?? null,
-      tipo: meta.data.tipo,
-      categoria: meta.data.categoria,
-      origem: 'painel',
-      nome_arquivo: file.name,
-      mime_type: file.type,
-      tamanho_bytes: file.size,
-      storage_path: 'pending', // atualizado após upload
-      numero_nf: meta.data.numero_nf ?? null,
-      chave_acesso_nf: meta.data.chave_acesso_nf ?? null,
-      hash_sha256: hash,
-      criado_por_user_id: criadoPor,
-    })
-    .select('id')
-    .single();
-
-  if (insertRes.error) {
-    // Detecta qual constraint disparou 23505 pra dar mensagem targeted
-    const dupMsg =
-      insertRes.error.code === '23505'
-        ? insertRes.error.message?.includes('idx_documentos_hash')
-          ? 'Arquivo idêntico já existe (mesmo conteúdo). Verifique documentos anteriores.'
-          : insertRes.error.message?.includes('idx_documentos_chave_nf')
-            ? 'Já existe documento com esta chave de acesso de NF.'
-            : 'Já existe documento com esta chave de NF ou hash.'
-        : undefined;
-    voltarAoNovo(
-      mapDbErrorWithContext(insertRes.error, {
-        '23503': 'Obra, pagamento ou fornecedor referenciado não existe',
-        ...(dupMsg ? { '23505': dupMsg } : {}),
-      }),
-      formData,
-    );
-  }
-
-  const documentoId = insertRes.data.id;
-  const path = makeStoragePath(meta.data.obra_id, documentoId, file.name);
-
-  // 5) Upload buffer to Storage — se falhar, rollback row
-  try {
-    await uploadDocumentBuffer(path, buffer, file.type);
-  } catch (uploadErr) {
-    // O rollback usa service role: a RLS só deixa admin apagar, e o cliente
-    // de sessão de um gestor apagava zero linhas em silêncio — a linha órfã
-    // com o hash bloqueava o reenvio do mesmo arquivo até o sweep das 03h.
-    await desfazerDocumento(documentoId);
-    log.erro('upload_documento_falhou', {
-      documentoId,
-      erro: uploadErr instanceof Error ? uploadErr.message : String(uploadErr),
-    });
-    voltarAoNovo('Falha ao enviar o arquivo. Tente de novo.', formData, 'file');
-  }
-
-  // 6) Update storage_path final
-  const upd = await supabase
-    .from('documentos')
-    .update({ storage_path: path })
-    .eq('id', documentoId);
-  if (upd.error) {
-    // path inconsistente — tenta cleanup e falha
-    try {
-      await deleteDocumentFile(path);
-    } catch {
-      /* best effort */
-    }
-    await desfazerDocumento(documentoId);
-    voltarAoNovo(mapDbError(upd.error), formData);
-  }
-
-  // Dispatch outbound webhook (fase n8n) — best-effort
-  try {
-    const { dispatchEvento } = await import('@/lib/services/dispatch-webhook');
-    await dispatchEvento('documento_created', {
-      id: documentoId,
-      obra_id: meta.data.obra_id,
-      pagamento_id: meta.data.pagamento_id ?? null,
-      fornecedor_id: meta.data.fornecedor_id ?? null,
-      tipo: meta.data.tipo,
-      nome_arquivo: file.name,
-      mime_type: file.type,
-      tamanho_bytes: file.size,
-      storage_path: path,
-    });
-  } catch {
-    // Silencioso
-  }
-
-  // Evento de domínio para as automações (uma nota anexada encerra a cobrança
-  // daquele pagamento). Import dinâmico como o dispatch acima: fora do caminho
-  // quente de quem só renderiza esta rota.
-  const { emitir } = await import('@/lib/events/bus');
-  await emitir(
-    'documento.anexado',
-    {
-      documentoId,
-      pagamentoId: meta.data.pagamento_id ?? null,
-      obraId: meta.data.obra_id,
-      tipo: meta.data.tipo,
-    },
-    { userId: criadoPor },
-  );
+  // Validação do arquivo, gravação, upload, webhook e evento: tudo em
+  // `subirDocumento` (compartilhado com o "Anexar comprovante" do pagamento).
+  const r = await subirDocumento(meta.data, formData.get('file'));
+  if (!r.ok) voltarAoNovo(r.erro, formData, r.campo);
 
   revalidatePath('/documentos');
   revalidatePath('/painel');
   revalidatePath('/pendentes');
   revalidatePath(`/obras/${meta.data.obra_id}`);
-  redirect(`/documentos/${documentoId}`);
+  if (meta.data.pagamento_id) revalidatePath(`/pagamentos/${meta.data.pagamento_id}`);
+  redirect(`/documentos/${r.documentoId}`);
 }
 
 export async function updateDocumento(formData: FormData) {

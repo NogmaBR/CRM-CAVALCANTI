@@ -15,7 +15,8 @@ import { formatBRL } from '@/lib/schemas/pagamento';
 import { Archive, ArrowLeft, Pencil, RotateCcw } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { archivePagamento, restorePagamento } from '../actions';
+import { anexarComprovante, archivePagamento, restorePagamento } from '../actions';
+import { FormularioDeComprovante } from '../formulario-comprovante';
 import '../../_shared/detail-layout.css';
 import {
   PAGAMENTO_STATUS_LABEL as STATUS_LABEL,
@@ -56,7 +57,7 @@ export default async function PagamentoDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; success?: string }>;
 }) {
   const { id } = await params;
   // Pagamento e lookups numa ida só: em série o TTFB somava as duas.
@@ -138,6 +139,15 @@ export default async function PagamentoDetailPage({
             {sp.error}
           </div>
         ) : null}
+        {sp.success ? (
+          <div
+            className="detail-layout__success"
+            // biome-ignore lint/a11y/useSemanticElements: banner de status (padrão do projeto)
+            role="status"
+          >
+            {sp.success}
+          </div>
+        ) : null}
 
         <div className="detail-layout__header">
           {isArquivado ? (
@@ -212,20 +222,21 @@ export default async function PagamentoDetailPage({
             ) : null}
             {faltaComprovante ? (
               <div style={{ marginTop: mostrarMidiaDaMensagem ? 14 : 0 }}>
-                <AvisoDeFalta
-                  gravidade="critica"
-                  acao={{
-                    rotulo: 'Anexar comprovante ou NF',
-                    href: `/documentos/novo?pagamento_id=${pagamento.id}`,
-                  }}
-                >
+                <AvisoDeFalta gravidade="critica">
                   <strong>Está faltando o comprovante.</strong> Tem o valor e a data, mas nenhum
                   papel que prove o pagamento
                   {mostrarMidiaDaMensagem
                     ? ' — o anexo da mensagem acima ainda não virou documento.'
-                    : '. Mande a foto da nota no grupo ou anexe aqui.'}
+                    : '. Mande a foto da nota no grupo ou anexe aqui embaixo.'}
                 </AvisoDeFalta>
               </div>
+            ) : null}
+            {!isArquivado ? (
+              <FormularioDeComprovante
+                pagamentoId={pagamento.id}
+                action={anexarComprovante}
+                compacto={!faltaComprovante}
+              />
             ) : null}
           </section>
 
