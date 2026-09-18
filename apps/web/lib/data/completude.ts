@@ -9,6 +9,7 @@ import {
   avaliarPagamento,
   resumirNiveis,
 } from '@/lib/completude/regras';
+import { etapasEstouradasPorObra } from '@/lib/data/cronograma';
 import type { Documento } from '@/lib/data/documentos';
 import type { Fornecedor } from '@/lib/data/fornecedores';
 import type { Obra } from '@/lib/data/obras';
@@ -75,6 +76,7 @@ export async function contextoDasObras(): Promise<Map<string, ContextoDaObra>> {
 
   const docs = docsR.data ?? [];
   const comDocumento = new Set(docs.map((d) => d.pagamento_id).filter(Boolean));
+  const estouradas = await etapasEstouradasPorObra(supabase);
   const hoje = hojeBR();
   const mapa = new Map<string, ContextoDaObra>();
   const contexto = (obraId: string): ContextoDaObra => {
@@ -96,6 +98,7 @@ export async function contextoDasObras(): Promise<Map<string, ContextoDaObra>> {
     const c = contexto(d.obra_id);
     c.docsPorPasta[d.categoria] = (c.docsPorPasta[d.categoria] ?? 0) + 1;
   }
+  for (const [obraId, n] of estouradas) contexto(obraId).etapasEstouradas = n;
   return mapa;
 }
 

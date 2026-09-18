@@ -117,11 +117,18 @@ describe('avaliarObra', () => {
     endereco: { rua: 'Estrada Caminho do Meio', numero: '2259', cidade: 'Viamão' },
   };
 
-  it('obra completa é verde, 13 de 13', () => {
+  it('obra completa é verde, 14 de 14', () => {
     const c = avaliarObra(obraOk, ctxOk);
     expect(c.nivel).toBe('completo');
-    expect(c.itensTotal).toBe(13);
-    expect(c.itensOk).toBe(13);
+    expect(c.itensTotal).toBe(14);
+    expect(c.itensOk).toBe(14);
+  });
+
+  it('etapas acima do orçado é importante e aponta para o cronograma', () => {
+    const c = avaliarObra(obraOk, { ...ctxOk, etapasEstouradas: 2 });
+    expect(c.nivel).toBe('parcial');
+    expect(c.faltas[0]).toMatchObject({ chave: 'etapas_estouradas', curto: '2 acima do orçado' });
+    expect(c.faltas[0]?.acao?.href).toBe('/obras/o1#cronograma');
   });
 
   it('sem contrato é crítico', () => {

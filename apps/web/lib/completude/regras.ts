@@ -180,6 +180,8 @@ export interface ContextoDaObra {
   pagamentosSemDocumento: number;
   /** Quantidade de documentos vivos por pasta (`doc_categoria`). */
   docsPorPasta: Record<string, number>;
+  /** Etapas (categorias) cujo realizado passou do orçado. Opcional: sem PM2 é 0. */
+  etapasEstouradas?: number;
 }
 
 function enderecoVazio(e: unknown): boolean {
@@ -253,6 +255,18 @@ export function avaliarObra(o: ObraParaAvaliar, ctx: ContextoDaObra): Completude
         }
       : null,
     semComprovante,
+    (ctx.etapasEstouradas ?? 0) > 0
+      ? {
+          chave: 'etapas_estouradas',
+          gravidade: 'importante',
+          texto:
+            ctx.etapasEstouradas === 1
+              ? '1 etapa gastou mais que o orçado'
+              : `${ctx.etapasEstouradas} etapas gastaram mais que o orçado`,
+          curto: `${ctx.etapasEstouradas} acima do orçado`,
+          acao: { rotulo: 'Ver etapas', href: `/obras/${o.id}#cronograma` },
+        }
+      : null,
     vazio(o.cliente)
       ? {
           chave: 'cliente',

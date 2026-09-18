@@ -121,9 +121,22 @@ const PADRAO_DE_ACAO = new RegExp(
 const PADRAO_DE_INFORMACAO =
   /^(?:\w+[,!]?\s+){0,3}(?:o\s+)?(?:contrato|valor do contrato)\s+d[aeo]\s+.+\s+(?:e|eh|é|fica|ficou|vale)\s+\d|^(?:\w+[,!]?\s+){0,3}(?:recebi|recebemos|entrou|caiu)\s+/u;
 
+/**
+ * Medição de etapa: "laje 100%", "alvenaria da casa ej ta em 60%". Só a
+ * forma com percentual — "a laje ficou pronta" continua sendo diário da
+ * obra (registro), como antes; o modelo ainda pode levar ao assistente.
+ * Percentual sem cheiro de dinheiro não é lançamento — é o cronograma.
+ */
+const PADRAO_DE_MEDICAO = /(?:^|\s)\d{1,3}\s?%(?:\s|$)/u;
+
+export function pareceMedicao(texto: string): boolean {
+  const t = normalizar(texto);
+  return PADRAO_DE_MEDICAO.test(t) && !CHEIRO_DE_LANCAMENTO.test(t);
+}
+
 export function pareceAcao(texto: string): boolean {
   const t = normalizar(texto);
-  return PADRAO_DE_ACAO.test(t) || PADRAO_DE_INFORMACAO.test(t);
+  return PADRAO_DE_ACAO.test(t) || PADRAO_DE_INFORMACAO.test(t) || pareceMedicao(texto);
 }
 
 export async function decidirDestino(

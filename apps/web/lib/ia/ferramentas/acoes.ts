@@ -85,6 +85,19 @@ export const PropostaSchema = z.discriminatedUnion('tipo', [
       obra_nome: z.string(),
     }),
   }),
+  // PM1: medição do cronograma físico ("laje 100%"). `etapa_id` nulo = a
+  // etapa não existe ainda e será criada no SIM com esse nome.
+  z.object({
+    tipo: z.literal('registrar_medicao'),
+    dados: z.object({
+      obra_id: z.string().uuid(),
+      obra_nome: z.string(),
+      etapa_id: z.string().uuid().nullable(),
+      etapa_nome: z.string().trim().min(2).max(120),
+      percentual: z.number().min(0).max(100),
+      percentual_anterior: z.number().min(0).max(100).nullable(),
+    }),
+  }),
 ]);
 
 export type Proposta = z.infer<typeof PropostaSchema>;
@@ -300,10 +313,64 @@ export const proporArquivarObra = ferramenta({
   },
 });
 
+export const proporRegistrarMedicao = ferramenta({
+  nome: 'propor_registrar_medicao',
+  descricao:
+    'Prepara a MEDIÇÃO de uma etapa do cronograma físico da obra: quantos % daquela etapa estão feitos. Use para "laje 100%", "a alvenaria da casa ej tá em 60%", "fundação terminou", "pintura pela metade". Se a etapa não existir na obra, ela é criada no SIM. Só propõe: grava depois do SIM. NÃO é pagamento nem valor em reais.',
+  schema: z.object({
+    obra: NomeObra,
+    etapa: z.string().trim().min(2).max(120).describe('Nome da etapa como a pessoa disse (ex.: "laje", "alvenaria")'),
+    percentual: z
+      .number()
+      .min(0)
+      .max(100)
+      .describe('0–100. "terminou"/"pronta" = 100; "pela metade" = 50; "começou" = 10'),
+  }),
+  executar: async (supabase, args) => {
+    const r = await resolverObra(supabase, args.obra);
+    if (!r.ok) return r;
+    const { data, error } = await supabase
+      .from('etapas_obra')
+      .select('id, nome, percentual_concluido')
+      .eq('obra_id', r.obra.id)
+      .is('deleted_at', null)
+      .limit(200);
+    if (error) throw new Error(`etapas: ${error.message}`);
+    const etapas = (data ?? []).map((e) => ({
+      id: e.id,
+      nome: e.nome,
+      percentual: Number(e.percentual_concluido),
+    }));
+    const alvo = normalizarNome(args.etapa);
+    const exata = etapas.find((e) => normalizarNome(e.nome) === alvo);
+    const parecida = exata ?? resolverPorNome(args.etapa, etapas);
+    return {
+      ok: true,
+      proposta: {
+        tipo: 'registrar_medicao',
+        dados: {
+          obra_id: r.obra.id,
+          obra_nome: r.obra.nome,
+          etapa_id: parecida?.id ?? null,
+          etapa_nome: parecida?.nome ?? args.etapa,
+          percentual: Math.round(args.percentual),
+          percentual_anterior: parecida?.percentual ?? null,
+        },
+      },
+      ...(parecida
+        ? {}
+        : {
+            aviso: `a etapa "${args.etapa}" não existe nesta obra; será criada com essa medição`,
+          }),
+    } satisfies ResultadoDeProposta;
+  },
+});
+
 export const FERRAMENTAS_DE_ACAO = [
   proporCriarObra,
   proporCadastrarFornecedor,
   proporDefinirContrato,
   proporRegistrarRecebimento,
   proporArquivarObra,
+  proporRegistrarMedicao,
 ] as const;

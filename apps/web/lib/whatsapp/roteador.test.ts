@@ -95,6 +95,20 @@ describe('camada 2 — padrão de ação', () => {
     expect(d.destino).toBe('assistente');
   });
 
+  it.each(['laje 100%', 'alvenaria da casa ej ta em 60%', 'Fundação 25 %'])(
+    '"%s" é medição → assistente',
+    async (texto) => {
+      expect(pareceAcao(texto)).toBe(true);
+      const d = await decidirDestino({ texto, temMidia: false }, semModelo);
+      expect(d).toEqual({ destino: 'assistente', motivo: 'padrao_de_acao' });
+    },
+  );
+
+  it('percentual com cheiro de dinheiro não é medição', () => {
+    expect(pareceAcao('paguei 50% do pedreiro')).toBe(false);
+    expect(pareceAcao('desconto de 10% na nota fiscal')).toBe(false);
+  });
+
   it('verbo sem substantivo do CRM não dispara', () => {
     expect(pareceAcao('cria coragem e vai')).toBe(false);
     expect(pareceAcao('registra aí que hoje choveu')).toBe(false);
