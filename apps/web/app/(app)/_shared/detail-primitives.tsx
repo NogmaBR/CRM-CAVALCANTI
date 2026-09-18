@@ -1,5 +1,18 @@
 import Link from 'next/link';
 import type { CSSProperties, ReactNode } from 'react';
+import '@/components/completude/completude.css';
+
+/**
+ * Um campo que está faltando: o valor sai em vermelho (crítico) ou âmbar
+ * (importante/leve) com o link para preencher, no lugar do "—" cinza que
+ * ninguém via. É o semáforo aplicado campo a campo.
+ */
+export interface FaltaDaRow {
+  texto: string;
+  href?: string;
+  rotulo?: string;
+  gravidade?: 'critica' | 'importante' | 'leve';
+}
 
 export function Section({
   title,
@@ -11,7 +24,9 @@ export function Section({
   children: ReactNode;
 }) {
   return (
-    <section className={`detail-layout__section ${span === 2 ? 'detail-layout__section--wide' : ''}`}>
+    <section
+      className={`detail-layout__section ${span === 2 ? 'detail-layout__section--wide' : ''}`}
+    >
       <h3 className="detail-layout__legend">{title}</h3>
       <dl className="detail-layout__rows">{children}</dl>
     </section>
@@ -25,6 +40,7 @@ export function Row({
   swatch,
   strong,
   multiline,
+  falta,
 }: {
   label: string;
   value: ReactNode;
@@ -32,11 +48,22 @@ export function Row({
   swatch?: string | null;
   strong?: boolean;
   multiline?: boolean;
+  /** Quando presente, substitui o valor pelo aviso de campo faltante. */
+  falta?: FaltaDaRow | null;
 }) {
   const style: CSSProperties = {};
   if (strong) style.fontWeight = 600;
 
-  const inner = (
+  const inner = falta ? (
+    <span className={`row-falta row-falta--${falta.gravidade ?? 'critica'}`}>
+      <span className="row-falta__texto">{falta.texto}</span>
+      {falta.href ? (
+        <Link href={falta.href} className="row-falta__acao">
+          {falta.rotulo ?? 'Preencher'}
+        </Link>
+      ) : null}
+    </span>
+  ) : (
     <>
       {swatch ? (
         <span
@@ -66,7 +93,11 @@ export function Row({
     <div className="detail-layout__row">
       <dt className="detail-layout__label">{label}</dt>
       <dd
-        className={multiline ? 'detail-layout__value detail-layout__value--multiline' : 'detail-layout__value'}
+        className={
+          multiline
+            ? 'detail-layout__value detail-layout__value--multiline'
+            : 'detail-layout__value'
+        }
         style={style}
       >
         {inner}

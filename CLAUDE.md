@@ -4,7 +4,7 @@
 > **Mantenha-o atualizado**: ao terminar um trabalho relevante, atualize a §7 (estado)
 > e acrescente em §8 (armadilhas) qualquer erro novo que você cometeu.
 >
-> Última atualização: **2026-09-17**: agente sobre o CRM inteiro (PR #40), textos claros (PR #41), painel do empresário + A/A+/A++ (PR #42) — os três empilhados, nesta ordem.
+> Última atualização: **2026-09-18**: semáforo de completude em todas as telas + gráficos de obra/fornecedor + saúde do cadastro (PR `feat/semaforo-completude-e-painel-premium`).
 
 ---
 
@@ -804,6 +804,41 @@ Regras para quem for mexer:
   production build": o build filtrado pelo grep não tinha gravado o `BUILD_ID`. Rode
   `pnpm exec next build > log` e confira o `BUILD_ID` antes de subir.
 
+**Semáforo de completude e gráficos novos (2026-09-18, PR `feat/semaforo-completude-e-painel-premium`;
+spec em `docs/superpowers/specs/2026-09-18-semaforo-de-completude-e-painel-premium-design.md`,
+backlog "PM" em `TODOS.md`).** Toda entidade diz o que falta, em vermelho/amarelo/verde. Regras
+para quem for mexer:
+- **As regras são puras e vivem em `lib/completude/regras.ts`** (`avaliarPagamento/Obra/
+  Fornecedor/Documento`, com teste). Nível: crítica **ou** 2+ importantes = 🔴; qualquer outra
+  falta = 🟡; nada = 🟢. Leve nunca deixa vermelho. Cada `Falta` tem `chave` estável, `texto`,
+  `curto` (badge) e `acao {rotulo, href}`. Regra nova = um item na checklist da função + teste.
+- **`lib/data/completude.ts`** busca o contexto (documentos por pagamento, gasto/pastas por
+  obra) e tem `saudeDoCadastro()` para o painel. `contextoDaObra(id)` para UMA obra (tela de
+  detalhe); `contextoDasObras()` para a lista.
+- **UI em `components/completude/`**: `Semaforo` (badge), `PainelDeCompletude` (bloco do
+  detalhe: anel + lista com botão), `AvisoDeFalta` (inline, ex.: Documentos do pagamento),
+  `BarraDeSaude` (painel), `colunaDeSituacao<T>()` (coluna "Situação" das quatro tabelas),
+  `FiltroDeSituacao` (chips `?situacao=pendente|critico|completo`, filtro em memória).
+  `Row` de `_shared/detail-primitives` aceita `falta={faltaDoCampo(c, 'chave')}` e pinta o
+  valor faltante com o link. Sem hooks: servem a server e client.
+- **Gráficos compartilhados moveram para `components/graficos/`** (`cartao.tsx` + `graficos.css`
+  com `.cartao`, `.tabela-legivel`, `.painel-tooltip`, `.progresso`, `.grade-de-cartoes`; os
+  Recharts do painel; `progresso.tsx` = `BarraDeDinheiro` e `LinhaDoTempo`, CSS puro). O painel
+  importa de lá; `empresario.css` ficou só com o que é do painel.
+- `getSerieMensal(n, { obraId | fornecedorId })` e `getGastoPorCategoria(n, { obraId, meses:
+  null })` filtram; etapa sem `cor` recebe `PALETA_CATEGORICA`; o balde agregado chama-se
+  "Demais etapas" (o cliente tem uma etapa "Outros").
+- `ritmoDaObra()`/`fraseDoRitmo()` em `agregacoes.ts`: prazo % × contrato %; `na_frente` quando
+  o gasto corre 15 pontos à frente do tempo. `montarAlertas` ganhou `prazo_vencido` e
+  `acima_do_contrato` (alta); `ObraResumida` tem `data_inicio`/`data_prevista_fim` opcionais.
+- **A lista de pagamentos calcula o resumo do topo da lista já filtrada** (`resumo.tsx`),
+  não mais de `sumPagamentosBy` — que ignorava fornecedor e categoria.
+- TopBar no desktop: `grid-template-columns: minmax(0,1fr) minmax(0,auto) minmax(max-content,1fr)`
+  — com `1fr auto 1fr` as ações passavam por cima do título da obra.
+- Provado localmente contra produção (`next start -p 3111` + magic link): 32 capturas (claro
+  1440, alto 3200, escuro, 390), todas 200, zero erro de console/servidor. **`fullPage` não
+  passa da dobra porque o `main` rola por dentro** — use viewport alto (3200) para ver a página.
+
 ### O que falta — e é ação humana, não código
 
 1. **Repositório é público.** Vai virar privado quando a Vercel for paga
@@ -936,6 +971,12 @@ Regras para quem for mexer:
   produção** desde 15/09 e ninguém viu, porque `perguntar` engole o erro e responde
   `SEM_CONTEXTO`. `openai-modelo.ts` manda `'none'` quando há tools. Chamada nova com
   tools: prove contra a API real antes de dizer que funciona.
+- **Python no Windows grava CRLF** (`open(p,'w')` converte `
+`). O Biome acusa `format` em
+  todo arquivo tocado e o diff fica sujo. Sempre `open(p, 'w', encoding='utf-8', newline='')`
+  (e ler com `newline=''` também) — ou rodar `biome check --fix` nos arquivos depois.
+- **Script `.mjs` fora de `apps/web` não acha `@playwright/test`** (ESM ignora `NODE_PATH`).
+  Copie para `apps/web/x.tmp.mjs`, rode de lá e apague — não commite.
 - **`pnpm typecheck | head` esconde o erro** (o `head` sai 0). Aconteceu de novo em 16/09:
   commitei com 4 erros TS. Use `| grep -c "error TS"` e leia o número.
 - **Heredoc/`sed` com `

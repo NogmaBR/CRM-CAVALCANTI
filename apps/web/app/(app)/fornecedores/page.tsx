@@ -1,5 +1,12 @@
+import { FiltroDeSituacao } from '@/components/completude/filtro-situacao';
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
+import {
+  type FiltroDeSituacao as Situacao,
+  avaliarFornecedor,
+  lerFiltroDeSituacao,
+  passaNoFiltro,
+} from '@/lib/completude/regras';
 import { listCategorias } from '@/lib/data/categorias';
 import { type Fornecedor, listFornecedores } from '@/lib/data/fornecedores';
 import { Plus } from 'lucide-react';
@@ -17,13 +24,14 @@ const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
 export default async function FornecedoresPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; categoria_id?: string }>;
+  searchParams: Promise<{ status?: string; categoria_id?: string; situacao?: string }>;
 }) {
   const params = await searchParams;
   const status = (params.status ?? '') as '' | 'ativo' | 'arquivado';
   const categoriaId = params.categoria_id ?? '';
+  const situacao = lerFiltroDeSituacao(params.situacao);
 
-  const [fornecedores, categorias]: [Fornecedor[], Awaited<ReturnType<typeof listCategorias>>] =
+  const [todos, categorias]: [Fornecedor[], Awaited<ReturnType<typeof listCategorias>>] =
     await Promise.all([
       listFornecedores({
         onlyArchived: status === 'arquivado',
@@ -31,6 +39,36 @@ export default async function FornecedoresPage({
       }),
       listCategorias(),
     ]);
+
+  // Semáforo do cadastro (regra pura, sem consulta extra) e filtro em memória.
+  const completude = Object.fromEntries(todos.map((f) => [f.id, avaliarFornecedor(f)]));
+  const contagem: Record<Situacao, number> = {
+    '': todos.length,
+    pendente: 0,
+    critico: 0,
+    completo: 0,
+  };
+  for (const f of todos) {
+    const c = completude[f.id];
+    if (!c) continue;
+    if (c.nivel === 'completo') contagem.completo += 1;
+    else contagem.pendente += 1;
+    if (c.nivel === 'critico') contagem.critico += 1;
+  }
+  const fornecedores = todos.filter((f) =>
+    passaNoFiltro(completude[f.id] ?? { nivel: 'completo' }, situacao),
+  );
+  const hrefCom = (over: { status?: string; categoria_id?: string; situacao?: string }) => {
+    const p = new URLSearchParams();
+    const st = over.status ?? status;
+    const cat = over.categoria_id ?? categoriaId;
+    const sit = over.situacao ?? situacao;
+    if (st) p.set('status', st);
+    if (cat) p.set('categoria_id', cat);
+    if (sit) p.set('situacao', sit);
+    const qs = p.toString();
+    return qs ? `/fornecedores?${qs}` : '/fornecedores';
+  };
 
   return (
     <>
@@ -49,10 +87,7 @@ export default async function FornecedoresPage({
       <div className="nos-page-body">
         <nav className="obras-filter-tabs" aria-label="Filtrar por status">
           {STATUS_OPTIONS.map((opt) => {
-            const p = new URLSearchParams();
-            if (opt.value) p.set('status', opt.value);
-            if (categoriaId) p.set('categoria_id', categoriaId);
-            const href = p.toString() ? `/fornecedores?${p.toString()}` : '/fornecedores';
+            const href = hrefCom({ status: opt.value });
             const active = opt.value === status;
             return (
               <Link
@@ -80,16 +115,13 @@ export default async function FornecedoresPage({
           </span>
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
             <Link
-              href={status ? `/fornecedores?status=${status}` : '/fornecedores'}
+              href={hrefCom({ categoria_id: '' })}
               className={categoriaId === '' ? 'obras-filter-tab is-active' : 'obras-filter-tab'}
             >
               Todas
             </Link>
             {categorias.map((cat) => {
-              const p = new URLSearchParams();
-              if (status) p.set('status', status);
-              p.set('categoria_id', cat.id);
-              const href = `/fornecedores?${p.toString()}`;
+              const href = hrefCom({ categoria_id: cat.id });
               const active = categoriaId === cat.id;
               return (
                 <Link
@@ -112,8 +144,20 @@ export default async function FornecedoresPage({
           </div>
         </div>
 
+        {status !== 'arquivado' ? (
+          <FiltroDeSituacao
+            atual={situacao}
+            buildHref={(v) => hrefCom({ situacao: v })}
+            contagem={contagem}
+          />
+        ) : null}
+
         <div style={{ marginTop: 24 }}>
-          <FornecedoresTable fornecedores={fornecedores} categorias={categorias} />
+          <FornecedoresTable
+            fornecedores={fornecedores}
+            categorias={categorias}
+            completude={status === 'arquivado' ? undefined : completude}
+          />
         </div>
       </div>
     </>

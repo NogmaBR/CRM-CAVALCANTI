@@ -1,0 +1,117 @@
+/* Cartão de resumo da lista de pagamentos: total · por status · sem comprovante. */
+
+.resumo-pag {
+  display: grid;
+  grid-template-columns: 1.2fr 1.4fr 1fr;
+  gap: 20px;
+  padding: 18px 22px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 900px) {
+  .resumo-pag {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+.resumo-pag__total,
+.resumo-pag__status,
+.resumo-pag__sem-nota {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.resumo-pag__rotulo {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.resumo-pag__valor {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+
+.resumo-pag__valor--n {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.resumo-pag__nota {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.resumo-pag__nota a {
+  color: var(--chart-1);
+  font-weight: 600;
+}
+
+.resumo-pag__barra {
+  display: flex;
+  height: 14px;
+  border-radius: 7px;
+  overflow: hidden;
+  gap: 2px;
+  background: var(--surface-2);
+  margin-top: 6px;
+}
+
+.resumo-pag__trecho {
+  display: block;
+  min-width: 6px;
+}
+
+.resumo-pag__legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.resumo-pag__legenda li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.resumo-pag__legenda strong {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.resumo-pag__cor {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.resumo-pag__sem-nota {
+  padding-left: 20px;
+  border-left: 1px solid var(--border-subtle);
+}
+
+@media (max-width: 900px) {
+  .resumo-pag__sem-nota {
+    padding-left: 0;
+    border-left: 0;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-subtle);
+  }
+}
+
+.resumo-pag__sem-nota--alerta .resumo-pag__valor {
+  color: var(--danger);
+}

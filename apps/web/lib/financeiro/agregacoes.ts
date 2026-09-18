@@ -29,6 +29,8 @@ export interface ObraResumida {
   nome: string;
   valor_contrato: number | null;
   status?: string | null;
+  data_inicio?: string | null;
+  data_prevista_fim?: string | null;
 }
 
 const MESES_PT = [
@@ -276,6 +278,81 @@ export function matrizDeDocumentos(
 }
 
 // ---------------------------------------------------------------------------
+// Prazo e ritmo de uma obra
+// ---------------------------------------------------------------------------
+
+export interface RitmoDaObra {
+  /** Dias corridos de início a fim previsto; nulo sem as duas datas. */
+  diasTotais: number | null;
+  /** Dias desde o início até hoje (nunca negativo, nunca acima do total). */
+  diasDecorridos: number | null;
+  /** Dias até o fim previsto; negativo quando venceu. */
+  diasRestantes: number | null;
+  /** % do prazo já usado (0–100, ou acima de 100 quando venceu). */
+  prazoPct: number | null;
+  /** % do contrato já gasto. Nulo sem contrato. */
+  gastoPct: number | null;
+  /**
+   * `na_frente`: gasto corre 15 pontos ou mais à frente do prazo;
+   * `atras`: prazo corre 15 pontos ou mais à frente do gasto;
+   * `em_dia`: dentro dessa faixa. Nulo quando falta prazo ou contrato.
+   */
+  leitura: 'na_frente' | 'em_dia' | 'atras' | 'vencido' | null;
+}
+
+export function ritmoDaObra(e: {
+  hoje: string;
+  data_inicio: string | null;
+  data_prevista_fim: string | null;
+  gasto: number;
+  contrato: number | null;
+}): RitmoDaObra {
+  const gastoPct =
+    e.contrato == null || e.contrato <= 0 ? null : Math.round((e.gasto / e.contrato) * 1000) / 10;
+  if (!e.data_inicio || !e.data_prevista_fim || e.data_prevista_fim <= e.data_inicio) {
+    return {
+      diasTotais: null,
+      diasDecorridos: null,
+      diasRestantes: null,
+      prazoPct: null,
+      gastoPct,
+      leitura: null,
+    };
+  }
+  const diasTotais = diasEntre(e.data_inicio, e.data_prevista_fim);
+  const decorridosBrutos = diasEntre(e.data_inicio, e.hoje);
+  const diasDecorridos = Math.max(0, Math.min(diasTotais, decorridosBrutos));
+  const diasRestantes = diasEntre(e.hoje, e.data_prevista_fim);
+  const prazoPct = Math.round((Math.max(0, decorridosBrutos) / diasTotais) * 1000) / 10;
+  let leitura: RitmoDaObra['leitura'] = null;
+  if (diasRestantes < 0) leitura = 'vencido';
+  else if (gastoPct != null) {
+    const dif = gastoPct - prazoPct;
+    leitura = dif >= 15 ? 'na_frente' : dif <= -15 ? 'atras' : 'em_dia';
+  }
+  return { diasTotais, diasDecorridos, diasRestantes, prazoPct, gastoPct, leitura };
+}
+
+/** A frase de leitura do ritmo, pronta para a tela. */
+export function fraseDoRitmo(r: RitmoDaObra): string {
+  if (r.prazoPct == null) return 'Sem data de início e fim previsto não dá para medir o ritmo.';
+  const prazo = `${Math.min(100, Math.round(r.prazoPct))}% do prazo`;
+  if (r.leitura === 'vencido') {
+    const d = Math.abs(r.diasRestantes ?? 0);
+    return `O prazo previsto venceu há ${d} ${d === 1 ? 'dia' : 'dias'} e a obra continua ativa.`;
+  }
+  const restam = `${r.diasRestantes} ${r.diasRestantes === 1 ? 'dia' : 'dias'}`;
+  if (r.gastoPct == null)
+    return `Passou ${prazo}; restam ${restam}. Sem contrato, não dá para comparar com o gasto.`;
+  const gasto = `${Math.round(r.gastoPct)}% do contrato`;
+  if (r.leitura === 'na_frente')
+    return `Gastou ${gasto} em ${prazo} — o dinheiro está saindo mais rápido que o tempo. Restam ${restam}.`;
+  if (r.leitura === 'atras')
+    return `Gastou ${gasto} em ${prazo} — sobra folga no orçamento, mas confira se a obra não está atrasada. Restam ${restam}.`;
+  return `Gastou ${gasto} em ${prazo} — ritmo em dia. Restam ${restam}.`;
+}
+
+// ---------------------------------------------------------------------------
 // Alertas
 // ---------------------------------------------------------------------------
 
@@ -334,6 +411,39 @@ export function montarAlertas(e: EntradaDeAlertas): Alerta[] {
       explicacao: 'Chegaram pelo WhatsApp e ninguém respondeu SIM ainda.',
       href: '/pendentes',
       acao: 'Confirmar',
+    });
+  }
+
+  const prazoVencido = e.obras.filter(
+    (o) =>
+      (o.status ?? 'ativa') === 'ativa' && !!o.data_prevista_fim && o.data_prevista_fim < e.hoje,
+  );
+  if (prazoVencido.length > 0) {
+    alertas.push({
+      chave: 'prazo_vencido',
+      gravidade: 'alta',
+      numero: prazoVencido.length,
+      titulo: `${prazoVencido.length} ${prazoVencido.length === 1 ? 'obra passou' : 'obras passaram'} do prazo previsto`,
+      explicacao: `${prazoVencido.map((o) => o.nome).join(', ')}. Atualize a data prevista ou marque como concluída.`,
+      href: '/obras?situacao=critico',
+      acao: 'Ver obras',
+    });
+  }
+
+  const acimaDoContrato = e.obras.filter((o) => {
+    if (o.valor_contrato == null || o.valor_contrato <= 0) return false;
+    const gasto = somar(e.pagamentos.filter((p) => p.obra_id === o.id).map((p) => p.valor));
+    return gasto > o.valor_contrato;
+  });
+  if (acimaDoContrato.length > 0) {
+    alertas.push({
+      chave: 'acima_do_contrato',
+      gravidade: 'alta',
+      numero: acimaDoContrato.length,
+      titulo: `${acimaDoContrato.length} ${acimaDoContrato.length === 1 ? 'obra gastou' : 'obras gastaram'} mais que o contrato`,
+      explicacao: `${acimaDoContrato.map((o) => o.nome).join(', ')}. O gasto passou do valor combinado com o cliente.`,
+      href: '/painel?aba=por-obra',
+      acao: 'Ver por obra',
     });
   }
 

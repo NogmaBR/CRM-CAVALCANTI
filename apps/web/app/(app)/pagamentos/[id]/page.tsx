@@ -1,8 +1,10 @@
 import { AnexoDaMensagem } from '@/components/arquivos/anexo-da-mensagem';
 import { GradeDeArquivos } from '@/components/arquivos/grade';
+import { AvisoDeFalta, PainelDeCompletude } from '@/components/completude/semaforo';
 import { TopBar } from '@/components/layout/topbar';
 import { Badge, type BadgeVariant } from '@/components/nogma/Badge';
 import { Button } from '@/components/nogma/Button';
+import { avaliarPagamento, faltaDoCampo } from '@/lib/completude/regras';
 import { listCategorias } from '@/lib/data/categorias';
 import { listDocumentos } from '@/lib/data/documentos';
 import { listFornecedores } from '@/lib/data/fornecedores';
@@ -90,6 +92,11 @@ export default async function PagamentoDetailPage({
   const status = pagamento.status_pagto ?? 'confirmado';
   const origem = pagamento.origem ?? 'manual';
 
+  // O semáforo: o que falta neste lançamento, com o link para resolver.
+  // Documento arquivado não conta como entregue.
+  const completude = avaliarPagamento(pagamento, { temDocumento: documentos.length > 0 });
+  const faltaComprovante = completude.faltas.find((f) => f.chave === 'comprovante');
+
   return (
     <>
       <TopBar
@@ -141,6 +148,8 @@ export default async function PagamentoDetailPage({
           <span className="detail-layout__tipo">{ORIGEM_LABEL[origem]}</span>
         </div>
 
+        {!isArquivado ? <PainelDeCompletude completude={completude} /> : null}
+
         <div className="detail-layout__grid">
           <Section title="Valores">
             <Row label="Valor" value={formatBRL(pagamento.valor)} strong />
@@ -166,11 +175,13 @@ export default async function PagamentoDetailPage({
               label="Fornecedor"
               value={fornecedor ? fornecedor.nome : '— sem fornecedor —'}
               href={fornecedor ? `/fornecedores/${fornecedor.id}` : undefined}
+              falta={faltaDoCampo(completude, 'fornecedor')}
             />
             <Row
-              label="Categoria"
+              label="Etapa (categoria)"
               value={categoria ? categoria.nome : '— sem categoria —'}
               swatch={categoria?.cor ?? null}
+              falta={faltaDoCampo(completude, 'categoria')}
             />
           </Section>
 
@@ -199,21 +210,31 @@ export default async function PagamentoDetailPage({
                 />
               </div>
             ) : null}
-            {documentos.length === 0 && !mostrarMidiaDaMensagem ? (
-              <p className="detail-layout__aviso">
-                Nenhum documento ligado a este pagamento.{' '}
-                <Link
-                  href={`/documentos/novo?pagamento_id=${pagamento.id}`}
-                  className="obras-row-link"
+            {faltaComprovante ? (
+              <div style={{ marginTop: mostrarMidiaDaMensagem ? 14 : 0 }}>
+                <AvisoDeFalta
+                  gravidade="critica"
+                  acao={{
+                    rotulo: 'Anexar comprovante ou NF',
+                    href: `/documentos/novo?pagamento_id=${pagamento.id}`,
+                  }}
                 >
-                  Anexar comprovante ou NF
-                </Link>
-              </p>
+                  <strong>Está faltando o comprovante.</strong> Tem o valor e a data, mas nenhum
+                  papel que prove o pagamento
+                  {mostrarMidiaDaMensagem
+                    ? ' — o anexo da mensagem acima ainda não virou documento.'
+                    : '. Mande a foto da nota no grupo ou anexe aqui.'}
+                </AvisoDeFalta>
+              </div>
             ) : null}
           </section>
 
           <Section title="Descrição & notas" span={2}>
-            <Row label="Descrição" value={pagamento.descricao ?? '—'} />
+            <Row
+              label="Descrição"
+              value={pagamento.descricao ?? '—'}
+              falta={faltaDoCampo(completude, 'descricao')}
+            />
             <Row label="Observações" value={pagamento.observacoes ?? '—'} multiline />
           </Section>
 

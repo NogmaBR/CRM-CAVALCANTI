@@ -2,6 +2,7 @@ import { GradeDeArquivos } from '@/components/arquivos/grade';
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
 import { EmptyState } from '@/components/nogma/EmptyState';
+import { avaliarDocumento } from '@/lib/completude/regras';
 import { type Documento, listDocumentos } from '@/lib/data/documentos';
 import { listFornecedores } from '@/lib/data/fornecedores';
 import { listObras } from '@/lib/data/obras';
@@ -200,6 +201,11 @@ export default async function DocumentosPage({
               obras={obras}
               fornecedores={fornecedores}
               filtrando={busca !== '' || obraId !== '' || categoria !== ''}
+              completude={
+                isArquivado
+                  ? undefined
+                  : Object.fromEntries(filtrados.map((d) => [d.id, avaliarDocumento(d)]))
+              }
             />
           )}
         </div>

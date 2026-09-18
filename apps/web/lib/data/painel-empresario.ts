@@ -17,9 +17,11 @@ import {
   montarAlertas,
   ordenarObrasParaSeries,
   rankingDeFornecedores,
+  ritmoDaObra,
   somar,
   ultimosMeses,
 } from '@/lib/financeiro/agregacoes';
+import type { RitmoDaObra } from '@/lib/financeiro/agregacoes';
 import { logger } from '@/lib/log';
 import { CATEGORIAS, CATEGORIA_LABELS, STATUS_QUE_CONTAM } from '@/lib/status-labels';
 import { createClient } from '@/lib/supabase/server';
@@ -38,7 +40,7 @@ async function carregarBase() {
   const [obrasR, pagsR, recR, docsR] = await Promise.all([
     supabase
       .from('obras')
-      .select('id, nome, valor_contrato, status')
+      .select('id, nome, valor_contrato, status, data_inicio, data_prevista_fim')
       .is('deleted_at', null)
       .order('nome'),
     supabase
@@ -67,6 +69,8 @@ async function carregarBase() {
     nome: string;
     status: string | null;
     valor_contrato: number | string | null;
+    data_inicio?: string | null;
+    data_prevista_fim?: string | null;
   }> = obrasR.data ?? [];
   if (obrasR.error) {
     log.erro('obras_falhou', { erro: obrasR.error.message });
@@ -87,6 +91,8 @@ async function carregarBase() {
     nome: o.nome,
     valor_contrato: o.valor_contrato == null ? null : Number(o.valor_contrato),
     status: o.status,
+    data_inicio: o.data_inicio ?? null,
+    data_prevista_fim: o.data_prevista_fim ?? null,
   }));
   const pagamentos: PagamentoResumido[] = (pagsR.data ?? []).map((p) => ({
     obra_id: p.obra_id,
@@ -133,19 +139,42 @@ export interface DadosPorObra {
   mensal: ReturnType<typeof mensalPorObra>;
   etapas: EtapaDaObra[];
   meses: string[];
+  /** Prazo × dinheiro de cada obra ativa, na mesma ordem de `linhas`. */
+  ritmo: Array<{
+    obra_id: string;
+    obra: string;
+    data_inicio: string | null;
+    data_prevista_fim: string | null;
+    ritmo: RitmoDaObra;
+  }>;
 }
 
 export async function dadosPorObra(): Promise<DadosPorObra> {
   const b = await carregarBase();
   const { data: cats } = await b.supabase.from('categorias').select('id, nome');
   const ativas = ordenarObrasParaSeries(b.obras.filter((o) => o.status === 'ativa'));
-  const meses = ultimosMeses(6, hojeBR());
+  const hoje = hojeBR();
+  const meses = ultimosMeses(6, hoje);
+  const linhas = gastoPorObra(ativas, b.pagamentos, b.recebimentos);
   return {
     obras: ativas.map((o) => o.nome),
-    linhas: gastoPorObra(ativas, b.pagamentos, b.recebimentos),
+    linhas,
     mensal: mensalPorObra(ativas, b.pagamentos, meses),
     etapas: etapasPorObra(ativas, b.pagamentos, new Map((cats ?? []).map((c) => [c.id, c.nome]))),
     meses,
+    ritmo: ativas.map((o) => ({
+      obra_id: o.id,
+      obra: o.nome,
+      data_inicio: o.data_inicio ?? null,
+      data_prevista_fim: o.data_prevista_fim ?? null,
+      ritmo: ritmoDaObra({
+        hoje,
+        data_inicio: o.data_inicio ?? null,
+        data_prevista_fim: o.data_prevista_fim ?? null,
+        gasto: linhas.find((l) => l.obra_id === o.id)?.gasto ?? 0,
+        contrato: o.valor_contrato,
+      }),
+    })),
   };
 }
 

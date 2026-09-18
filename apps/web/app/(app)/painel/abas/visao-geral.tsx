@@ -1,5 +1,11 @@
+import { BarraDeSaude } from '@/components/completude/semaforo';
+import { BarSerieMensal } from '@/components/graficos/bar-serie-mensal';
+import { Cartao, Tabela, brl } from '@/components/graficos/cartao';
+import { DonutCategoria } from '@/components/graficos/donut-categoria';
+import { LineAcumulado } from '@/components/graficos/line-acumulado';
 import { EmptyState } from '@/components/nogma/EmptyState';
 import { Sparkline } from '@/components/nogma/Sparkline';
+import { saudeDoCadastro } from '@/lib/data/completude';
 import {
   type AtividadeItem,
   type KpiCard,
@@ -26,10 +32,6 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
-import { Cartao, Tabela, brl } from '../cartao';
-import { BarSerieMensal } from '../charts/bar-serie-mensal';
-import { DonutCategoria } from '../charts/donut-categoria';
-import { LineAcumulado } from '../charts/line-acumulado';
 
 /**
  * Cartão de KPI. Delta só quando existe variação real contra o mês anterior;
@@ -121,7 +123,7 @@ function AtividadeLinha({ item }: { item: AtividadeItem }) {
 
 export async function AbaVisaoGeral() {
   const supabase = await createClient();
-  const [kpis, serieMensal, categorias, atividade, semDocumento, confirmacoesR, obras] =
+  const [kpis, serieMensal, categorias, atividade, semDocumento, confirmacoesR, obras, saude] =
     await Promise.all([
       getKpisResumo(),
       getSerieMensal(12),
@@ -133,7 +135,18 @@ export async function AbaVisaoGeral() {
         .select('*', { count: 'exact', head: true })
         .eq('resolvida', false),
       resultadoDasObras(),
+      saudeDoCadastro(),
     ]);
+
+  // Saúde do cadastro: quantos de cada tipo estão completos, com falta leve
+  // ou com falta grave. A leitura destaca o pior.
+  const pendencias = [
+    { rotulo: 'pagamentos', n: saude.pagamentos.parcial + saude.pagamentos.critico },
+    { rotulo: 'obras', n: saude.obras.parcial + saude.obras.critico },
+    { rotulo: 'fornecedores', n: saude.fornecedores.parcial + saude.fornecedores.critico },
+    { rotulo: 'documentos', n: saude.documentos.parcial + saude.documentos.critico },
+  ].filter((x) => x.n > 0);
+  const totalPendencias = pendencias.reduce((a, x) => a + x.n, 0);
 
   // Banner de alertas: o que precisa de ação humana hoje. Aparece só quando há
   // algo — banner permanente vira ruído e para de ser lido. A lista completa,
@@ -236,6 +249,34 @@ export async function AbaVisaoGeral() {
               ])}
             />
           )}
+        </Cartao>
+
+        <Cartao
+          titulo="Saúde do cadastro: o que está completo e o que falta preencher"
+          largo
+          leitura={
+            totalPendencias === 0 ? (
+              'Tudo completo: nenhum pagamento sem comprovante, nenhuma obra sem contrato, nenhum fornecedor sem telefone.'
+            ) : (
+              <>
+                <strong>{totalPendencias}</strong> {totalPendencias === 1 ? 'item' : 'itens'} com
+                pendência: {pendencias.map((x) => `${x.n} ${x.rotulo}`).join(', ')}. Vermelho é
+                falta grave (comprovante, contrato, prazo); amarelo é falta pequena. Clique na barra
+                para ver a lista.
+              </>
+            )
+          }
+        >
+          <div className="painel-saude">
+            <BarraDeSaude rotulo="Pagamentos" resumo={saude.pagamentos} hrefBase="/pagamentos" />
+            <BarraDeSaude rotulo="Obras" resumo={saude.obras} hrefBase="/obras" />
+            <BarraDeSaude
+              rotulo="Fornecedores"
+              resumo={saude.fornecedores}
+              hrefBase="/fornecedores"
+            />
+            <BarraDeSaude rotulo="Documentos" resumo={saude.documentos} hrefBase="/documentos" />
+          </div>
         </Cartao>
 
         <Cartao

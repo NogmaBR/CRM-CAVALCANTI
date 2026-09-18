@@ -1,21 +1,26 @@
 'use client';
 
-import Link from 'next/link';
-import { useMemo } from 'react';
-import type { ColumnDef } from '@tanstack/react-table';
-import { Pencil } from 'lucide-react';
-import { Badge } from '@/components/nogma/Badge';
+import { colunaDeSituacao } from '@/components/completude/coluna-situacao';
 import { DataTable } from '@/components/data-table';
+import { Badge } from '@/components/nogma/Badge';
+import type { Completude } from '@/lib/completude/regras';
 import type { Categoria } from '@/lib/data/categorias';
 import type { Fornecedor } from '@/lib/data/fornecedores';
 import { formatDocumento } from '@/lib/schemas/fornecedor';
+import type { ColumnDef } from '@tanstack/react-table';
+import { Pencil } from 'lucide-react';
+import Link from 'next/link';
+import { useMemo } from 'react';
 
 export function FornecedoresTable({
   fornecedores,
   categorias,
+  completude,
 }: {
   fornecedores: Fornecedor[];
   categorias: Categoria[];
+  /** Semáforo por fornecedor (CNPJ, telefone, categoria…). */
+  completude?: Record<string, Completude>;
 }) {
   const catMap = useMemo(() => {
     const m = new Map<string, Categoria>();
@@ -77,6 +82,7 @@ export function FornecedoresTable({
           );
         },
       },
+      ...(completude ? [colunaDeSituacao<Fornecedor>(completude)] : []),
       {
         accessorKey: 'telefone',
         header: 'Telefone',
@@ -112,7 +118,7 @@ export function FornecedoresTable({
         ),
       },
     ],
-    [catMap],
+    [catMap, completude],
   );
 
   return (

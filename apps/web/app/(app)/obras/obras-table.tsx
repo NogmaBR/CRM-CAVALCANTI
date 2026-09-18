@@ -1,10 +1,12 @@
 'use client';
 
+import { colunaDeSituacao } from '@/components/completude/coluna-situacao';
 import { rotuloDaColuna } from '@/components/data-table';
 import { Badge, type BadgeVariant } from '@/components/nogma/Badge';
 import { Button } from '@/components/nogma/Button';
 import { Checkbox } from '@/components/nogma/Checkbox';
 import { Input } from '@/components/nogma/Input';
+import type { Completude } from '@/lib/completude/regras';
 import type { Obra } from '@/lib/data/obras';
 import type { ColumnDef, RowSelectionState, SortingState } from '@tanstack/react-table';
 import {
@@ -92,10 +94,13 @@ export function ObrasTable({
   obras,
   successMessage,
   errorMessage,
+  completude,
 }: {
   obras: Obra[];
   successMessage?: string;
   errorMessage?: string;
+  /** Semáforo por obra (contrato, prazo, comprovantes, pastas, cadastro). */
+  completude?: Record<string, Completude>;
 }) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
@@ -146,11 +151,12 @@ export function ObrasTable({
           return <Badge variant={STATUS_VARIANT[s]}>{STATUS_LABEL[s]}</Badge>;
         },
       },
+      ...(completude ? [colunaDeSituacao<Obra>(completude)] : []),
       {
-        accessorKey: 'orcamento',
-        header: 'Orçamento',
+        accessorKey: 'valor_contrato',
+        header: 'Contrato',
         cell: ({ row }) => (
-          <span className="obras-orcamento">{formatBRL(row.original.orcamento)}</span>
+          <span className="obras-orcamento">{formatBRL(row.original.valor_contrato)}</span>
         ),
       },
       {
@@ -173,7 +179,7 @@ export function ObrasTable({
         ),
       },
     ],
-    [],
+    [completude],
   );
 
   const table = useReactTable({

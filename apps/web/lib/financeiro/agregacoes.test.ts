@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   caixaMensal,
   etapasPorObra,
+  fraseDoRitmo,
   gastoPorObra,
   matrizDeDocumentos,
   mensalPorObra,
@@ -9,6 +10,7 @@ import {
   ordenarObrasParaSeries,
   porExtensoCurto,
   rankingDeFornecedores,
+  ritmoDaObra,
   rotuloDoMes,
   ultimosMeses,
 } from './agregacoes';
@@ -181,5 +183,130 @@ describe('documentos e alertas', () => {
     expect(porExtensoCurto(-5000)).toBe('−5 mil');
     expect(porExtensoCurto(1_250_000)).toBe('1,3 milhões');
     expect(porExtensoCurto(800)).toBe('800 reais');
+  });
+});
+
+describe('ritmoDaObra', () => {
+  it('sem datas devolve só o gasto em % e leitura nula', () => {
+    const r = ritmoDaObra({
+      hoje: '2026-09-18',
+      data_inicio: null,
+      data_prevista_fim: null,
+      gasto: 50_000,
+      contrato: 200_000,
+    });
+    expect(r.prazoPct).toBeNull();
+    expect(r.gastoPct).toBe(25);
+    expect(r.leitura).toBeNull();
+    expect(fraseDoRitmo(r)).toContain('Sem data');
+  });
+
+  it('gasto na frente do prazo', () => {
+    // 100 dias de obra, hoje é o dia 30 (30%); gastou 60% do contrato.
+    const r = ritmoDaObra({
+      hoje: '2026-01-31',
+      data_inicio: '2026-01-01',
+      data_prevista_fim: '2026-04-11',
+      gasto: 120_000,
+      contrato: 200_000,
+    });
+    expect(r.diasTotais).toBe(100);
+    expect(r.diasDecorridos).toBe(30);
+    expect(r.diasRestantes).toBe(70);
+    expect(r.prazoPct).toBe(30);
+    expect(r.leitura).toBe('na_frente');
+    expect(fraseDoRitmo(r)).toContain('mais rápido que o tempo');
+  });
+
+  it('em dia e atrás', () => {
+    const base = {
+      hoje: '2026-01-31',
+      data_inicio: '2026-01-01',
+      data_prevista_fim: '2026-04-11',
+      contrato: 200_000,
+    };
+    expect(ritmoDaObra({ ...base, gasto: 60_000 }).leitura).toBe('em_dia');
+    expect(ritmoDaObra({ ...base, gasto: 10_000 }).leitura).toBe('atras');
+  });
+
+  it('prazo vencido', () => {
+    const r = ritmoDaObra({
+      hoje: '2026-09-18',
+      data_inicio: '2026-01-01',
+      data_prevista_fim: '2026-09-01',
+      gasto: 10,
+      contrato: 100,
+    });
+    expect(r.leitura).toBe('vencido');
+    expect(r.diasRestantes).toBe(-17);
+    expect(r.prazoPct).toBeGreaterThan(100);
+    expect(r.diasDecorridos).toBe(r.diasTotais);
+    expect(fraseDoRitmo(r)).toContain('venceu há 17 dias');
+  });
+
+  it('sem contrato mede só o prazo', () => {
+    const r = ritmoDaObra({
+      hoje: '2026-01-31',
+      data_inicio: '2026-01-01',
+      data_prevista_fim: '2026-04-11',
+      gasto: 10,
+      contrato: null,
+    });
+    expect(r.gastoPct).toBeNull();
+    expect(r.leitura).toBeNull();
+    expect(fraseDoRitmo(r)).toContain('Sem contrato');
+  });
+});
+
+describe('montarAlertas — prazo e contrato', () => {
+  const entrada = {
+    hoje: '2026-09-18',
+    obras: [
+      {
+        id: 'v',
+        nome: 'Vencida',
+        valor_contrato: 100_000,
+        status: 'ativa',
+        data_prevista_fim: '2026-09-01',
+      },
+      {
+        id: 'e',
+        nome: 'Estourada',
+        valor_contrato: 50_000,
+        status: 'ativa',
+        data_prevista_fim: '2027-01-01',
+      },
+      {
+        id: 'p',
+        nome: 'Pausada',
+        valor_contrato: 100_000,
+        status: 'pausada',
+        data_prevista_fim: '2026-01-01',
+      },
+    ],
+    pagamentos: [
+      {
+        obra_id: 'e',
+        fornecedor_id: null,
+        categoria_id: null,
+        valor: 60_000,
+        data: '2026-09-10',
+        tem_documento: true,
+      },
+    ],
+    fornecedores: [],
+    documentos: [],
+    confirmacoesAbertas: 0,
+    gastoMesAtual: 0,
+    gastoMesAnterior: 0,
+  };
+  it('acusa prazo vencido só de obra ativa, e gasto acima do contrato', () => {
+    const a = montarAlertas(entrada);
+    const chaves = a.map((x) => x.chave);
+    expect(chaves).toContain('prazo_vencido');
+    expect(chaves).toContain('acima_do_contrato');
+    expect(a.find((x) => x.chave === 'prazo_vencido')?.explicacao).toContain('Vencida');
+    expect(a.find((x) => x.chave === 'prazo_vencido')?.explicacao).not.toContain('Pausada');
+    expect(a.find((x) => x.chave === 'acima_do_contrato')?.explicacao).toContain('Estourada');
   });
 });
