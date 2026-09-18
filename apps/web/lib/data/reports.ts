@@ -1,5 +1,10 @@
 import 'server-only';
+import { type Completude, avaliarObra } from '@/lib/completude/regras';
+import { contextoDaObra } from '@/lib/data/completude';
+import { type ResumoDoCronograma, resumoDoCronograma } from '@/lib/data/cronograma';
+import { type RitmoDaObra, ritmoDaObra } from '@/lib/financeiro/agregacoes';
 import { STATUS_QUE_CONTAM } from '@/lib/status-labels';
+import { hojeBR } from '@/lib/util/datas';
 import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@nogma/db';
 
@@ -33,6 +38,10 @@ export interface ObraCompletaData {
     valorPorFornecedor: Record<string, number>;
     percentualOrcamento: number | null; // 0..1 ou null se orcamento null/0
   };
+  /** PM6: o semáforo (o que falta), o cronograma físico e o orçado × realizado. */
+  completude: Completude;
+  cronograma: ResumoDoCronograma;
+  ritmo: RitmoDaObra;
 }
 
 export async function getObraCompletaData(obraId: string): Promise<ObraCompletaData | null> {
@@ -45,7 +54,7 @@ export async function getObraCompletaData(obraId: string): Promise<ObraCompletaD
     .maybeSingle();
   if (obraErr || !obra) return null;
 
-  const [pagRes, docRes] = await Promise.all([
+  const [pagRes, docRes, contexto, cronograma] = await Promise.all([
     supabase
       .from('pagamentos')
       .select('*')
@@ -59,6 +68,8 @@ export async function getObraCompletaData(obraId: string): Promise<ObraCompletaD
       .eq('obra_id', obraId)
       .is('deleted_at', null)
       .order('created_at', { ascending: false }),
+    contextoDaObra(obraId),
+    resumoDoCronograma(obraId, supabase),
   ]);
 
   const pagamentos = pagRes.data ?? [];
@@ -119,6 +130,18 @@ export async function getObraCompletaData(obraId: string): Promise<ObraCompletaD
 
   const orcamento = obra.orcamento != null ? Number(obra.orcamento) : null;
   const percentualOrcamento = orcamento && orcamento > 0 ? valorTotalPago / orcamento : null;
+  const contrato = obra.valor_contrato != null ? Number(obra.valor_contrato) : null;
+  const completude = avaliarObra(obra, {
+    ...contexto,
+    etapasEstouradas: cronograma.orcado.totais.estouradas,
+  });
+  const ritmo = ritmoDaObra({
+    hoje: hojeBR(),
+    data_inicio: obra.data_inicio,
+    data_prevista_fim: obra.data_prevista_fim,
+    gasto: valorTotalPago,
+    contrato,
+  });
 
   return {
     obra,
@@ -131,6 +154,9 @@ export async function getObraCompletaData(obraId: string): Promise<ObraCompletaD
       valorPorFornecedor,
       percentualOrcamento,
     },
+    completude,
+    cronograma,
+    ritmo,
   };
 }
 

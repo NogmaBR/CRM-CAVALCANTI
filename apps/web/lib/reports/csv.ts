@@ -82,6 +82,44 @@ export function obraCompletaToCsv(data: ObraCompletaData): string {
   rows.push(['Quantidade de pagamentos', String(data.totais.quantidadePagamentos)]);
   rows.push([]);
 
+  // PM6: o semáforo e o cronograma físico também vão no CSV.
+  rows.push(['## Situação da obra']);
+  rows.push(['Nível', data.completude.nivel]);
+  rows.push(['Itens preenchidos', `${data.completude.itensOk} de ${data.completude.itensTotal}`]);
+  rows.push(['Gravidade', 'O que falta']);
+  for (const f of data.completude.faltas) rows.push([f.gravidade, f.texto]);
+  rows.push([]);
+
+  rows.push(['## Cronograma físico']);
+  rows.push([
+    'Obra executada (%)',
+    data.cronograma.avancoFisico == null ? '' : String(data.cronograma.avancoFisico).replace('.', ','),
+  ]);
+  rows.push(['Etapa', 'Peso', 'Concluído (%)', 'Medido em', 'Previsto']);
+  for (const e of data.cronograma.etapas) {
+    rows.push([
+      e.nome,
+      String(e.peso).replace('.', ','),
+      String(e.percentual_concluido).replace('.', ','),
+      fmtDate(e.medido_em),
+      fmtDate(e.data_prevista),
+    ]);
+  }
+  rows.push([]);
+
+  rows.push(['## Orçado × realizado por etapa']);
+  rows.push(['Etapa', 'Orçado (R$)', 'Realizado (R$)', 'Saldo (R$)', 'Situação']);
+  for (const l of data.cronograma.orcado.linhas) {
+    rows.push([
+      l.categoria,
+      l.orcado == null ? '' : fmtNumberBR(l.orcado),
+      fmtNumberBR(l.realizado),
+      l.saldo == null ? '' : fmtNumberBR(l.saldo),
+      l.situacao,
+    ]);
+  }
+  rows.push([]);
+
   rows.push(['## Pagamentos']);
   rows.push(['Data', 'Fornecedor', 'Categoria', 'Origem', 'Status', 'Valor (R$)', 'Descrição']);
   for (const p of data.pagamentos) {
