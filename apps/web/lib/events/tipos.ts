@@ -100,6 +100,15 @@ export interface EventosVendas {
 }
 
 // ---------------------------------------------------------------------------
+// Sistema: eventos sintéticos do cron (sem entidade de domínio)
+// ---------------------------------------------------------------------------
+
+export interface EventosSistema {
+  /** Um por dia, emitido pela varredura do resumo diário. `dia` = AAAA-MM-DD (Brasília). */
+  'sistema.resumo_diario': { dia: string };
+}
+
+// ---------------------------------------------------------------------------
 // União
 // ---------------------------------------------------------------------------
 
@@ -109,7 +118,8 @@ export interface MapaDeEventos
     EventosPagamento,
     EventosDocumento,
     EventosWhatsapp,
-    EventosVendas {}
+    EventosVendas,
+    EventosSistema {}
 
 export type NomeEvento = keyof MapaDeEventos;
 
@@ -145,6 +155,9 @@ export function entidadeDoEvento(evento: Evento): string | null {
     'vendaId',
     'contratoId',
     'visitaId',
+    // Evento diário do sistema: a "entidade" é o dia — é o que dá a
+    // idempotência de uma execução por dia no motor.
+    'dia',
   ];
   for (const chave of candidatos) {
     const v = p[chave];

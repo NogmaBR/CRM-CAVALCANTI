@@ -26,6 +26,10 @@ import { logger } from '@/lib/log';
 import { CATEGORIAS, CATEGORIA_LABELS, STATUS_QUE_CONTAM } from '@/lib/status-labels';
 import { createClient } from '@/lib/supabase/server';
 import { hojeBR } from '@/lib/util/datas';
+import type { Database } from '@nogma/db';
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+type Client = SupabaseClient<Database>;
 
 /**
  * Dados do painel do empresário — uma função por aba, com a sessão do
@@ -35,8 +39,8 @@ import { hojeBR } from '@/lib/util/datas';
 
 const log = logger('painel-empresario');
 
-async function carregarBase() {
-  const supabase = await createClient();
+async function carregarBase(cliente?: Client) {
+  const supabase = cliente ?? (await createClient());
   const [obrasR, pagsR, recR, docsR] = await Promise.all([
     supabase
       .from('obras')
@@ -282,8 +286,9 @@ export async function dadosDocumentos(): Promise<DadosDocumentos> {
 // Alertas
 // ---------------------------------------------------------------------------
 
-export async function alertasDoEmpresario(): Promise<Alerta[]> {
-  const b = await carregarBase();
+/** `cliente` opcional: o resumo diário (cron, service role) reaproveita esta função. */
+export async function alertasDoEmpresario(cliente?: Client): Promise<Alerta[]> {
+  const b = await carregarBase(cliente);
   const hoje = hojeBR();
   const [fornsR, confR] = await Promise.all([
     b.supabase
