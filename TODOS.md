@@ -127,20 +127,20 @@
 ## Plano master de 2026-09-18 — o que ficou de backlog
 
 Spec: `docs/superpowers/specs/2026-09-18-semaforo-de-completude-e-painel-premium-design.md`
-(§4). O semáforo, os gráficos de obra/fornecedor e a saúde do cadastro entraram; isto não:
+(§4). Tudo entrou: o semáforo/gráficos no PR #45 e PM1–PM7 no PR `feat/plano-master-pm1-pm7` (18/09). Ações humanas na §17 do SO-FALTA-VOCE.
 
-- [ ] **PM1 Cronograma físico** — etapas da obra com % concluído (medição) ao lado do %
+- [x] **PM1 Cronograma físico** — etapas da obra com % concluído (medição) ao lado do %
   financeiro. Tabela nova (`etapas_obra`) + entrada pelo WhatsApp ("laje 100%").
-- [ ] **PM2 Orçamento por etapa** — orçado × realizado por categoria (hoje o orçamento é
+- [x] **PM2 Orçamento por etapa** — orçado × realizado por categoria (hoje o orçamento é
   um número só).
-- [ ] **PM3 Upload de comprovante direto na tela do pagamento** — o aviso vermelho leva a
+- [x] **PM3 Upload de comprovante direto na tela do pagamento** — o aviso vermelho leva a
   `/documentos/novo?pagamento_id=`; um `<input type=file>` inline pouparia a ida.
-- [ ] **PM4 Resumo diário do semáforo no WhatsApp do gestor** — "3 pagamentos sem nota, 1
+- [x] **PM4 Resumo diário do semáforo no WhatsApp do gestor** — "3 pagamentos sem nota, 1
   obra com prazo vencido", via automação (`lib/automations/`), reaproveitando
   `saudeDoCadastro()` e `montarAlertas()`.
-- [ ] **PM5 PWA / atalho no celular** com ícone e tela cheia.
-- [ ] **PM6 Checklist de completude no PDF do relatório da obra.**
-- [ ] **PM7 Cor por categoria no cadastro** — as etapas do cliente vieram sem `cor`; a
+- [x] **PM5 PWA / atalho no celular** com ícone e tela cheia.
+- [x] **PM6 Checklist de completude no PDF do relatório da obra.**
+- [x] **PM7 Cor por categoria no cadastro** — as etapas do cliente vieram sem `cor`; a
   paleta categórica de fallback (`PALETA_CATEGORICA` em `lib/data/painel.ts`) cobre, mas
   cor fixa por etapa fica igual em todo gráfico.
 

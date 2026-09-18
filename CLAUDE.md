@@ -4,7 +4,7 @@
 > **Mantenha-o atualizado**: ao terminar um trabalho relevante, atualize a §7 (estado)
 > e acrescente em §8 (armadilhas) qualquer erro novo que você cometeu.
 >
-> Última atualização: **2026-09-18**: semáforo de completude em todas as telas + gráficos de obra/fornecedor + saúde do cadastro (PR `feat/semaforo-completude-e-painel-premium`).
+> Última atualização: **2026-09-18**: semáforo de completude (PR #45) + plano master PM1–PM7 (PR `feat/plano-master-pm1-pm7`, empilhado): cronograma físico, orçado por etapa, upload inline, resumo diário no WhatsApp, PWA, PDF, cor por etapa. Migration `20260918150000` aplicada.
 
 ---
 
@@ -839,6 +839,49 @@ para quem for mexer:
   1440, alto 3200, escuro, 390), todas 200, zero erro de console/servidor. **`fullPage` não
   passa da dobra porque o `main` rola por dentro** — use viewport alto (3200) para ver a página.
 
+**Plano master PM1–PM7 (2026-09-18, PR `feat/plano-master-pm1-pm7`, empilhado sobre o #45;
+ações humanas na §17 de `SO-FALTA-VOCE.md`).** Migration `20260918150000` **aplicada e
+conferida** (`etapas_obra`, `orcamentos_etapa`, seed da regra). Regras para quem for mexer:
+- **PM1 cronograma físico**: `lib/financeiro/cronograma.ts` (puro: `avancoFisico` ponderado
+  pelo peso, `fraseDoTripe` físico × financeiro × prazo com 10 pontos de folga,
+  `orcadoVsRealizado`), `lib/data/cronograma.ts` (degrada com `tabela_ausente` no log),
+  actions em `obras/[id]/cronograma/actions.ts`, UI em `obras/[id]/cronograma.tsx`.
+  **WhatsApp**: `propor_registrar_medicao` (`acoes.ts`) → proposta `registrar_medicao`
+  (etapa existente por nome/apelido, ou nova no SIM); o roteador manda "N%" sem cheiro de
+  dinheiro para o assistente (`pareceMedicao`); prompt do assistente é **v4**;
+  `resumo_da_obra` devolve `avanco_fisico_percentual` e as etapas.
+- **PM2 orçado por etapa**: uma linha viva por (obra, categoria) — o Salvar é upsert; realizado
+  = pagamentos que contam da mesma categoria; `situacaoDaEtapa` (≥90 % atenção, >100 %
+  estourado). `avaliarObra` ganhou `etapasEstouradas` (importante) — a tela passa
+  `cronograma.orcado.totais.estouradas`; a lista usa `etapasEstouradasPorObra()`.
+- **PM3**: `lib/services/subir-documento.ts` é o núcleo do upload (valida, grava, sobe, webhook,
+  `documento.anexado`) sem redirect; `createDocumento` e `anexarComprovante`
+  (`pagamentos/actions.ts`) chamam ele. O form inline (`formulario-comprovante.tsx`) preenche
+  obra/fornecedor/pasta `nfs_pagamentos` a partir do pagamento.
+- **PM4**: regra `resumo-diario-semaforo` (`lib/automations/definitions/`), agendada, evento
+  `sistema.resumo_diario` com **`dia` como entidade** (`entidadeDoEvento` aceita `dia`) = uma
+  por dia. `saudeDoCadastro(cliente?)` e `alertasDoEmpresario(cliente?)` aceitam o service role.
+  Texto puro em `resumo-diario-texto.ts` (testado); `telefones` é string com vírgulas
+  (`lerTelefones`); string vazia como padrão mostra "Padrão: (vazio)" na ajuda. Prova real:
+  `node --env-file=.env.local scripts/vitest-real.mjs lib/automations/definitions/resumo-diario-semaforo.real.test.ts`.
+- **PM5**: `app/manifest.ts` (+ ícones `public/logos/pwa-*.png` gerados do mark da Cavalcanti
+  com sharp; ficam em `/logos/` porque o matcher do middleware já exclui essa pasta e o
+  `manifest.webmanifest`); `appleWebApp` no layout; `components/layout/instalar-app.tsx`
+  (só mobile, `beforeinstallprompt` no Android, instrução no iOS, adiado 30 dias). **Sem
+  service worker de propósito.**
+- **PM6**: `ObraCompletaData` carrega `completude`, `cronograma`, `ritmo`; PDF e CSV têm as três
+  seções novas (badge por nível, gravidade por linha).
+- **PM7**: `lib/categorias/cor.ts` (`corDaCategoria` = cadastrada ou FNV-1a do id sobre 8
+  cores) com cópia em `scripts/lib/cor-categoria-core.mjs` e teste que compara as duas;
+  `scripts/colorir-categorias.mjs --aplicar` grava. `CATEGORIA_CORES` aceita as 8 novas.
+- **`operacao@nogmacorp.com.br` tem papel `leitura`** — não vê formulário nenhum (recebimentos,
+  cronograma, upload). Para provar escrita pela UI, a sessão é do `admin@nogmacorp.com.br`
+  (magic link). Foi por isso que a primeira prova "não achou o botão".
+- Provado localmente (`next start -p 3112`, obra de teste criada e apagada ao fim): criar etapas
+  do plano, medir 60 %, orçado 1.000 × realizado 1.234,50 → estourada e no semáforo, upload
+  inline tira o vermelho, PDF/CSV com as seções, manifest e ícones 200, 19 categorias com 10
+  cores, regra na tela. Zero erro de console.
+
 ### O que falta — e é ação humana, não código
 
 1. **Repositório é público.** Vai virar privado quando a Vercel for paga
@@ -971,6 +1014,9 @@ para quem for mexer:
   produção** desde 15/09 e ninguém viu, porque `perguntar` engole o erro e responde
   `SEM_CONTEXTO`. `openai-modelo.ts` manda `'none'` quando há tools. Chamada nova com
   tools: prove contra a API real antes de dizer que funciona.
+- **`waitForURL(/success=/)` resolve na hora se a URL atual JÁ tem `success=`** (ficou da
+  ação anterior). Espere pelo texto da mensagem nova (`/Medi%C3%A7%C3%A3o/`), não pelo
+  parâmetro genérico — três asserções deram "não gravou" por isso.
 - **Python no Windows grava CRLF** (`open(p,'w')` converte `
 `). O Biome acusa `format` em
   todo arquivo tocado e o diff fica sujo. Sempre `open(p, 'w', encoding='utf-8', newline='')`

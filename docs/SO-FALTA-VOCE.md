@@ -970,6 +970,25 @@ deploy READY entre um e outro: **#40** (agente sobre o CRM) → **#41** (textos 
 
 ---
 
+## 17. Semáforo, cronograma e plano master PM1–PM7 (18/09) — o que é seu
+
+PRs **#45** (`feat/semaforo-completude-e-painel-premium`) e o PR empilhado
+`feat/plano-master-pm1-pm7`. Mergeie nessa ordem. A migration
+`20260918150000_cronograma_e_orcamento_por_etapa.sql` **já está aplicada e conferida**
+(2 tabelas com RLS, 4 policies cada, triggers, regra do resumo diário desligada).
+
+| # | Ação | Como conferir |
+|---|---|---|
+| 17.1 | **Dar cor às 19 etapas do plano de contas** — `node --env-file=.env.local scripts/colorir-categorias.mjs --aplicar` (sem `--aplicar` é ensaio). Hoje elas não têm cor cadastrada; o app já usa uma cor automática igual em todo gráfico, mas gravar deixa a cor editável em `/config/categorias`. | `/config/categorias`: bolinhas coloridas; o `title` deixa de dizer "automática" |
+| 17.2 | **Ligar o resumo diário no WhatsApp** — `/config/automacoes` › *resumo-diario-semaforo* › preencher **Telefones** (ex.: `5573998489747, 5532988068174`) › Salvar › Ligar. O cron manda às 9h (Brasília). "Enviar quando tudo ok" desligado = só manda quando há pendência. | Clique **Ensaiar sem agir**: o histórico mostra `[simulado] enviaria para ***9747: *Resumo do CRM…`. Provado em 18/09 contra produção: "111 pendências, 5 alertas" |
+| 17.3 | **Cronograma físico das 4 obras** — em cada obra › *Cronograma físico* › **Criar etapas do plano de contas** (uma por etapa que já tem gasto), depois informar o % de cada etapa. Pelo grupo também funciona: `laje 100%`, `alvenaria da casa ej tá em 60%` → o bot pergunta, o SIM grava (teste 20 do roteiro). | O tripé no topo da obra mostra *Obra executada · Contrato gasto · Prazo usado* |
+| 17.4 | **Orçado por etapa** — na mesma tela, *Orçado × realizado por etapa* › escolher a etapa › valor › Salvar. Sem isso o semáforo não acusa etapa estourada. | Linha vermelha "ACIMA DO ORÇADO" quando o realizado passa |
+| 17.5 | **Instalar o CRM no celular** — Android: abrir o site, aceitar o convite "Coloque o CRM na tela inicial"; iPhone: Compartilhar › Adicionar à Tela de Início. | Abre em tela cheia com o ícone da Cavalcanti, direto no painel |
+
+O que já está pronto sem ação sua: semáforo em todas as listas e telas de detalhe, gráficos da
+obra e do fornecedor, saúde do cadastro no painel, **Anexar comprovante** na própria tela do
+pagamento (PM3), checklist + cronograma + orçado×realizado no PDF e no CSV da obra (PM6).
+
 ## Se algo der errado, olhe aqui primeiro
 
 | Sintoma | Onde olhar |
