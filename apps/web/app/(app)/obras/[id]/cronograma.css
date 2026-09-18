@@ -180,42 +180,34 @@
   }
 }
 
-/* Formulários */
-.cronograma__form {
-  display: grid;
-  /* Colunas que quebram sozinhas: com a sidebar aberta em 1440 px, seis
-     colunas fixas cortavam o botão "Adicionar etapa" na borda direita. */
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 12px;
-  align-items: end;
-  padding: 14px;
-  border: 1px solid var(--border-default);
-  border-radius: 12px;
-  background: var(--surface-2);
-}
+/* Formulários: flex com quebra de linha — grid de colunas fixas cortava o
+   botão "Adicionar etapa" em 1440 px com a sidebar aberta, e `1fr` deixa o
+   select/data inflarem a coluna. Aqui cada campo tem um mínimo e quebra. */
+.cronograma__form,
 .orcado__form {
-  display: grid;
-  grid-template-columns: 1.6fr 1.2fr auto;
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
-  align-items: end;
+  align-items: flex-end;
   padding: 14px;
   border: 1px solid var(--border-default);
   border-radius: 12px;
   background: var(--surface-2);
 }
-@media (max-width: 720px) {
-  .cronograma__form,
-  .orcado__form {
-    grid-template-columns: 1fr;
-  }
+.cronograma__form > *,
+.orcado__form > * {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+.cronograma__form > .ng-field:first-of-type,
+.orcado__form > .ng-field:first-of-type {
+  flex-basis: 260px;
 }
 .cronograma__form-acao {
   display: flex;
   align-items: flex-end;
-}
-.cronograma__form .cronograma__form-acao {
-  grid-column: 1 / -1;
-  justify-content: flex-end;
+  flex: 0 0 auto !important;
+  margin-left: auto;
 }
 .cronograma__select {
   height: 44px;
