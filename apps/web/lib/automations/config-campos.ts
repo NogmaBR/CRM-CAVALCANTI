@@ -44,6 +44,8 @@ export const ROTULOS_CONFIG: Record<string, string> = {
   limite_por_rodada: 'Máximo de cobranças por rodada',
   dias_entre_cobrancas: 'Dias entre cobranças do mesmo pagamento',
   limiar_percentual: 'Alerta a partir de (% do orçamento)',
+  telefones: 'Telefones que recebem o resumo (separados por vírgula)',
+  enviar_quando_tudo_ok: 'Enviar mesmo quando não há pendência',
 };
 
 /** Prefixo dos inputs no formulário, para não colidir com `chave`/`config`. */
@@ -91,6 +93,8 @@ function formatarPadrao(valor: unknown): string {
   if (valor === undefined || valor === null) return '';
   if (typeof valor === 'boolean') return valor ? 'ligado' : 'desligado';
   if (typeof valor === 'number') return valor.toLocaleString('pt-BR');
+  // Texto vazio é um padrão válido ("telefones" nasce vazio): a ajuda diz isso.
+  if (typeof valor === 'string') return valor === '' ? '(vazio)' : valor;
   return String(valor);
 }
 

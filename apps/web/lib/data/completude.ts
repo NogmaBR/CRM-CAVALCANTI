@@ -9,6 +9,7 @@ import {
   avaliarPagamento,
   resumirNiveis,
 } from '@/lib/completude/regras';
+import { etapasEstouradasPorObra } from '@/lib/data/cronograma';
 import type { Documento } from '@/lib/data/documentos';
 import type { Fornecedor } from '@/lib/data/fornecedores';
 import type { Obra } from '@/lib/data/obras';
@@ -16,6 +17,10 @@ import type { Pagamento } from '@/lib/data/pagamentos';
 import { STATUS_QUE_CONTAM } from '@/lib/status-labels';
 import { createClient } from '@/lib/supabase/server';
 import { hojeBR } from '@/lib/util/datas';
+import type { Database } from '@nogma/db';
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+type Client = SupabaseClient<Database>;
 
 /**
  * O contexto que as regras de completude precisam e que não está na linha
@@ -55,8 +60,8 @@ export async function completudeDosPagamentos(
  * documento, e documentos por pasta. Uma consulta em pagamentos e uma em
  * documentos, para todas as obras de uma vez.
  */
-export async function contextoDasObras(): Promise<Map<string, ContextoDaObra>> {
-  const supabase = await createClient();
+export async function contextoDasObras(cliente?: Client): Promise<Map<string, ContextoDaObra>> {
+  const supabase = cliente ?? (await createClient());
   const [pagsR, docsR] = await Promise.all([
     supabase
       .from('pagamentos')
@@ -75,6 +80,7 @@ export async function contextoDasObras(): Promise<Map<string, ContextoDaObra>> {
 
   const docs = docsR.data ?? [];
   const comDocumento = new Set(docs.map((d) => d.pagamento_id).filter(Boolean));
+  const estouradas = await etapasEstouradasPorObra(supabase);
   const hoje = hojeBR();
   const mapa = new Map<string, ContextoDaObra>();
   const contexto = (obraId: string): ContextoDaObra => {
@@ -96,6 +102,7 @@ export async function contextoDasObras(): Promise<Map<string, ContextoDaObra>> {
     const c = contexto(d.obra_id);
     c.docsPorPasta[d.categoria] = (c.docsPorPasta[d.categoria] ?? 0) + 1;
   }
+  for (const [obraId, n] of estouradas) contexto(obraId).etapasEstouradas = n;
   return mapa;
 }
 
@@ -173,8 +180,12 @@ export interface SaudeDoCadastro {
  * contam (aprovado/pendente) e não arquivados. Fornecedores ativos.
  * Documentos vivos.
  */
-export async function saudeDoCadastro(): Promise<SaudeDoCadastro> {
-  const supabase = await createClient();
+/**
+ * `cliente` opcional: o cron das automações passa o service role (não há
+ * sessão); a tela do painel usa a sessão do usuário (RLS).
+ */
+export async function saudeDoCadastro(cliente?: Client): Promise<SaudeDoCadastro> {
+  const supabase = cliente ?? (await createClient());
   const [obrasR, pagsR, fornsR, docsR, contextos] = await Promise.all([
     supabase.from('obras').select('*').is('deleted_at', null).limit(1000),
     supabase
@@ -185,7 +196,7 @@ export async function saudeDoCadastro(): Promise<SaudeDoCadastro> {
       .limit(5000),
     supabase.from('fornecedores').select('*').is('deleted_at', null).eq('ativo', true).limit(2000),
     supabase.from('documentos').select('*').is('deleted_at', null).limit(10000),
-    contextoDasObras(),
+    contextoDasObras(supabase),
   ]);
   for (const r of [obrasR, pagsR, fornsR, docsR]) {
     if (r.error) throw new Error(`Falha ao medir a saúde do cadastro: ${r.error.message}`);

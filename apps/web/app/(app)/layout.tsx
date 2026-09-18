@@ -1,3 +1,4 @@
+import { InstalarApp } from '@/components/layout/instalar-app';
 import { MobileTabBar } from '@/components/layout/mobile-tabbar';
 import { Sidebar } from '@/components/layout/sidebar';
 import { TelaDeEstado } from '@/components/layout/tela-de-estado';
@@ -82,6 +83,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="nos-app-shell">
       <Sidebar />
       <main id="main-content">{children}</main>
+      <InstalarApp />
       <MobileTabBar
         userMenu={<UserMenu />}
         themeToggle={<ThemeToggle initial={theme} />}

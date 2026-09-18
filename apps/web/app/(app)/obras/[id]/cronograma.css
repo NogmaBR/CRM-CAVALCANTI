@@ -1,0 +1,337 @@
+/* Cronograma físico (etapas com % concluído) e orçado × realizado por etapa. */
+
+.cronograma,
+.orcado {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* O tripé: obra executada · contrato gasto · prazo usado. */
+.cronograma__tripe {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (max-width: 720px) {
+  .cronograma__tripe {
+    grid-template-columns: 1fr;
+  }
+}
+
+.medidor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.medidor__topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.medidor__rotulo {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.medidor__valor {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+.medidor__trilho {
+  height: 10px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--text-secondary) 18%, transparent);
+  overflow: hidden;
+}
+.medidor__preenchida {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 400ms ease;
+}
+.medidor--fisico .medidor__preenchida {
+  background: var(--serie-entra);
+}
+.medidor--financeiro .medidor__preenchida {
+  background: var(--serie-sai);
+}
+.medidor--prazo .medidor__preenchida {
+  background: var(--chart-1);
+}
+.medidor__preenchida--estouro {
+  background: var(--danger) !important;
+}
+
+.cronograma__leitura {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.cronograma__vazio {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px dashed var(--border-default);
+  border-radius: 10px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.cronograma__vazio p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Etapas */
+.cronograma__etapas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.etapa {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "cabeca acoes"
+    "barra acoes";
+  gap: 6px 16px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--surface-1);
+}
+.etapa--concluida {
+  border-color: color-mix(in srgb, var(--success) 45%, var(--border-subtle));
+}
+.etapa__cabeca {
+  grid-area: cabeca;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.etapa__nome {
+  font-weight: 600;
+  color: var(--text-strong);
+}
+.etapa__nome small {
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+.etapa__meta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.etapa__barra {
+  grid-area: barra;
+  height: 12px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--text-secondary) 18%, transparent);
+  overflow: hidden;
+}
+.etapa__preenchida {
+  height: 100%;
+  background: var(--serie-entra);
+  border-radius: inherit;
+  transition: width 400ms ease;
+}
+.etapa--concluida .etapa__preenchida {
+  background: var(--success);
+}
+.etapa__acoes {
+  grid-area: acoes;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.etapa__medir {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.etapa__medir .ng-field {
+  width: 96px;
+}
+.etapa__pct {
+  grid-area: acoes;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 720px) {
+  .etapa {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "cabeca"
+      "barra"
+      "acoes";
+  }
+}
+
+/* Formulários */
+.cronograma__form {
+  display: grid;
+  grid-template-columns: 2fr 0.7fr 0.8fr 1.6fr 1.1fr auto;
+  gap: 12px;
+  align-items: end;
+  padding: 14px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.orcado__form {
+  display: grid;
+  grid-template-columns: 1.6fr 1.2fr auto;
+  gap: 12px;
+  align-items: end;
+  padding: 14px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+@media (max-width: 1100px) {
+  .cronograma__form {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 720px) {
+  .cronograma__form,
+  .orcado__form {
+    grid-template-columns: 1fr;
+  }
+}
+.cronograma__form-acao {
+  display: flex;
+  align-items: flex-end;
+}
+.cronograma__select {
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--surface-1);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+/* Orçado × realizado */
+.orcado__lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.orcado__linha {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-left-width: 4px;
+  border-radius: 10px;
+  background: var(--surface-1);
+}
+.orcado__linha--ok {
+  border-left-color: var(--success);
+}
+.orcado__linha--atencao {
+  border-left-color: var(--warning);
+}
+.orcado__linha--estourado {
+  border-left-color: var(--danger);
+}
+.orcado__linha--sem_orcado {
+  border-left-color: var(--border-default);
+}
+.orcado__cabeca {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.orcado__nome {
+  font-weight: 600;
+  color: var(--text-strong);
+}
+.orcado__situacao {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+.orcado__situacao--estourado {
+  color: var(--danger);
+}
+.orcado__situacao--atencao {
+  color: #8a5d00;
+}
+[data-theme="dark"] .orcado__situacao--atencao,
+[data-theme="black"] .orcado__situacao--atencao {
+  color: #f2c14e;
+}
+.orcado__situacao--ok {
+  color: #1f7a4d;
+}
+[data-theme="dark"] .orcado__situacao--ok,
+[data-theme="black"] .orcado__situacao--ok {
+  color: #6fd39a;
+}
+.orcado__barras {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.orcado__trilho {
+  height: 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--text-secondary) 14%, transparent);
+  overflow: hidden;
+}
+.orcado__orcado {
+  height: 100%;
+  background: color-mix(in srgb, var(--chart-1) 45%, transparent);
+  border-radius: inherit;
+}
+.orcado__realizado {
+  height: 100%;
+  background: var(--serie-sai);
+  border-radius: inherit;
+}
+.orcado__realizado--estouro {
+  background: var(--danger);
+}
+.orcado__numeros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  align-items: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.orcado__numeros strong {
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+.orcado__saldo--negativo {
+  color: var(--danger);
+  font-weight: 600;
+}
+.orcado__remover {
+  margin-left: auto;
+}

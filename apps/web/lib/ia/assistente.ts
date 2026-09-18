@@ -289,6 +289,8 @@ function tituloCurto(p: Proposta): string {
       return `registrar um recebimento na obra ${p.dados.obra_nome}`;
     case 'arquivar_obra':
       return `arquivar a obra ${p.dados.obra_nome}`;
+    case 'registrar_medicao':
+      return `anotar a medição de ${p.dados.etapa_nome} na obra ${p.dados.obra_nome}`;
   }
 }
 

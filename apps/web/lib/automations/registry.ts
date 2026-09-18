@@ -1,6 +1,7 @@
 import { type CampoConfig, descreverCampos } from './config-campos';
 import { cobrarDocumentoFornecedor } from './definitions/cobrar-documento-fornecedor';
 import { orcamentoEmRisco } from './definitions/orcamento-em-risco';
+import { resumoDiarioSemaforo } from './definitions/resumo-diario-semaforo';
 import type { Automacao } from './tipos';
 
 /**
@@ -14,7 +15,11 @@ import type { Automacao } from './tipos';
  * nasce desligada de propósito; automação que começa a mandar mensagem para
  * cliente sozinha no deploy é o tipo de surpresa que não se quer.
  */
-export const AUTOMACOES: Automacao[] = [cobrarDocumentoFornecedor, orcamentoEmRisco];
+export const AUTOMACOES: Automacao[] = [
+  cobrarDocumentoFornecedor,
+  orcamentoEmRisco,
+  resumoDiarioSemaforo,
+];
 
 export function buscarAutomacao(chave: string): Automacao | undefined {
   return AUTOMACOES.find((a) => a.chave === chave);

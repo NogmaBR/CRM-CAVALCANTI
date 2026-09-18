@@ -223,6 +223,76 @@ describe('aplicarAcao', () => {
     });
   });
 
+  it('medição: atualiza a etapa existente, ou cria com o nome no SIM', async () => {
+    const db = banco();
+    const ETAPA = '22222222-2222-4222-8222-222222222222';
+    db.linhas('etapas_obra').push({
+      id: ETAPA,
+      obra_id: GARI,
+      nome: 'Laje',
+      ordem: 1,
+      percentual_concluido: 40,
+      deleted_at: null,
+    });
+    const abrir = (proposta: Proposta) =>
+      abrirPendenciaDeAcao(db as unknown as Client, { mensagemId: MSG, proposta, chatId: null });
+    const sim = (id: string) =>
+      aplicarAcao(db as unknown as Client, {
+        confirmacaoId: id,
+        via: 'whatsapp',
+        respostaBruta: 'sim',
+      });
+
+    const existente = await abrir({
+      tipo: 'registrar_medicao',
+      dados: {
+        obra_id: GARI,
+        obra_nome: 'Garibaldi',
+        etapa_id: ETAPA,
+        etapa_nome: 'Laje',
+        percentual: 100,
+        percentual_anterior: 40,
+      },
+    });
+    const nova = await abrir({
+      tipo: 'registrar_medicao',
+      dados: {
+        obra_id: GARI,
+        obra_nome: 'Garibaldi',
+        etapa_id: null,
+        etapa_nome: 'Alvenaria',
+        percentual: 60,
+        percentual_anterior: null,
+      },
+    });
+    for (const x of [existente, nova]) {
+      if (!x.ok) throw new Error('abrir');
+      const r = await sim(x.id);
+      expect(r.ok, r.ok ? '' : r.motivo).toBe(true);
+    }
+    const etapas = db.linhas('etapas_obra');
+    expect(etapas.find((e) => e.id === ETAPA)).toMatchObject({ percentual_concluido: 100 });
+    expect(etapas.find((e) => e.nome === 'Alvenaria')).toMatchObject({
+      percentual_concluido: 60,
+      origem: 'whatsapp',
+      autorizado_id: 'aut-1',
+      ordem: 2,
+    });
+    expect(
+      perguntaDaAcao({
+        tipo: 'registrar_medicao',
+        dados: {
+          obra_id: GARI,
+          obra_nome: 'Garibaldi',
+          etapa_id: null,
+          etapa_nome: 'Alvenaria',
+          percentual: 60,
+          percentual_anterior: null,
+        },
+      }),
+    ).toContain('Alvenaria* (nova)');
+  });
+
   it('pendência de outro tipo é recusada', async () => {
     const db = banco();
     db.linhas('confirmacoes_pendentes').push({

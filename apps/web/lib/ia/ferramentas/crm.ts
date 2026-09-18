@@ -1,3 +1,4 @@
+import { avancoFisico } from '@/lib/financeiro/cronograma';
 import { montarResumo } from '@/lib/financeiro/resumo-obra';
 import { CATEGORIA_LABELS, type DocCategoria } from '@/lib/status-labels';
 import { hojeBR } from '@/lib/util/datas';
@@ -254,13 +255,13 @@ export const listarObras = ferramenta({
 export const resumoDaObra = ferramenta({
   nome: 'resumo_da_obra',
   descricao:
-    'Tudo de UMA obra numa chamada: contrato, gasto, recebido, resultado (lucro até agora), margem prevista, gasto por etapa, últimos pagamentos, notas faltando, documentos por pasta e último registro do diário. Use para "como está a obra X", "quanto estou lucrando na X", "me fala da X", "resumo da X".',
+    'Tudo de UMA obra numa chamada: contrato, gasto, recebido, resultado (lucro até agora), margem prevista, avanço físico (% executado, por etapa do cronograma), gasto por etapa, últimos pagamentos, notas faltando, documentos por pasta e último registro do diário. Use para "como está a obra X", "em que pé está a X", "quanto estou lucrando na X", "me fala da X", "resumo da X".',
   schema: z.object({ obra: NomeObra }),
   executar: async (supabase, args) => {
     const r = await resolverObra(supabase, args.obra);
     if (!r.ok) return r;
     const obra = r.obra;
-    const [pagamentos, recebimentos, docs, diario] = await Promise.all([
+    const [pagamentos, recebimentos, docs, diario, etapasR] = await Promise.all([
       carregarPagamentos(supabase, { obraId: obra.id }),
       carregarRecebimentos(supabase, obra.id),
       supabase
@@ -276,7 +277,20 @@ export const resumoDaObra = ferramenta({
         .is('deleted_at', null)
         .order('created_at', { ascending: false })
         .limit(1),
+      // Sem a migration do cronograma a consulta falha: tratamos como "sem etapas".
+      supabase
+        .from('etapas_obra')
+        .select('nome, percentual_concluido, peso')
+        .eq('obra_id', obra.id)
+        .is('deleted_at', null)
+        .order('ordem')
+        .limit(100),
     ]);
+    const etapas = (etapasR.data ?? []).map((e) => ({
+      nome: e.nome,
+      percentual_concluido: Number(e.percentual_concluido),
+      peso: Number(e.peso),
+    }));
     const resumo = montarResumo({
       contrato: obra.valor_contrato,
       gasto: somar(pagamentos),
@@ -298,6 +312,11 @@ export const resumoDaObra = ferramenta({
       resultado_ate_agora: resumo.resultado,
       margem_prevista: resumo.margemPrevista,
       percentual_gasto_do_contrato: resumo.percentualGastoDoContrato,
+      avanco_fisico_percentual: avancoFisico(etapas),
+      etapas_do_cronograma: etapas.map((e) => ({
+        etapa: e.nome,
+        concluido: e.percentual_concluido,
+      })),
       aviso_contrato:
         resumo.contrato == null
           ? 'Sem valor de contrato: lucro e margem não podem ser calculados. Peça o valor ("o contrato da obra é 850 mil").'

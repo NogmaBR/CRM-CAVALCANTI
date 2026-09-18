@@ -70,7 +70,15 @@ export const metadata: Metadata = {
         media: '(prefers-color-scheme: dark)',
       },
     ],
-    apple: '/logos/isotype-n-petroleum.png',
+    apple: '/logos/pwa-apple-180.png',
+  },
+  // PM5: instalado na tela inicial do iPhone abre em tela cheia, com barra
+  // de status escura sobre o azul da marca. O manifest (Android/desktop)
+  // está em `app/manifest.ts`.
+  appleWebApp: {
+    capable: true,
+    title: 'Cavalcanti',
+    statusBarStyle: 'black-translucent',
   },
   formatDetection: {
     telephone: false,

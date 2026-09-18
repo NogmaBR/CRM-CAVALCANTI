@@ -1,5 +1,6 @@
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
+import { corDaCategoria } from '@/lib/categorias/cor';
 import { type CategoriaComContagem, listCategoriasComContagem } from '@/lib/data/categorias';
 import { createClient } from '@/lib/supabase/server';
 import { Archive, Pencil, Plus, RotateCcw, Tag } from 'lucide-react';
@@ -27,19 +28,12 @@ function CategoriaRow({ cat, isArchived }: { cat: CategoriaComContagem; isArchiv
     <tr>
       <td>
         <div className="categorias-nome-cell">
-          {cat.cor ? (
-            <span
-              className="categoria-cor-pill"
-              style={{ background: cat.cor }}
-              aria-hidden="true"
-            />
-          ) : (
-            <span
-              className="categoria-cor-pill"
-              style={{ background: 'var(--border-subtle)' }}
-              aria-hidden="true"
-            />
-          )}
+          <span
+            className="categoria-cor-pill"
+            style={{ background: corDaCategoria(cat) }}
+            aria-hidden="true"
+            title={cat.cor ? 'Cor cadastrada' : 'Cor automática — edite para fixar'}
+          />
           <span className="categorias-nome">{cat.nome}</span>
           {isArchived && <span className="categorias-archived-badge">Arquivada</span>}
         </div>

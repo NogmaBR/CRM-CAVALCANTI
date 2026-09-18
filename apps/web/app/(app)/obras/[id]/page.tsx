@@ -6,15 +6,19 @@ import { avaliarObra, faltaDoCampo } from '@/lib/completude/regras';
 import { getPastasDaObra, getRegistrosDaObra, getUltimasFotosDaObra } from '@/lib/data/acervo';
 import { listLinksDaObra, urlDaPlanilha } from '@/lib/data/compartilhamentos';
 import { contextoDaObra } from '@/lib/data/completude';
+import { resumoDoCronograma } from '@/lib/data/cronograma';
 import { type Obra, getObra } from '@/lib/data/obras';
 import { listRecebimentosDaObra, resumoFinanceiroDaObra } from '@/lib/data/recebimentos';
+import { ritmoDaObra } from '@/lib/financeiro/agregacoes';
 import { createClient } from '@/lib/supabase/server';
+import { hojeBR } from '@/lib/util/datas';
 import { Archive, ArrowLeft, Pencil, RotateCcw } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { archiveObra, restoreObra } from '../actions';
 import { DiarioDaObra, PastasDaObra, UltimasFotos } from './acervo';
 import { CompartilharPlanilha } from './compartilhar-planilha';
+import { CronogramaFisico, OrcadoVsRealizado } from './cronograma';
 import { GraficosDaObra } from './graficos';
 import { RecebimentosDaObra, ResultadoDaObra } from './recebimentos';
 import '../../_shared/detail-layout.css';
@@ -104,20 +108,41 @@ export default async function ObraDetailPage({
   if (!obra) notFound();
 
   const supabase = await createClient();
-  const [{ data: userData }, links, pastas, registros, fotos, resumo, recebimentos, contexto] =
-    await Promise.all([
-      supabase.auth.getUser(),
-      listLinksDaObra(id),
-      getPastasDaObra(id),
-      getRegistrosDaObra(id),
-      getUltimasFotosDaObra(id),
-      resumoFinanceiroDaObra(id),
-      listRecebimentosDaObra(id),
-      contextoDaObra(id),
-    ]);
+  const [
+    { data: userData },
+    links,
+    pastas,
+    registros,
+    fotos,
+    resumo,
+    recebimentos,
+    contexto,
+    cronograma,
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+    listLinksDaObra(id),
+    getPastasDaObra(id),
+    getRegistrosDaObra(id),
+    getUltimasFotosDaObra(id),
+    resumoFinanceiroDaObra(id),
+    listRecebimentosDaObra(id),
+    contextoDaObra(id),
+    resumoDoCronograma(id),
+  ]);
 
-  // O semáforo da obra: contrato, prazo, comprovantes, pastas, cadastro.
-  const completude = avaliarObra(obra, contexto);
+  // O semáforo da obra: contrato, prazo, comprovantes, pastas, cadastro,
+  // etapas acima do orçado.
+  const completude = avaliarObra(obra, {
+    ...contexto,
+    etapasEstouradas: cronograma.orcado.totais.estouradas,
+  });
+  const ritmo = ritmoDaObra({
+    hoje: hojeBR(),
+    data_inicio: obra.data_inicio,
+    data_prevista_fim: obra.data_prevista_fim,
+    gasto: resumo.gasto,
+    contrato: resumo.contrato,
+  });
   const falta = (chave: string) => faltaDoCampo(completude, chave);
 
   let papel: string | null = null;
@@ -278,6 +303,29 @@ export default async function ObraDetailPage({
           <Section title="Resultado da obra" span={2}>
             <ResultadoDaObra resumo={resumo} />
           </Section>
+
+          <section className="detail-layout__section detail-layout__section--wide">
+            <h3 className="detail-layout__legend">Cronograma físico — em que pé está a obra</h3>
+            <CronogramaFisico
+              obraId={obra.id}
+              resumo={cronograma}
+              financeiroPct={resumo.percentualGastoDoContrato}
+              prazoPct={ritmo.prazoPct}
+              estado={estadoForm}
+              podeEscrever={podeEscreverFinanceiro && !isArquivada}
+            />
+          </section>
+
+          <section className="detail-layout__section detail-layout__section--wide">
+            <h3 className="detail-layout__legend">Orçado × realizado por etapa</h3>
+            <OrcadoVsRealizado
+              obraId={obra.id}
+              resumo={cronograma}
+              orcamentoDaObra={obra.orcamento == null ? null : Number(obra.orcamento)}
+              estado={estadoForm}
+              podeEscrever={podeEscreverFinanceiro && !isArquivada}
+            />
+          </section>
 
           <section className="detail-layout__section detail-layout__section--wide">
             <h3 className="detail-layout__legend">Como está a obra, em gráficos</h3>

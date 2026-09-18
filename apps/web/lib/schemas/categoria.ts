@@ -13,6 +13,16 @@ export const CATEGORIA_CORES = [
   { value: '#196E7C', label: 'Petróleo médio' },
   { value: '#565B5B', label: 'Cinza escuro' },
   { value: '#A1A1A1', label: 'Cinza claro' },
+  // As oito cores automáticas (`lib/categorias/cor.ts`): o script
+  // `colorir-categorias.mjs` grava uma delas, e o formulário precisa aceitar.
+  { value: '#3C4AA8', label: 'Azul' },
+  { value: '#C8761A', label: 'Laranja' },
+  { value: '#1F7A4D', label: 'Verde escuro' },
+  { value: '#8E3B8E', label: 'Roxo' },
+  { value: '#0E7C86', label: 'Turquesa' },
+  { value: '#B3352B', label: 'Tijolo' },
+  { value: '#6B5B2E', label: 'Marrom' },
+  { value: '#4F6D8A', label: 'Azul aço' },
 ] as const;
 
 const corValues = new Set<string>(CATEGORIA_CORES.map((c) => c.value));

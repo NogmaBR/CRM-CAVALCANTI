@@ -6,6 +6,7 @@ import { PainelDeCompletude } from '@/components/completude/semaforo';
 import { TopBar } from '@/components/layout/topbar';
 import { Badge } from '@/components/nogma/Badge';
 import { Button } from '@/components/nogma/Button';
+import { corDaCategoria } from '@/lib/categorias/cor';
 import { avaliarFornecedor, faltaDoCampo } from '@/lib/completude/regras';
 import { listCategorias } from '@/lib/data/categorias';
 import { getFornecedor, listFornecedorApelidos } from '@/lib/data/fornecedores';
@@ -150,7 +151,7 @@ export default async function FornecedorDetailPage({
             <Row
               label="Categoria"
               value={categoria ? categoria.nome : '— sem categoria —'}
-              swatch={categoria?.cor ?? null}
+              swatch={categoria ? corDaCategoria(categoria) : null}
               falta={falta('categoria')}
             />
             <Row label="Status" value={isArquivado ? 'Arquivado' : isAtivo ? 'Ativo' : 'Inativo'} />

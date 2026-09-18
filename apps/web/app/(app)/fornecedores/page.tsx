@@ -1,6 +1,7 @@
 import { FiltroDeSituacao } from '@/components/completude/filtro-situacao';
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
+import { corDaCategoria } from '@/lib/categorias/cor';
 import {
   type FiltroDeSituacao as Situacao,
   avaliarFornecedor,
@@ -128,14 +129,7 @@ export default async function FornecedoresPage({
                   key={cat.id}
                   href={href}
                   className={active ? 'obras-filter-tab is-active' : 'obras-filter-tab'}
-                  style={
-                    cat.cor
-                      ? {
-                          borderLeft: `3px solid ${cat.cor}`,
-                          paddingLeft: 10,
-                        }
-                      : undefined
-                  }
+                  style={{ borderLeft: `3px solid ${corDaCategoria(cat)}`, paddingLeft: 10 }}
                 >
                   {cat.nome}
                 </Link>

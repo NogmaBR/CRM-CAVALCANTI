@@ -6,6 +6,7 @@ import { PagamentoCreateSchema, PagamentoUpdateSchema } from '@/lib/schemas/paga
 import { dispatchEvento } from '@/lib/services/dispatch-webhook';
 import { erroDeEscrita } from '@/lib/supabase/escrita';
 import { createClient } from '@/lib/supabase/server';
+import { pareceUuid } from '@/lib/util/uuid';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { type Rotulos, voltarComErro } from '../_shared/form-erros';
@@ -186,4 +187,53 @@ export async function restorePagamento(formData: FormData) {
   revalidatePath(`/pagamentos/${id}`);
   revalidatePath('/painel');
   redirect(`/pagamentos/${id}`);
+}
+
+/**
+ * PM3 — "Anexar comprovante" direto na tela do pagamento, sem ir a
+ * `/documentos/novo`. A obra, o fornecedor e a pasta (`nfs_pagamentos`)
+ * vêm do próprio pagamento; a pessoa só escolhe o arquivo e se é nota ou
+ * comprovante. Mesmo núcleo de upload do formulário completo.
+ */
+export async function anexarComprovante(formData: FormData) {
+  const pagamentoId = String(formData.get('pagamento_id') ?? '').trim();
+  if (!pareceUuid(pagamentoId)) redirect('/pagamentos?error=ID%20inv%C3%A1lido');
+  const volta = `/pagamentos/${pagamentoId}`;
+
+  const tipoBruto = String(formData.get('tipo') ?? 'comprovante');
+  const tipo = tipoBruto === 'nota_fiscal' ? 'nota_fiscal' : 'comprovante';
+
+  const supabase = await createClient();
+  const { data: pagamento } = await supabase
+    .from('pagamentos')
+    .select('id, obra_id, fornecedor_id')
+    .eq('id', pagamentoId)
+    .maybeSingle();
+  if (!pagamento) redirect(`${volta}?error=${encodeURIComponent('Pagamento não encontrado.')}`);
+
+  const { subirDocumento } = await import('@/lib/services/subir-documento');
+  const r = await subirDocumento(
+    {
+      obra_id: pagamento.obra_id,
+      pagamento_id: pagamento.id,
+      fornecedor_id: pagamento.fornecedor_id ?? undefined,
+      tipo,
+      categoria: 'nfs_pagamentos',
+      numero_nf: String(formData.get('numero_nf') ?? '').trim() || undefined,
+    },
+    formData.get('file'),
+  );
+  if (!r.ok) {
+    redirect(`${volta}?error=${encodeURIComponent(`${r.erro} Selecione o arquivo de novo.`)}`);
+  }
+
+  revalidatePath(volta);
+  revalidatePath('/pagamentos');
+  revalidatePath('/documentos');
+  revalidatePath('/painel');
+  revalidatePath('/pendentes');
+  revalidatePath(`/obras/${pagamento.obra_id}`);
+  redirect(
+    `${volta}?success=${encodeURIComponent(tipo === 'nota_fiscal' ? 'Nota fiscal anexada.' : 'Comprovante anexado.')}`,
+  );
 }

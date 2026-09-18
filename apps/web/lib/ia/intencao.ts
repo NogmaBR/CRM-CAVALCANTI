@@ -32,7 +32,7 @@ const SISTEMA = `Você classifica UMA mensagem de WhatsApp enviada ao agente de 
 
 Categorias:
 - "pergunta": quer saber algo que está no sistema — gastos, lucro, obras, fornecedores, pagamentos, notas, documentos, andamento, recebimentos. Ex.: "velho, quanto tô lucrando no garibaldi", "tem projeto aprovado da casa ej", "quem mais recebeu esse mês".
-- "acao": pede para o sistema FAZER um cadastro: criar obra, cadastrar fornecedor, informar valor do contrato, registrar recebimento do cliente, arquivar obra. Ex.: "cria aí uma obra chamada sítio", "o contrato da garibaldi é 850 mil", "recebi 50 mil do cliente da inox", "arquiva a wrb".
+- "acao": pede para o sistema FAZER um cadastro: criar obra, cadastrar fornecedor, informar valor do contrato, registrar recebimento do cliente, arquivar obra, anotar a medição de uma etapa (quantos % está feita). Ex.: "cria aí uma obra chamada sítio", "o contrato da garibaldi é 850 mil", "recebi 50 mil do cliente da inox", "arquiva a wrb", "laje da casa ej 100%", "alvenaria tá em 60%".
 - "lancamento": relata um PAGAMENTO feito a fornecedor/serviço/material (dinheiro que SAIU), mesmo sem valor claro. Ex.: "mandei 300 pro zé ontem", "paguei o pedreiro", "comprei cimento na garibaldi".
 - "conversa": saudação, agradecimento, teste, mensagem social sem pedido. Ex.: "bom dia", "valeu", "ok obrigado", "testando".
 - "nenhuma": não dá para saber, ou é outra coisa (ex.: texto de encaminhamento, piada, assunto pessoal).

@@ -1,4 +1,5 @@
 import 'server-only';
+import { corDaCategoria } from '@/lib/categorias/cor';
 import { STATUS_QUE_CONTAM } from '@/lib/status-labels';
 import { createClient } from '@/lib/supabase/server';
 import { hojeBR } from '@/lib/util/datas';
@@ -324,15 +325,17 @@ export async function getGastoPorCategoria(
     supabase.from('categorias').select('id, nome, cor').is('deleted_at', null),
   ]);
 
-  const catMap = new Map((catsR.data ?? []).map((c) => [c.id, { nome: c.nome, cor: c.cor }]));
+  const catMap = new Map(
+    (catsR.data ?? []).map((c) => [c.id, { nome: c.nome, cor: corDaCategoria(c) }]),
+  );
 
   const stats = new Map<string, CategoriaGasto>();
   for (const p of pagsR.data ?? []) {
     const meta = p.categoria_id ? catMap.get(p.categoria_id) : null;
     const nome = meta?.nome ?? 'Sem categoria';
-    // Categoria sem cor cadastrada recebe uma da paleta categórica abaixo,
-    // pela ordem de tamanho — antes o donut inteiro saía cinza.
-    const cor = meta?.cor ?? null;
+    // Categoria sem cor cadastrada recebe a cor automática (determinística
+    // pelo id, igual em todo gráfico) — antes o donut inteiro saía cinza.
+    const cor = meta?.cor ?? '#8a8f94';
     const cur = stats.get(nome);
     stats.set(nome, {
       nome,
@@ -342,12 +345,7 @@ export async function getGastoPorCategoria(
     });
   }
 
-  const sorted = [...stats.values()]
-    .sort((a, b) => b.total - a.total)
-    .map((c, i) => ({
-      ...c,
-      cor: c.cor ?? PALETA_CATEGORICA[i % PALETA_CATEGORICA.length] ?? '#8a8f94',
-    }));
+  const sorted = [...stats.values()].sort((a, b) => b.total - a.total);
   if (sorted.length <= topN) return sorted;
 
   const top = sorted.slice(0, topN);
@@ -362,22 +360,6 @@ export async function getGastoPorCategoria(
   };
   return [...top, outros];
 }
-
-/**
- * Paleta categórica para etapa sem cor cadastrada: as quatro séries do tema
- * (validadas no dataviz), a cor principal e dois neutros distinguíveis. A
- * legenda escrita é o que identifica a fatia; a cor só separa vizinhas.
- */
-const PALETA_CATEGORICA = [
-  'var(--serie-1)',
-  'var(--serie-2)',
-  'var(--serie-3)',
-  'var(--serie-4)',
-  'var(--chart-1)',
-  '#7a7f87',
-  '#b98a5c',
-  '#4f8fb3',
-];
 
 // ============================================================================
 // Atividade recente — pagamentos + documentos + mensagens (últimas 48h)

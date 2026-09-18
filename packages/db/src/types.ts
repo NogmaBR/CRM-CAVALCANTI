@@ -1144,6 +1144,136 @@ export type Database = {
           },
         ];
       };
+      etapas_obra: {
+        Row: {
+          autorizado_id: string | null;
+          categoria_id: string | null;
+          created_at: string;
+          criado_por_user_id: string | null;
+          data_prevista: string | null;
+          deleted_at: string | null;
+          id: string;
+          medido_em: string | null;
+          nome: string;
+          obra_id: string;
+          observacoes: string | null;
+          ordem: number;
+          origem: string;
+          percentual_concluido: number;
+          peso: number;
+          updated_at: string;
+        };
+        Insert: {
+          autorizado_id?: string | null;
+          categoria_id?: string | null;
+          created_at?: string;
+          criado_por_user_id?: string | null;
+          data_prevista?: string | null;
+          deleted_at?: string | null;
+          id?: string;
+          medido_em?: string | null;
+          nome: string;
+          obra_id: string;
+          observacoes?: string | null;
+          ordem?: number;
+          origem?: string;
+          percentual_concluido?: number;
+          peso?: number;
+          updated_at?: string;
+        };
+        Update: {
+          autorizado_id?: string | null;
+          categoria_id?: string | null;
+          created_at?: string;
+          criado_por_user_id?: string | null;
+          data_prevista?: string | null;
+          deleted_at?: string | null;
+          id?: string;
+          medido_em?: string | null;
+          nome?: string;
+          obra_id?: string;
+          observacoes?: string | null;
+          ordem?: number;
+          origem?: string;
+          percentual_concluido?: number;
+          peso?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'etapas_obra_obra_id_fkey';
+            columns: ['obra_id'];
+            isOneToOne: false;
+            referencedRelation: 'obras';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'etapas_obra_categoria_id_fkey';
+            columns: ['categoria_id'];
+            isOneToOne: false;
+            referencedRelation: 'categorias';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'etapas_obra_autorizado_id_fkey';
+            columns: ['autorizado_id'];
+            isOneToOne: false;
+            referencedRelation: 'autorizados';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      orcamentos_etapa: {
+        Row: {
+          categoria_id: string;
+          created_at: string;
+          criado_por_user_id: string | null;
+          deleted_at: string | null;
+          id: string;
+          obra_id: string;
+          observacoes: string | null;
+          updated_at: string;
+          valor: number;
+        };
+        Insert: {
+          categoria_id: string;
+          created_at?: string;
+          criado_por_user_id?: string | null;
+          deleted_at?: string | null;
+          id?: string;
+          obra_id: string;
+          observacoes?: string | null;
+          updated_at?: string;
+          valor: number;
+        };
+        Update: {
+          categoria_id?: string;
+          created_at?: string;
+          criado_por_user_id?: string | null;
+          deleted_at?: string | null;
+          id?: string;
+          obra_id?: string;
+          observacoes?: string | null;
+          updated_at?: string;
+          valor?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'orcamentos_etapa_obra_id_fkey';
+            columns: ['obra_id'];
+            isOneToOne: false;
+            referencedRelation: 'obras';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'orcamentos_etapa_categoria_id_fkey';
+            columns: ['categoria_id'];
+            isOneToOne: false;
+            referencedRelation: 'categorias';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       recebimentos: {
         Row: {
           autorizado_id: string | null;

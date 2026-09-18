@@ -1,10 +1,5 @@
 import 'server-only';
-import type {
-  ObraCompletaData,
-  MesData,
-  FornecedorData,
-  AtividadeData,
-} from '@/lib/data/reports';
+import type { AtividadeData, FornecedorData, MesData, ObraCompletaData } from '@/lib/data/reports';
 
 /**
  * CSV generator. Retorna string com BOM UTF-8 (Excel pt-BR reconhece)
@@ -74,12 +69,56 @@ export function obraCompletaToCsv(data: ObraCompletaData): string {
   rows.push(['Obra', data.obra.nome]);
   if (data.obra.cliente) rows.push(['Cliente', data.obra.cliente]);
   rows.push(['Status', data.obra.status ?? '—']);
-  if (data.obra.orcamento != null) rows.push(['Orçamento (R$)', fmtNumberBR(Number(data.obra.orcamento))]);
+  if (data.obra.orcamento != null)
+    rows.push(['Orçamento (R$)', fmtNumberBR(Number(data.obra.orcamento))]);
   rows.push(['Total pago (R$)', fmtNumberBR(data.totais.valorTotalPago)]);
   if (data.totais.percentualOrcamento != null) {
-    rows.push(['% do orçamento', `${(data.totais.percentualOrcamento * 100).toFixed(1).replace('.', ',')}%`]);
+    rows.push([
+      '% do orçamento',
+      `${(data.totais.percentualOrcamento * 100).toFixed(1).replace('.', ',')}%`,
+    ]);
   }
   rows.push(['Quantidade de pagamentos', String(data.totais.quantidadePagamentos)]);
+  rows.push([]);
+
+  // PM6: o semáforo e o cronograma físico também vão no CSV.
+  rows.push(['## Situação da obra']);
+  rows.push(['Nível', data.completude.nivel]);
+  rows.push(['Itens preenchidos', `${data.completude.itensOk} de ${data.completude.itensTotal}`]);
+  rows.push(['Gravidade', 'O que falta']);
+  for (const f of data.completude.faltas) rows.push([f.gravidade, f.texto]);
+  rows.push([]);
+
+  rows.push(['## Cronograma físico']);
+  rows.push([
+    'Obra executada (%)',
+    data.cronograma.avancoFisico == null
+      ? ''
+      : String(data.cronograma.avancoFisico).replace('.', ','),
+  ]);
+  rows.push(['Etapa', 'Peso', 'Concluído (%)', 'Medido em', 'Previsto']);
+  for (const e of data.cronograma.etapas) {
+    rows.push([
+      e.nome,
+      String(e.peso).replace('.', ','),
+      String(e.percentual_concluido).replace('.', ','),
+      fmtDate(e.medido_em),
+      fmtDate(e.data_prevista),
+    ]);
+  }
+  rows.push([]);
+
+  rows.push(['## Orçado × realizado por etapa']);
+  rows.push(['Etapa', 'Orçado (R$)', 'Realizado (R$)', 'Saldo (R$)', 'Situação']);
+  for (const l of data.cronograma.orcado.linhas) {
+    rows.push([
+      l.categoria,
+      l.orcado == null ? '' : fmtNumberBR(l.orcado),
+      fmtNumberBR(l.realizado),
+      l.saldo == null ? '' : fmtNumberBR(l.saldo),
+      l.situacao,
+    ]);
+  }
   rows.push([]);
 
   rows.push(['## Pagamentos']);
@@ -100,20 +139,30 @@ export function obraCompletaToCsv(data: ObraCompletaData): string {
   rows.push(['## Documentos']);
   rows.push(['Data upload', 'Tipo', 'Nome arquivo', 'Fornecedor', 'Nº NF']);
   for (const d of data.documentos) {
-    rows.push([fmtDateTime(d.created_at), d.tipo, d.nome_arquivo, d.fornecedor_nome ?? '', d.numero_nf ?? '']);
+    rows.push([
+      fmtDateTime(d.created_at),
+      d.tipo,
+      d.nome_arquivo,
+      d.fornecedor_nome ?? '',
+      d.numero_nf ?? '',
+    ]);
   }
   rows.push([]);
 
   rows.push(['## Consolidado por Categoria']);
   rows.push(['Categoria', 'Total (R$)']);
-  for (const [cat, total] of Object.entries(data.totais.valorPorCategoria).sort((a, b) => b[1] - a[1])) {
+  for (const [cat, total] of Object.entries(data.totais.valorPorCategoria).sort(
+    (a, b) => b[1] - a[1],
+  )) {
     rows.push([cat, fmtNumberBR(total)]);
   }
   rows.push([]);
 
   rows.push(['## Consolidado por Fornecedor']);
   rows.push(['Fornecedor', 'Total (R$)']);
-  for (const [f, total] of Object.entries(data.totais.valorPorFornecedor).sort((a, b) => b[1] - a[1])) {
+  for (const [f, total] of Object.entries(data.totais.valorPorFornecedor).sort(
+    (a, b) => b[1] - a[1],
+  )) {
     rows.push([f, fmtNumberBR(total)]);
   }
 
@@ -152,12 +201,14 @@ export function mesToCsv(data: MesData): string {
 
   rows.push(['## Por obra']);
   rows.push(['Obra', 'Nº pagamentos', 'Total (R$)']);
-  for (const o of data.totais.porObra) rows.push([o.obra_nome, String(o.count), fmtNumberBR(o.total)]);
+  for (const o of data.totais.porObra)
+    rows.push([o.obra_nome, String(o.count), fmtNumberBR(o.total)]);
   rows.push([]);
 
   rows.push(['## Por categoria']);
   rows.push(['Categoria', 'Nº pagamentos', 'Total (R$)']);
-  for (const c of data.totais.porCategoria) rows.push([c.categoria_nome, String(c.count), fmtNumberBR(c.total)]);
+  for (const c of data.totais.porCategoria)
+    rows.push([c.categoria_nome, String(c.count), fmtNumberBR(c.total)]);
   rows.push([]);
 
   rows.push(['## Por origem']);
@@ -180,12 +231,16 @@ export function fornecedorToCsv(data: FornecedorData): string {
     rows.push([label, data.fornecedor.documento]);
   }
   if (data.filtros.from || data.filtros.to) {
-    rows.push(['Período', `${fmtDate(data.filtros.from) || '—'} a ${fmtDate(data.filtros.to) || '—'}`]);
+    rows.push([
+      'Período',
+      `${fmtDate(data.filtros.from) || '—'} a ${fmtDate(data.filtros.to) || '—'}`,
+    ]);
   }
   rows.push(['Total (R$)', fmtNumberBR(data.totais.valorTotal)]);
   rows.push(['Ticket médio (R$)', fmtNumberBR(data.totais.ticketMedio)]);
   rows.push(['Nº pagamentos', String(data.totais.quantidade)]);
-  if (data.totais.primeiraCompra) rows.push(['Primeira compra', fmtDate(data.totais.primeiraCompra)]);
+  if (data.totais.primeiraCompra)
+    rows.push(['Primeira compra', fmtDate(data.totais.primeiraCompra)]);
   if (data.totais.ultimaCompra) rows.push(['Última compra', fmtDate(data.totais.ultimaCompra)]);
   rows.push([]);
 
@@ -206,7 +261,8 @@ export function fornecedorToCsv(data: FornecedorData): string {
 
   rows.push(['## Por obra']);
   rows.push(['Obra', 'Nº pagamentos', 'Total (R$)']);
-  for (const o of data.totais.porObra) rows.push([o.obra_nome, String(o.count), fmtNumberBR(o.total)]);
+  for (const o of data.totais.porObra)
+    rows.push([o.obra_nome, String(o.count), fmtNumberBR(o.total)]);
   rows.push([]);
 
   rows.push(['## Documentos recebidos']);

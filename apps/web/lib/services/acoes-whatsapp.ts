@@ -59,6 +59,8 @@ export function tituloDaAcao(p: Proposta): string {
       return `Recebimento de ${brl(p.dados.valor)} na obra ${p.dados.obra_nome}`;
     case 'arquivar_obra':
       return `Arquivar obra "${p.dados.obra_nome}"`;
+    case 'registrar_medicao':
+      return `Medição: ${p.dados.etapa_nome} ${p.dados.percentual}% na obra ${p.dados.obra_nome}`;
   }
 }
 
@@ -115,6 +117,17 @@ export function perguntaDaAcao(p: Proposta): string {
       linhas.push('• Dá para restaurar depois pelo painel.');
       break;
     }
+    case 'registrar_medicao': {
+      linhas.push(`Vou *anotar a medição* na obra *${p.dados.obra_nome}*:`, '');
+      linhas.push(`• Etapa: *${p.dados.etapa_nome}*${p.dados.etapa_id ? '' : ' (nova)'}`);
+      linhas.push(
+        `• Concluído: *${p.dados.percentual}%*${
+          p.dados.percentual_anterior != null ? ` (antes: ${p.dados.percentual_anterior}%)` : ''
+        }`,
+      );
+      linhas.push('', 'Isso atualiza o "em que pé está a obra" no painel.');
+      break;
+    }
   }
   linhas.push('', RODAPE);
   return linhas.join('\n');
@@ -142,6 +155,8 @@ export function respostaDaAcao(p: Proposta): string {
       return `✅ Recebimento de ${valorLegivel(p.dados.valor)} registrado na obra *${p.dados.obra_nome}* (${dataBR(p.dados.data)}).`;
     case 'arquivar_obra':
       return `✅ Obra *${p.dados.obra_nome}* arquivada. Para restaurar, use o painel.`;
+    case 'registrar_medicao':
+      return `✅ Anotado: *${p.dados.etapa_nome}* está em ${p.dados.percentual}% na obra *${p.dados.obra_nome}*.`;
   }
 }
 
@@ -291,6 +306,8 @@ async function executar(
       return registrarRecebimento(supabase, p.dados, userId, mensagemId);
     case 'arquivar_obra':
       return arquivarObra(supabase, p.dados);
+    case 'registrar_medicao':
+      return registrarMedicao(supabase, p.dados, userId, mensagemId);
   }
 }
 
@@ -364,6 +381,51 @@ async function registrarRecebimento(
     valor: d.valor,
     data_recebimento: d.data,
     descricao: d.descricao,
+    origem: 'whatsapp',
+    criado_por_user_id: userId,
+    autorizado_id: msg?.autorizado_id ?? null,
+  });
+  return deErro(error);
+}
+
+async function registrarMedicao(
+  supabase: Client,
+  d: Extract<Proposta, { tipo: 'registrar_medicao' }>['dados'],
+  userId: string | null,
+  mensagemId: string,
+): Promise<Escrita> {
+  const hoje = new Date().toISOString().slice(0, 10);
+  if (d.etapa_id) {
+    const r = await supabase
+      .from('etapas_obra')
+      .update({ percentual_concluido: d.percentual, medido_em: hoje })
+      .eq('id', d.etapa_id)
+      .eq('obra_id', d.obra_id)
+      .is('deleted_at', null)
+      .select('id');
+    if (r.error) return deErro(r.error);
+    if ((r.data?.length ?? 0) > 0) return { ok: true };
+    // A etapa sumiu entre a proposta e o SIM: cria de novo com o nome.
+  }
+  const { data: msg } = await supabase
+    .from('mensagens_whats')
+    .select('autorizado_id')
+    .eq('id', mensagemId)
+    .maybeSingle();
+  const { data: ultima } = await supabase
+    .from('etapas_obra')
+    .select('ordem')
+    .eq('obra_id', d.obra_id)
+    .is('deleted_at', null)
+    .order('ordem', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const { error } = await supabase.from('etapas_obra').insert({
+    obra_id: d.obra_id,
+    nome: d.etapa_nome,
+    percentual_concluido: d.percentual,
+    medido_em: hoje,
+    ordem: (ultima?.ordem ?? 0) + 1,
     origem: 'whatsapp',
     criado_por_user_id: userId,
     autorizado_id: msg?.autorizado_id ?? null,

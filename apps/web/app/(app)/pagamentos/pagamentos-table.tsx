@@ -3,6 +3,7 @@
 import { colunaDeSituacao } from '@/components/completude/coluna-situacao';
 import { DataTable } from '@/components/data-table';
 import { Badge } from '@/components/nogma/Badge';
+import { corDaCategoria } from '@/lib/categorias/cor';
 import type { Completude } from '@/lib/completude/regras';
 import type { Categoria } from '@/lib/data/categorias';
 import type { Fornecedor } from '@/lib/data/fornecedores';
@@ -98,18 +99,16 @@ export function PagamentosTable({
                 fontSize: 13,
               }}
             >
-              {cat.cor ? (
-                <span
-                  aria-hidden="true"
-                  style={{
-                    display: 'inline-block',
-                    width: 8,
-                    height: 8,
-                    borderRadius: 2,
-                    background: cat.cor,
-                  }}
-                />
-              ) : null}
+              <span
+                aria-hidden="true"
+                style={{
+                  display: 'inline-block',
+                  width: 8,
+                  height: 8,
+                  borderRadius: 2,
+                  background: corDaCategoria(cat),
+                }}
+              />
               {cat.nome}
             </span>
           );

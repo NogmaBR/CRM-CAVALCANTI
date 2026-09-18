@@ -3,6 +3,7 @@
 import { colunaDeSituacao } from '@/components/completude/coluna-situacao';
 import { DataTable } from '@/components/data-table';
 import { Badge } from '@/components/nogma/Badge';
+import { corDaCategoria } from '@/lib/categorias/cor';
 import type { Completude } from '@/lib/completude/regras';
 import type { Categoria } from '@/lib/data/categorias';
 import type { Fornecedor } from '@/lib/data/fornecedores';
@@ -65,7 +66,7 @@ export function FornecedoresTable({
                 fontSize: 13,
               }}
             >
-              {cat.cor ? (
+              {
                 <span
                   aria-hidden="true"
                   style={{
@@ -73,10 +74,10 @@ export function FornecedoresTable({
                     width: 8,
                     height: 8,
                     borderRadius: 2,
-                    background: cat.cor,
+                    background: corDaCategoria(cat),
                   }}
                 />
-              ) : null}
+              }
               {cat.nome}
             </span>
           );
