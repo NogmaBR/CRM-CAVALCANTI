@@ -4,6 +4,7 @@ import { AvisoDeFalta, PainelDeCompletude } from '@/components/completude/semafo
 import { TopBar } from '@/components/layout/topbar';
 import { Badge, type BadgeVariant } from '@/components/nogma/Badge';
 import { Button } from '@/components/nogma/Button';
+import { corDaCategoria } from '@/lib/categorias/cor';
 import { avaliarPagamento, faltaDoCampo } from '@/lib/completude/regras';
 import { listCategorias } from '@/lib/data/categorias';
 import { listDocumentos } from '@/lib/data/documentos';
@@ -190,7 +191,7 @@ export default async function PagamentoDetailPage({
             <Row
               label="Etapa (categoria)"
               value={categoria ? categoria.nome : '— sem categoria —'}
-              swatch={categoria?.cor ?? null}
+              swatch={categoria ? corDaCategoria(categoria) : null}
               falta={faltaDoCampo(completude, 'categoria')}
             />
           </Section>
