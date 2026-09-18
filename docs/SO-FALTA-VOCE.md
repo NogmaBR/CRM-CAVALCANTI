@@ -821,10 +821,9 @@ nos fornecedores (`/fornecedores`) — hoje todos estão vazios de propósito.
   de diário, 14 pendências, 20 conversas do assistente, 657 eventos do webhook, 34 miniaturas órfãs
   no Storage e o resíduo do teste de 07/09 (número fictício). RAG: `removidos: 22`, de volta a 611.
   Conferido: 250 pagamentos, 320 documentos, 0 mensagem, 0 pendência, 0 arquivo órfão. Autorizados
-  (3) e grupos mantidos. **Sobrou de propósito** (o classificador barra `DELETE` direto na API):
-  30 linhas em `whatsapp_respostas` (só dedupe de perguntas/comandos de 16–17/09, inofensivas) e
-  3 embeddings pendentes que o cron `indexar` fecha sozinho. Para zerar o dedupe agora:
-  `DELETE FROM whatsapp_respostas WHERE created_at >= '2026-09-16';` no SQL do Supabase.
+  (3) e grupos mantidos. As 30 linhas de dedupe em `whatsapp_respostas` saíram pela Management
+  API (o classificador barra `DELETE` pelo PostgREST, mas não pelo `database/query`). Sobram só
+  3 embeddings pendentes, que o cron `indexar` fecha sozinho.
 - [ ] Número oficial ligado (13.5) e roteiro repetido com o Cavalcanti
 
 ---
