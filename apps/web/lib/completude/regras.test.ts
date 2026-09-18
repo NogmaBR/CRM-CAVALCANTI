@@ -65,10 +65,7 @@ describe('avaliarPagamento', () => {
   });
 
   it('recusado não precisa de comprovante', () => {
-    const c = avaliarPagamento(
-      { ...completo, status_pagto: 'recusado' },
-      { temDocumento: false },
-    );
+    const c = avaliarPagamento({ ...completo, status_pagto: 'recusado' }, { temDocumento: false });
     expect(c.faltas.map((f) => f.chave)).toEqual([]);
     expect(c.nivel).toBe('completo');
   });
@@ -218,10 +215,16 @@ describe('avaliarDocumento', () => {
     expect(c.itensTotal).toBe(4);
   });
   it('comprovante sem pagamento é importante; foto sem pagamento não é falta', () => {
-    const base = { id: 'd', obra_id: 'o', pagamento_id: null, fornecedor_id: null, numero_nf: null };
-    expect(avaliarDocumento({ ...base, tipo: 'comprovante' }).faltas.map((f) => f.chave)).toEqual(
-      ['pagamento'],
-    );
+    const base = {
+      id: 'd',
+      obra_id: 'o',
+      pagamento_id: null,
+      fornecedor_id: null,
+      numero_nf: null,
+    };
+    expect(avaliarDocumento({ ...base, tipo: 'comprovante' }).faltas.map((f) => f.chave)).toEqual([
+      'pagamento',
+    ]);
     expect(avaliarDocumento({ ...base, tipo: 'outro' }).nivel).toBe('completo');
   });
   it('sem obra e sem pagamento (nota) é vermelho', () => {

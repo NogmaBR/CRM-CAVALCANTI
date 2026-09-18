@@ -26,7 +26,10 @@ export const NIVEL_ROTULO: Record<Nivel, string> = {
 };
 
 /** Badge compacto: bolinha + o que falta. `title` lista tudo. */
-export function Semaforo({ completude, className }: { completude: Completude; className?: string }) {
+export function Semaforo({
+  completude,
+  className,
+}: { completude: Completude; className?: string }) {
   const titulo =
     completude.faltas.length === 0
       ? `Tudo completo (${completude.itensTotal} de ${completude.itensTotal})`
@@ -149,6 +152,7 @@ export function AvisoDeFalta({
   acao?: { rotulo: string; href: string };
 }) {
   return (
+    // biome-ignore lint/a11y/useSemanticElements: aviso de status (padrão do projeto)
     <div className={`aviso-falta aviso-falta--${gravidade}`} role="status">
       {gravidade === 'critica' ? (
         <TriangleAlert size={18} aria-hidden="true" />
@@ -198,7 +202,11 @@ export function BarraDeSaude({
               : `${comPendencia} de ${resumo.total} com pendência`}
         </span>
       </div>
-      <div className="barra-saude__trilho" role="img" aria-label={`${rotulo}: ${resumo.completo} completos, ${resumo.parcial} com falta leve, ${resumo.critico} com falta grave`}>
+      <div
+        className="barra-saude__trilho"
+        role="img"
+        aria-label={`${rotulo}: ${resumo.completo} completos, ${resumo.parcial} com falta leve, ${resumo.critico} com falta grave`}
+      >
         {trechos
           .filter((tr) => tr.n > 0)
           .map((tr) => (

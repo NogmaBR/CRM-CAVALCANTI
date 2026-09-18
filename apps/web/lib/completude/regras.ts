@@ -70,7 +70,11 @@ function dataBR(iso: string): string {
 }
 
 function brl(n: number): string {
-  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+  return n.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    maximumFractionDigits: 0,
+  });
 }
 
 // ---------------------------------------------------------------------------

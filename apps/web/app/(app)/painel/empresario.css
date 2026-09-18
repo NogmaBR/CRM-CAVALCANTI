@@ -138,7 +138,7 @@
 
 /* A gravidade é o rótulo escrito; o ponto colorido só reforça. */
 .alerta__gravidade::before {
-  content: '';
+  content: "";
   display: inline-block;
   width: 10px;
   height: 10px;
@@ -219,4 +219,45 @@
     grid-column: 1 / -1;
     justify-content: center;
   }
+}
+
+/* Saúde do cadastro: quatro barras empilhadas, duas por linha no desktop. */
+.painel-saude {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px 28px;
+}
+@media (min-width: 900px) {
+  .painel-saude {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Prazo de cada obra: nome + linha do tempo, uma por obra. */
+.painel-ritmo {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px 28px;
+}
+@media (min-width: 900px) {
+  .painel-ritmo {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.painel-ritmo__obra {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg, 12px);
+  background: var(--surface-2);
+}
+.painel-ritmo__nome {
+  font-weight: 700;
+  color: var(--text-strong);
+  text-decoration: none;
+}
+.painel-ritmo__nome:hover {
+  text-decoration: underline;
 }

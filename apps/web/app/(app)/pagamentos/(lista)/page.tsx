@@ -1,16 +1,22 @@
+import { FiltroDeSituacao } from '@/components/completude/filtro-situacao';
 import { TopBar } from '@/components/layout/topbar';
 import { Button } from '@/components/nogma/Button';
-import { Card } from '@/components/nogma/Card';
+import {
+  type FiltroDeSituacao as Situacao,
+  lerFiltroDeSituacao,
+  passaNoFiltro,
+} from '@/lib/completude/regras';
 import { listCategorias } from '@/lib/data/categorias';
+import { completudeDosPagamentos } from '@/lib/data/completude';
 import { listFornecedores } from '@/lib/data/fornecedores';
 import { listObras } from '@/lib/data/obras';
-import { listPagamentos, sumPagamentosBy } from '@/lib/data/pagamentos';
-import { formatBRL } from '@/lib/schemas/pagamento';
+import { listPagamentos } from '@/lib/data/pagamentos';
 import { PAGAMENTO_STATUS_FILTROS, type PagamentoStatus } from '@/lib/status-labels';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { PagamentosFilters } from '../pagamentos-filters';
 import { PagamentosTable } from '../pagamentos-table';
+import { ResumoDosPagamentos } from '../resumo';
 
 export const metadata = { title: 'Pagamentos' };
 
@@ -38,6 +44,7 @@ export default async function PagamentosPage({
     obra_id?: string;
     fornecedor_id?: string;
     categoria_id?: string;
+    situacao?: string;
   }>;
 }) {
   const params = await searchParams;
@@ -62,12 +69,19 @@ export default async function PagamentosPage({
 async function PagamentosConteudo({
   params,
 }: {
-  params: { status?: string; obra_id?: string; fornecedor_id?: string; categoria_id?: string };
+  params: {
+    status?: string;
+    obra_id?: string;
+    fornecedor_id?: string;
+    categoria_id?: string;
+    situacao?: string;
+  };
 }) {
   const status = params.status ?? '';
   const obraId = params.obra_id ?? '';
   const fornecedorId = params.fornecedor_id ?? '';
   const categoriaId = params.categoria_id ?? '';
+  const situacao = lerFiltroDeSituacao(params.situacao);
 
   const isArquivado = status === 'arquivado';
   const statusPagto: Status | undefined = isArquivado
@@ -84,18 +98,37 @@ async function PagamentosConteudo({
     onlyArchived: isArquivado,
   };
 
-  const [pagamentos, obras, fornecedores, categorias, sumResult] = await Promise.all([
+  const [todos, obras, fornecedores, categorias] = await Promise.all([
     listPagamentos(commonFilters),
     listObras({ includeArchived: true }),
     listFornecedores({ includeArchived: true }),
     listCategorias(),
-    isArquivado
-      ? Promise.resolve({ total: 0, count: 0 })
-      : sumPagamentosBy({
-          obra_id: obraId || undefined,
-          status_pagto: statusPagto,
-        }),
   ]);
+
+  // O semáforo de cada lançamento (uma consulta em documentos) e o filtro
+  // de situação, em memória — a listagem já carrega tudo. O resumo do topo
+  // sai da mesma lista, então respeita TODOS os filtros (antes a soma
+  // ignorava fornecedor e categoria).
+  const completudeMap = await completudeDosPagamentos(todos);
+  const completude = Object.fromEntries(completudeMap);
+  const contagem: Record<Situacao, number> = {
+    '': todos.length,
+    pendente: 0,
+    critico: 0,
+    completo: 0,
+  };
+  for (const p of todos) {
+    const c = completudeMap.get(p.id);
+    if (!c) continue;
+    if (c.nivel === 'completo') contagem.completo += 1;
+    else contagem.pendente += 1;
+    if (c.nivel === 'critico') contagem.critico += 1;
+  }
+  const pagamentos = isArquivado
+    ? todos
+    : todos.filter((p) =>
+        passaNoFiltro(completudeMap.get(p.id) ?? { nivel: 'completo' }, situacao),
+      );
 
   const buildHref = (overrides: Partial<Record<string, string>>) => {
     const p = new URLSearchParams();
@@ -104,6 +137,7 @@ async function PagamentosConteudo({
       obra_id: obraId,
       fornecedor_id: fornecedorId,
       categoria_id: categoriaId,
+      situacao,
       ...overrides,
     };
     for (const [k, v] of Object.entries(merged)) {
@@ -116,44 +150,7 @@ async function PagamentosConteudo({
   return (
     <div className="nos-page-body">
       {!isArquivado ? (
-        <Card style={{ padding: '18px 22px', marginBottom: 20 }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'baseline',
-              justifyContent: 'space-between',
-              gap: 16,
-              flexWrap: 'wrap',
-            }}
-          >
-            <div>
-              <div
-                style={{
-                  fontSize: 12,
-                  color: 'var(--text-secondary)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                  marginBottom: 4,
-                }}
-              >
-                Total filtrado
-              </div>
-              <div
-                style={{
-                  fontSize: 28,
-                  fontWeight: 700,
-                  color: 'var(--text-primary)',
-                  fontVariantNumeric: 'tabular-nums',
-                }}
-              >
-                {formatBRL(sumResult.total)}
-              </div>
-            </div>
-            <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-              {sumResult.count} pagamento{sumResult.count === 1 ? '' : 's'}
-            </div>
-          </div>
-        </Card>
+        <ResumoDosPagamentos pagamentos={pagamentos} completude={completudeMap} />
       ) : null}
 
       <nav className="obras-filter-tabs" aria-label="Filtrar por status">
@@ -173,6 +170,14 @@ async function PagamentosConteudo({
         })}
       </nav>
 
+      {!isArquivado ? (
+        <FiltroDeSituacao
+          atual={situacao}
+          buildHref={(v) => buildHref({ situacao: v })}
+          contagem={contagem}
+        />
+      ) : null}
+
       <PagamentosFilters
         obras={obras.map((o) => ({ value: o.id, label: o.nome }))}
         fornecedores={fornecedores.map((f) => ({ value: f.id, label: f.nome }))}
@@ -188,6 +193,7 @@ async function PagamentosConteudo({
           obras={obras}
           fornecedores={fornecedores}
           categorias={categorias}
+          completude={isArquivado ? undefined : completude}
         />
       </div>
     </div>

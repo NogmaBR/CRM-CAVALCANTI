@@ -1,8 +1,10 @@
 'use client';
 
 import { Miniatura } from '@/components/arquivos/miniatura';
+import { colunaDeSituacao } from '@/components/completude/coluna-situacao';
 import { DataTable } from '@/components/data-table';
 import { Badge, type BadgeVariant } from '@/components/nogma/Badge';
+import type { Completude } from '@/lib/completude/regras';
 import type { Documento } from '@/lib/data/documentos';
 import type { Fornecedor } from '@/lib/data/fornecedores';
 import type { Obra } from '@/lib/data/obras';
@@ -37,12 +39,15 @@ export function DocumentosTable({
   obras,
   fornecedores,
   filtrando = false,
+  completude,
 }: {
   documentos: Documento[];
   obras: Obra[];
   fornecedores: Fornecedor[];
   /** Há busca ou filtro ativo na página: o vazio é "nada bateu", não "não há documentos". */
   filtrando?: boolean;
+  /** Semáforo por documento (obra, pagamento ligado, nº da NF…). */
+  completude?: Record<string, Completude>;
 }) {
   const obraMap = useMemo(() => new Map(obras.map((o) => [o.id, o])), [obras]);
   const fornMap = useMemo(() => new Map(fornecedores.map((f) => [f.id, f])), [fornecedores]);
@@ -117,6 +122,7 @@ export function DocumentosTable({
           return f ? f.nome : '—';
         },
       },
+      ...(completude ? [colunaDeSituacao<Documento>(completude)] : []),
       {
         accessorKey: 'created_at',
         header: 'Data',
@@ -153,7 +159,7 @@ export function DocumentosTable({
         ),
       },
     ],
-    [obraMap, fornMap],
+    [obraMap, fornMap, completude],
   );
 
   return (

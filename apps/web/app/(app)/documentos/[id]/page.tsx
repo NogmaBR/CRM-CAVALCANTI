@@ -1,8 +1,10 @@
 import { VisualizadorDeArquivo } from '@/components/arquivos/visualizador';
+import { PainelDeCompletude } from '@/components/completude/semaforo';
 import { TopBar } from '@/components/layout/topbar';
 import { Badge, type BadgeVariant } from '@/components/nogma/Badge';
 import { Button } from '@/components/nogma/Button';
 import { urlDoArquivo } from '@/lib/arquivos/tipo-visual';
+import { avaliarDocumento, faltaDoCampo } from '@/lib/completude/regras';
 import { getDocumento } from '@/lib/data/documentos';
 import { listFornecedores } from '@/lib/data/fornecedores';
 import { listObras } from '@/lib/data/obras';
@@ -67,6 +69,8 @@ export default async function DocumentoDetailPage({
   const tipo = documento.tipo as AnexoTipo;
   const temArquivo = !!documento.storage_path && documento.storage_path !== 'pending';
   const pasta = documento.categoria ? CATEGORIA_LABELS[documento.categoria] : null;
+  const completude = avaliarDocumento(documento);
+  const falta = (chave: string) => faltaDoCampo(completude, chave);
 
   return (
     <>
@@ -145,6 +149,10 @@ export default async function DocumentoDetailPage({
           )}
         </section>
 
+        {!isArquivado ? (
+          <PainelDeCompletude completude={completude} titulo="Situação do documento" />
+        ) : null}
+
         <div className="detail-layout__grid">
           <Section title="Arquivo">
             <Row label="Nome" value={documento.nome_arquivo} strong />
@@ -163,7 +171,7 @@ export default async function DocumentoDetailPage({
           <Section title="Classificação">
             <Row label="O que é" value={ANEXO_TIPO_LABELS[tipo]} />
             <Row label="Pasta da obra" value={pasta ? `${pasta.icone} ${pasta.rotulo}` : '—'} />
-            <Row label="Número NF" value={documento.numero_nf ?? '—'} />
+            <Row label="Número NF" value={documento.numero_nf ?? '—'} falta={falta('numero_nf')} />
             <Row label="Chave acesso NF" value={documento.chave_acesso_nf ?? '—'} />
           </Section>
 
@@ -172,6 +180,7 @@ export default async function DocumentoDetailPage({
               label="Obra"
               value={obra ? obra.nome : '— sem obra —'}
               href={obra ? `/obras/${obra.id}` : undefined}
+              falta={falta('obra')}
             />
             <Row
               label="Pagamento"
@@ -181,11 +190,13 @@ export default async function DocumentoDetailPage({
                   : '— sem pagamento —'
               }
               href={pagamento ? `/pagamentos/${pagamento.id}` : undefined}
+              falta={falta('pagamento')}
             />
             <Row
               label="Fornecedor"
               value={fornecedor ? fornecedor.nome : '— sem fornecedor —'}
               href={fornecedor ? `/fornecedores/${fornecedor.id}` : undefined}
+              falta={falta('fornecedor')}
             />
           </Section>
 

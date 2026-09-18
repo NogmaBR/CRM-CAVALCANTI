@@ -2,15 +2,18 @@ import { Archive, ArrowLeft, Pencil, RotateCcw } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import '../../_shared/detail-layout.css';
+import { PainelDeCompletude } from '@/components/completude/semaforo';
 import { TopBar } from '@/components/layout/topbar';
 import { Badge } from '@/components/nogma/Badge';
 import { Button } from '@/components/nogma/Button';
+import { avaliarFornecedor, faltaDoCampo } from '@/lib/completude/regras';
 import { listCategorias } from '@/lib/data/categorias';
 import { getFornecedor, listFornecedorApelidos } from '@/lib/data/fornecedores';
 import { formatDocumento } from '@/lib/schemas/fornecedor';
 import { Row, Section } from '../../_shared/detail-primitives';
 import { archiveFornecedor, restoreFornecedor } from '../actions';
 import { ApelidosSection } from './apelidos-section';
+import { GraficosDoFornecedor } from './graficos';
 
 export const metadata = { title: 'Fornecedor' };
 
@@ -45,6 +48,8 @@ export default async function FornecedorDetailPage({
   const categoria = fornecedor.categoria_id
     ? (categorias.find((c) => c.id === fornecedor.categoria_id) ?? null)
     : null;
+  const completude = avaliarFornecedor(fornecedor);
+  const falta = (chave: string) => faltaDoCampo(completude, chave);
 
   return (
     <>
@@ -118,13 +123,22 @@ export default async function FornecedorDetailPage({
           ) : null}
         </div>
 
+        {!isArquivado ? (
+          <PainelDeCompletude completude={completude} titulo="Situação do cadastro" />
+        ) : null}
+
         <div className="detail-layout__grid">
           <Section title="Identificação">
             <Row label="Nome" value={fornecedor.nome} />
-            <Row label="Razão social" value={fornecedor.razao_social ?? '—'} />
+            <Row
+              label="Razão social"
+              value={fornecedor.razao_social ?? '—'}
+              falta={falta('razao_social')}
+            />
             <Row
               label="Documento"
               value={formatDocumento(fornecedor.documento, fornecedor.documento_tipo)}
+              falta={falta('documento')}
             />
             <Row
               label="Origem"
@@ -137,14 +151,20 @@ export default async function FornecedorDetailPage({
               label="Categoria"
               value={categoria ? categoria.nome : '— sem categoria —'}
               swatch={categoria?.cor ?? null}
+              falta={falta('categoria')}
             />
             <Row label="Status" value={isArquivado ? 'Arquivado' : isAtivo ? 'Ativo' : 'Inativo'} />
           </Section>
 
           <Section title="Contato" span={2}>
-            <Row label="Telefone" value={fornecedor.telefone ?? '—'} />
-            <Row label="E-mail" value={fornecedor.email ?? '—'} />
+            <Row label="Telefone" value={fornecedor.telefone ?? '—'} falta={falta('telefone')} />
+            <Row label="E-mail" value={fornecedor.email ?? '—'} falta={falta('email')} />
           </Section>
+
+          <section className="detail-layout__section detail-layout__section--wide">
+            <h3 className="detail-layout__legend">O que este fornecedor recebeu</h3>
+            <GraficosDoFornecedor fornecedorId={fornecedor.id} />
+          </section>
 
           <Section title="Apelidos" span={2}>
             <ApelidosSection fornecedorId={fornecedor.id} apelidos={apelidos} />

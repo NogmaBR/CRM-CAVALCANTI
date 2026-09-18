@@ -254,18 +254,30 @@ export async function getKpisResumo(): Promise<KpisResumo> {
 // Série mensal (12 meses) — bar chart
 // ============================================================================
 
-export async function getSerieMensal(nMeses = 12): Promise<SerieMensalPoint[]> {
+/** Filtro opcional: a mesma série, só de uma obra ou de um fornecedor. */
+export interface FiltroDeSerie {
+  obraId?: string;
+  fornecedorId?: string;
+}
+
+export async function getSerieMensal(
+  nMeses = 12,
+  filtro: FiltroDeSerie = {},
+): Promise<SerieMensalPoint[]> {
   const supabase = await createClient();
   const meses = lastNMeses(nMeses);
   const inicio = `${meses[0]}-01`;
 
-  const { data } = await supabase
+  let query = supabase
     .from('pagamentos')
     .select('valor, data_pagamento')
     .in('status_pagto', [...STATUS_QUE_CONTAM])
     .is('deleted_at', null)
     .gte('data_pagamento', inicio)
     .order('data_pagamento');
+  if (filtro.obraId) query = query.eq('obra_id', filtro.obraId);
+  if (filtro.fornecedorId) query = query.eq('fornecedor_id', filtro.fornecedorId);
+  const { data } = await query;
 
   const byMes = new Map<string, { total: number; count: number }>();
   for (const p of data ?? []) {
@@ -290,18 +302,25 @@ export async function getSerieMensal(nMeses = 12): Promise<SerieMensalPoint[]> {
 // Gasto por categoria — donut (top N + others)
 // ============================================================================
 
-export async function getGastoPorCategoria(topN = 5): Promise<CategoriaGasto[]> {
+export async function getGastoPorCategoria(
+  topN = 5,
+  filtro: FiltroDeSerie & { meses?: number | null } = {},
+): Promise<CategoriaGasto[]> {
   const supabase = await createClient();
-  const meses = lastNMeses(3); // últimos 3 meses
-  const inicio = `${meses[0]}-01`;
+  // Padrão: últimos 3 meses. `meses: null` = a obra inteira, desde o começo.
+  const nMeses = filtro.meses === undefined ? 3 : filtro.meses;
+
+  let query = supabase
+    .from('pagamentos')
+    .select('valor, categoria_id')
+    .in('status_pagto', [...STATUS_QUE_CONTAM])
+    .is('deleted_at', null);
+  if (nMeses != null) query = query.gte('data_pagamento', `${lastNMeses(nMeses)[0]}-01`);
+  if (filtro.obraId) query = query.eq('obra_id', filtro.obraId);
+  if (filtro.fornecedorId) query = query.eq('fornecedor_id', filtro.fornecedorId);
 
   const [pagsR, catsR] = await Promise.all([
-    supabase
-      .from('pagamentos')
-      .select('valor, categoria_id')
-      .in('status_pagto', [...STATUS_QUE_CONTAM])
-      .is('deleted_at', null)
-      .gte('data_pagamento', inicio),
+    query,
     supabase.from('categorias').select('id, nome, cor').is('deleted_at', null),
   ]);
 

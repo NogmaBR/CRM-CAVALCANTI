@@ -1,8 +1,11 @@
+import { PainelDeCompletude } from '@/components/completude/semaforo';
 import { TopBar } from '@/components/layout/topbar';
 import { Badge, type BadgeVariant } from '@/components/nogma/Badge';
 import { Button } from '@/components/nogma/Button';
+import { avaliarObra, faltaDoCampo } from '@/lib/completude/regras';
 import { getPastasDaObra, getRegistrosDaObra, getUltimasFotosDaObra } from '@/lib/data/acervo';
 import { listLinksDaObra, urlDaPlanilha } from '@/lib/data/compartilhamentos';
+import { contextoDaObra } from '@/lib/data/completude';
 import { type Obra, getObra } from '@/lib/data/obras';
 import { listRecebimentosDaObra, resumoFinanceiroDaObra } from '@/lib/data/recebimentos';
 import { createClient } from '@/lib/supabase/server';
@@ -12,6 +15,7 @@ import { notFound } from 'next/navigation';
 import { archiveObra, restoreObra } from '../actions';
 import { DiarioDaObra, PastasDaObra, UltimasFotos } from './acervo';
 import { CompartilharPlanilha } from './compartilhar-planilha';
+import { GraficosDaObra } from './graficos';
 import { RecebimentosDaObra, ResultadoDaObra } from './recebimentos';
 import '../../_shared/detail-layout.css';
 import { Row, Section } from '../../_shared/detail-primitives';
@@ -100,7 +104,7 @@ export default async function ObraDetailPage({
   if (!obra) notFound();
 
   const supabase = await createClient();
-  const [{ data: userData }, links, pastas, registros, fotos, resumo, recebimentos] =
+  const [{ data: userData }, links, pastas, registros, fotos, resumo, recebimentos, contexto] =
     await Promise.all([
       supabase.auth.getUser(),
       listLinksDaObra(id),
@@ -109,7 +113,12 @@ export default async function ObraDetailPage({
       getUltimasFotosDaObra(id),
       resumoFinanceiroDaObra(id),
       listRecebimentosDaObra(id),
+      contextoDaObra(id),
     ]);
+
+  // O semáforo da obra: contrato, prazo, comprovantes, pastas, cadastro.
+  const completude = avaliarObra(obra, contexto);
+  const falta = (chave: string) => faltaDoCampo(completude, chave);
 
   let papel: string | null = null;
   if (userData.user) {
@@ -195,18 +204,32 @@ export default async function ObraDetailPage({
           {obra.tipo ? <span className="detail-layout__tipo">{TIPO_LABEL[obra.tipo]}</span> : null}
         </div>
 
+        <PainelDeCompletude completude={completude} titulo="Situação da obra" />
+
         <div className="detail-layout__grid">
           <Section title="Identificação">
             <Row label="Nome" value={obra.nome} />
-            <Row label="Cliente" value={obra.cliente ?? '—'} />
-            <Row label="Tipo" value={obra.tipo ? TIPO_LABEL[obra.tipo] : '—'} />
+            <Row label="Cliente" value={obra.cliente ?? '—'} falta={falta('cliente')} />
+            <Row
+              label="Tipo"
+              value={obra.tipo ? TIPO_LABEL[obra.tipo] : '—'}
+              falta={falta('tipo')}
+            />
             <Row label="Status" value={STATUS_LABEL[status]} />
           </Section>
 
           <Section title="Financeiro & prazos">
-            <Row label="Orçamento" value={formatBRL(obra.orcamento)} />
-            <Row label="Valor do contrato" value={formatBRL(obra.valor_contrato)} />
-            <Row label="Total gasto" value={formatBRL(totalGasto)} />
+            <Row label="Orçamento" value={formatBRL(obra.orcamento)} falta={falta('orcamento')} />
+            <Row
+              label="Valor do contrato"
+              value={formatBRL(obra.valor_contrato)}
+              falta={falta('contrato')}
+            />
+            <Row
+              label="Total gasto"
+              value={formatBRL(totalGasto)}
+              falta={falta('acima_do_contrato')}
+            />
             {percentual != null ? (
               <div className="obra-orcamento">
                 <div className="obra-orcamento__topo">
@@ -240,13 +263,26 @@ export default async function ObraDetailPage({
                 </div>
               </div>
             ) : null}
-            <Row label="Data início" value={formatDate(obra.data_inicio)} />
-            <Row label="Data prevista fim" value={formatDate(obra.data_prevista_fim)} />
+            <Row
+              label="Data início"
+              value={formatDate(obra.data_inicio)}
+              falta={falta('data_inicio')}
+            />
+            <Row
+              label="Data prevista fim"
+              value={formatDate(obra.data_prevista_fim)}
+              falta={falta('data_prevista_fim') ?? falta('prazo_vencido')}
+            />
           </Section>
 
           <Section title="Resultado da obra" span={2}>
             <ResultadoDaObra resumo={resumo} />
           </Section>
+
+          <section className="detail-layout__section detail-layout__section--wide">
+            <h3 className="detail-layout__legend">Como está a obra, em gráficos</h3>
+            <GraficosDaObra obra={obra} resumo={resumo} />
+          </section>
 
           <Section title="Recebimentos do cliente" span={2}>
             <RecebimentosDaObra
@@ -272,7 +308,11 @@ export default async function ObraDetailPage({
           </Section>
 
           <Section title="Endereço" span={2}>
-            <Row label="Endereço completo" value={formatEndereco(endereco)} />
+            <Row
+              label="Endereço completo"
+              value={formatEndereco(endereco)}
+              falta={falta('endereco')}
+            />
           </Section>
 
           <Section title="Extras" span={2}>

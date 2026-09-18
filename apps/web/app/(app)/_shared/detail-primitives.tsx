@@ -24,7 +24,9 @@ export function Section({
   children: ReactNode;
 }) {
   return (
-    <section className={`detail-layout__section ${span === 2 ? 'detail-layout__section--wide' : ''}`}>
+    <section
+      className={`detail-layout__section ${span === 2 ? 'detail-layout__section--wide' : ''}`}
+    >
       <h3 className="detail-layout__legend">{title}</h3>
       <dl className="detail-layout__rows">{children}</dl>
     </section>
@@ -91,7 +93,11 @@ export function Row({
     <div className="detail-layout__row">
       <dt className="detail-layout__label">{label}</dt>
       <dd
-        className={multiline ? 'detail-layout__value detail-layout__value--multiline' : 'detail-layout__value'}
+        className={
+          multiline
+            ? 'detail-layout__value detail-layout__value--multiline'
+            : 'detail-layout__value'
+        }
         style={style}
       >
         {inner}

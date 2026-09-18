@@ -1,10 +1,10 @@
 import { AnexoDaMensagem } from '@/components/arquivos/anexo-da-mensagem';
 import { GradeDeArquivos } from '@/components/arquivos/grade';
 import { AvisoDeFalta, PainelDeCompletude } from '@/components/completude/semaforo';
-import { avaliarPagamento, faltaDoCampo } from '@/lib/completude/regras';
 import { TopBar } from '@/components/layout/topbar';
 import { Badge, type BadgeVariant } from '@/components/nogma/Badge';
 import { Button } from '@/components/nogma/Button';
+import { avaliarPagamento, faltaDoCampo } from '@/lib/completude/regras';
 import { listCategorias } from '@/lib/data/categorias';
 import { listDocumentos } from '@/lib/data/documentos';
 import { listFornecedores } from '@/lib/data/fornecedores';

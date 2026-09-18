@@ -309,3 +309,106 @@
   color: var(--text-muted);
   font-size: 14px;
 }
+
+/* Barras de progresso (dinheiro e tempo), em CSS puro. */
+.progresso {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.progresso__linha {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.progresso__topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 0.9375rem;
+}
+.progresso__rotulo {
+  color: var(--text-secondary);
+}
+.progresso__valor {
+  font-weight: 700;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+.progresso__valor small {
+  font-weight: 500;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+}
+.progresso__valor--alerta {
+  color: var(--danger);
+}
+.progresso__trilho {
+  position: relative;
+  height: 18px;
+  border-radius: 9px;
+  background: var(--surface-2);
+  overflow: visible;
+}
+.progresso__trilho--tempo {
+  height: 14px;
+  border-radius: 7px;
+}
+.progresso__preenchida {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--chart-1);
+  transition: width 400ms ease;
+}
+.progresso__preenchida--entra {
+  background: var(--serie-entra);
+}
+.progresso__preenchida--sai {
+  background: var(--serie-sai);
+}
+.progresso__preenchida--tempo {
+  background: var(--chart-1);
+}
+.progresso__preenchida--estouro {
+  background: var(--danger);
+}
+.progresso__hoje {
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--text-strong);
+}
+.progresso__hoje-rotulo {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-strong);
+}
+.progresso__legenda {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+/* Grade genérica de cartões fora do painel (obra, fornecedor). */
+.grade-de-cartoes {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+@media (min-width: 900px) {
+  .grade-de-cartoes {
+    grid-template-columns: 1fr 1fr;
+  }
+  .grade-de-cartoes .cartao--largo {
+    grid-column: 1 / -1;
+  }
+}

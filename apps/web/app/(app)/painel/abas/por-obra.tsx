@@ -1,11 +1,12 @@
+import { BarrasPorObra } from '@/components/graficos/barras-por-obra';
+import { Cartao, Tabela, brl, pct } from '@/components/graficos/cartao';
+import { EmpilhadoMensal } from '@/components/graficos/empilhado-mensal';
+import { LinhaDoTempo } from '@/components/graficos/progresso';
 import { EmptyState } from '@/components/nogma/EmptyState';
 import { dadosPorObra } from '@/lib/data/painel-empresario';
-import { porExtensoCurto, rotuloDoMes } from '@/lib/financeiro/agregacoes';
+import { fraseDoRitmo, porExtensoCurto, rotuloDoMes } from '@/lib/financeiro/agregacoes';
 import { Building2 } from 'lucide-react';
 import Link from 'next/link';
-import { Cartao, Tabela, brl, pct } from '@/components/graficos/cartao';
-import { BarrasPorObra } from '@/components/graficos/barras-por-obra';
-import { EmpilhadoMensal } from '@/components/graficos/empilhado-mensal';
 
 export async function AbaPorObra() {
   const d = await dadosPorObra();
@@ -111,6 +112,72 @@ export async function AbaPorObra() {
         }
       >
         <EmpilhadoMensal data={d.mensal} series={d.obras} />
+      </Cartao>
+
+      <Cartao
+        titulo="Prazo de cada obra: quanto do tempo passou, quanto do dinheiro saiu"
+        largo
+        leitura={
+          d.ritmo.some((r) => r.ritmo.leitura === 'vencido') ? (
+            <>
+              <strong>
+                {d.ritmo
+                  .filter((r) => r.ritmo.leitura === 'vencido')
+                  .map((r) => r.obra)
+                  .join(', ')}
+              </strong>{' '}
+              já{' '}
+              {d.ritmo.filter((r) => r.ritmo.leitura === 'vencido').length === 1
+                ? 'passou'
+                : 'passaram'}{' '}
+              do prazo previsto. Atualize a data ou marque como concluída.
+            </>
+          ) : d.ritmo.some((r) => r.ritmo.leitura === 'na_frente') ? (
+            <>
+              Em{' '}
+              <strong>
+                {d.ritmo
+                  .filter((r) => r.ritmo.leitura === 'na_frente')
+                  .map((r) => r.obra)
+                  .join(', ')}
+              </strong>{' '}
+              o dinheiro está saindo mais rápido que o tempo — vale conferir se o contrato vai dar.
+            </>
+          ) : d.ritmo.every((r) => r.ritmo.prazoPct == null) ? (
+            'Nenhuma obra tem data de início e fim previsto. Informe em Obras › Editar para acompanhar o prazo.'
+          ) : (
+            'O ritmo das obras está em dia: o dinheiro acompanha o tempo.'
+          )
+        }
+        tabela={
+          <Tabela
+            cabecalho={['Obra', 'Prazo usado', 'Contrato gasto', 'Restam', 'Leitura']}
+            linhas={d.ritmo.map((r) => [
+              <Link key={r.obra_id} href={`/obras/${r.obra_id}`}>
+                {r.obra}
+              </Link>,
+              r.ritmo.prazoPct == null ? '—' : pct(Math.min(100, r.ritmo.prazoPct)),
+              r.ritmo.gastoPct == null ? '—' : pct(r.ritmo.gastoPct),
+              r.ritmo.diasRestantes == null
+                ? '—'
+                : r.ritmo.diasRestantes < 0
+                  ? `venceu há ${Math.abs(r.ritmo.diasRestantes)} d`
+                  : `${r.ritmo.diasRestantes} d`,
+              fraseDoRitmo(r.ritmo),
+            ])}
+          />
+        }
+      >
+        <div className="painel-ritmo">
+          {d.ritmo.map((r) => (
+            <div key={r.obra_id} className="painel-ritmo__obra">
+              <Link href={`/obras/${r.obra_id}`} className="painel-ritmo__nome">
+                {r.obra}
+              </Link>
+              <LinhaDoTempo inicio={r.data_inicio} fim={r.data_prevista_fim} ritmo={r.ritmo} />
+            </div>
+          ))}
+        </div>
       </Cartao>
 
       {d.etapas.map((e) => (

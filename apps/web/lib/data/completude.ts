@@ -99,6 +99,38 @@ export async function contextoDasObras(): Promise<Map<string, ContextoDaObra>> {
   return mapa;
 }
 
+/** O contexto de UMA obra (a tela de detalhe): duas consultas filtradas. */
+export async function contextoDaObra(obraId: string): Promise<ContextoDaObra> {
+  const supabase = await createClient();
+  const [pagsR, docsR] = await Promise.all([
+    supabase
+      .from('pagamentos')
+      .select('id, valor')
+      .eq('obra_id', obraId)
+      .in('status_pagto', [...STATUS_QUE_CONTAM])
+      .is('deleted_at', null)
+      .limit(5000),
+    supabase
+      .from('documentos')
+      .select('categoria, pagamento_id')
+      .eq('obra_id', obraId)
+      .is('deleted_at', null)
+      .limit(10000),
+  ]);
+  if (pagsR.error) throw new Error(`Falha ao carregar pagamentos: ${pagsR.error.message}`);
+  if (docsR.error) throw new Error(`Falha ao carregar documentos: ${docsR.error.message}`);
+  const docs = docsR.data ?? [];
+  const comDocumento = new Set(docs.map((d) => d.pagamento_id).filter(Boolean));
+  const c = CONTEXTO_VAZIO(hojeBR());
+  for (const p of pagsR.data ?? []) {
+    c.gasto = Math.round((c.gasto + Number(p.valor)) * 100) / 100;
+    c.pagamentos += 1;
+    if (!comDocumento.has(p.id)) c.pagamentosSemDocumento += 1;
+  }
+  for (const d of docs) c.docsPorPasta[d.categoria] = (c.docsPorPasta[d.categoria] ?? 0) + 1;
+  return c;
+}
+
 const CONTEXTO_VAZIO = (hoje: string): ContextoDaObra => ({
   hoje,
   gasto: 0,

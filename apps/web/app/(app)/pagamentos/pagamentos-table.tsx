@@ -1,7 +1,9 @@
 'use client';
 
+import { colunaDeSituacao } from '@/components/completude/coluna-situacao';
 import { DataTable } from '@/components/data-table';
 import { Badge } from '@/components/nogma/Badge';
+import type { Completude } from '@/lib/completude/regras';
 import type { Categoria } from '@/lib/data/categorias';
 import type { Fornecedor } from '@/lib/data/fornecedores';
 import type { Obra } from '@/lib/data/obras';
@@ -28,11 +30,14 @@ export function PagamentosTable({
   obras,
   fornecedores,
   categorias,
+  completude,
 }: {
   pagamentos: Pagamento[];
   obras: Obra[];
   fornecedores: Fornecedor[];
   categorias: Categoria[];
+  /** Semáforo por id (vem pronto do servidor; sem ele a coluna não aparece). */
+  completude?: Record<string, Completude>;
 }) {
   const obraMap = useMemo(() => new Map(obras.map((o) => [o.id, o])), [obras]);
   const fornMap = useMemo(() => new Map(fornecedores.map((f) => [f.id, f])), [fornecedores]);
@@ -133,6 +138,10 @@ export function PagamentosTable({
           return <Badge variant={STATUS_VARIANT[s]}>{STATUS_LABEL[s]}</Badge>;
         },
       },
+      // O semáforo: o que falta neste lançamento (comprovante, fornecedor,
+      // etapa…). Pesquisável pelo rótulo ("sem comprovante") e ordenável
+      // pelo nível, para o vermelho subir.
+      ...(completude ? [colunaDeSituacao<Pagamento>(completude)] : []),
       // Escondidas de início (`visibilidadeInicial` abaixo): existem só para
       // a busca global cobrir descrição e observações (QA, ISSUE-011). O
       // `?? ''` importa — com `null` na primeira linha o TanStack decide que
@@ -168,7 +177,7 @@ export function PagamentosTable({
         ),
       },
     ],
-    [obraMap, fornMap, catMap],
+    [obraMap, fornMap, catMap, completude],
   );
 
   return (

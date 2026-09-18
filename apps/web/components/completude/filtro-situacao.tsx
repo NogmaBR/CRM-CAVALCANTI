@@ -1,4 +1,4 @@
-import type { FiltroDeSituacao } from '@/lib/completude/regras';
+import type { FiltroDeSituacao as Situacao } from '@/lib/completude/regras';
 import Link from 'next/link';
 import './completude.css';
 
@@ -7,7 +7,7 @@ import './completude.css';
  * listas. É link (`?situacao=`), como os outros filtros — a URL diz onde a
  * pessoa está e o botão Voltar funciona.
  */
-const OPCOES: Array<{ value: FiltroDeSituacao; label: string }> = [
+const OPCOES: Array<{ value: Situacao; label: string }> = [
   { value: '', label: 'Todos' },
   { value: 'pendente', label: 'Com pendência' },
   { value: 'critico', label: 'Falta muito' },
@@ -19,16 +19,19 @@ export function FiltroDeSituacao({
   buildHref,
   contagem,
 }: {
-  atual: FiltroDeSituacao;
+  atual: Situacao;
   /** Recebe o valor do filtro e devolve a URL com os outros filtros mantidos. */
-  buildHref: (situacao: FiltroDeSituacao) => string;
+  buildHref: (situacao: Situacao) => string;
   /** Quantos itens caem em cada opção (opcional — aparece entre parênteses). */
-  contagem?: Partial<Record<FiltroDeSituacao, number>>;
+  contagem?: Partial<Record<Situacao, number>>;
 }) {
   return (
     <div className="filtro-situacao">
       <span className="filtro-situacao__rotulo">Situação:</span>
-      <nav className="obras-filter-tabs obras-filter-tabs--compacto" aria-label="Filtrar por situação">
+      <nav
+        className="obras-filter-tabs obras-filter-tabs--compacto"
+        aria-label="Filtrar por situação"
+      >
         {OPCOES.map((opt) => {
           const active = opt.value === atual;
           const n = contagem?.[opt.value];
