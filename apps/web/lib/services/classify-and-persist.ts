@@ -63,7 +63,16 @@ function autoAprovacaoLigada(): boolean {
  *
  * Chamado por `processarInbound` depois de gravar a mensagem.
  */
-export async function classifyAndPersist(mensagemId: string): Promise<
+export interface OpcoesDeClassificacao {
+  /** Lote (janela de silêncio) e posição nele: vão para a pendência. */
+  loteId?: string | null;
+  indiceNoLote?: number | null;
+}
+
+export async function classifyAndPersist(
+  mensagemId: string,
+  opcoes_: OpcoesDeClassificacao = {},
+): Promise<
   | {
       ok: true;
       status: string;
@@ -235,6 +244,7 @@ export async function classifyAndPersist(mensagemId: string): Promise<
         tipo: out.kind === 'documento_obra' ? 'obra_documento' : 'obra_registro',
         opcoes,
         chatId: msg.chat_id,
+        lote: opcoes_,
       });
     }
 
@@ -402,6 +412,7 @@ export async function classifyAndPersist(mensagemId: string): Promise<
       tipo: 'pagamento',
       opcoes: opcoesDeObra,
       chatId: msg.chat_id,
+      lote: opcoes_,
     });
   }
 
@@ -440,6 +451,7 @@ export async function classifyAndPersist(mensagemId: string): Promise<
     out,
     tipo: 'pagamento',
     chatId: msg.chat_id,
+    lote: opcoes_,
   });
 }
 
@@ -460,6 +472,7 @@ async function abrirPendencia(
     tipo: 'pagamento' | 'obra_documento' | 'obra_registro';
     opcoes?: Opcao[];
     chatId: string | null;
+    lote?: OpcoesDeClassificacao;
   },
 ): Promise<{
   ok: true;
@@ -483,6 +496,8 @@ async function abrirPendencia(
       tipo: args.tipo,
       opcoes: args.opcoes ? (JSON.parse(JSON.stringify(args.opcoes)) as Json) : null,
       chat_id: args.chatId,
+      lote_id: args.lote?.loteId ?? null,
+      indice_no_lote: args.lote?.indiceNoLote ?? null,
     })
     .select('id')
     .single();

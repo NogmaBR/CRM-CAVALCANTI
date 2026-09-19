@@ -98,6 +98,8 @@ export interface AlvoDaMensagem {
   pagamentoId: string | null;
   documentoId: string | null;
   registroId: string | null;
+  /** A resposta citada era a lista de um lote: "sim" em cima dela = todos. */
+  loteId: string | null;
 }
 
 /**
@@ -114,7 +116,9 @@ export async function resolverAlvo(
   try {
     const { data: enviada } = await supabase
       .from('mensagens_enviadas')
-      .select('id, tipo, em_resposta_a, confirmacao_id, pagamento_id, documento_id, registro_id')
+      .select(
+        'id, tipo, em_resposta_a, confirmacao_id, pagamento_id, documento_id, registro_id, lote_id',
+      )
       .eq('msg_id_uazapi', msgIdUazapi)
       .maybeSingle();
     if (enviada) {
@@ -126,6 +130,7 @@ export async function resolverAlvo(
         pagamentoId: enviada.pagamento_id,
         documentoId: enviada.documento_id,
         registroId: enviada.registro_id,
+        loteId: enviada.lote_id,
       };
     }
 
@@ -154,6 +159,7 @@ export async function resolverAlvo(
       pagamentoId: recebida.pagamento_id,
       documentoId: recebida.documento_id,
       registroId: recebida.registro_id,
+      loteId: null,
     };
   } catch (err) {
     log.aviso('resolver_alvo_falhou', { err });

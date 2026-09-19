@@ -12,9 +12,17 @@ const log = logger('escolha-pendencia');
 export const JANELA_ESCOLHA_MIN = 10;
 
 export interface EscolhaDePendencia {
-  interpretacao: 'sim' | 'nao';
+  /**
+   * `sim`/`nao`: o agente perguntou "qual delas?" e espera o número.
+   * `lote`: o agente mandou a lista de um lote ("Li 3 comprovantes: 1) … 2) …")
+   * e espera SIM/NÃO para todos, ou "2 não" / "2 é na INOX" para um.
+   */
+  interpretacao: 'sim' | 'nao' | 'lote';
   itens: Array<{ n: number; confirmacaoId: string }>;
 }
+
+/** A lista de um lote vale o dia inteiro, como qualquer pendência. */
+export const JANELA_LOTE_H = 24;
 
 /**
  * Duas ou mais perguntas abertas e um "sim" solto: o agente perguntou qual,
@@ -50,13 +58,16 @@ export async function lerEscolha(
     .eq('chat_id', chatId)
     .maybeSingle();
   if (!data?.escolha_pendencias || !data.escolha_em) return null;
-  if (new Date(data.escolha_em).getTime() < agora.getTime() - JANELA_ESCOLHA_MIN * 60_000) {
-    return null;
-  }
   const e = data.escolha_pendencias as unknown as Partial<EscolhaDePendencia>;
-  if ((e.interpretacao !== 'sim' && e.interpretacao !== 'nao') || !Array.isArray(e.itens)) {
+  if (
+    (e.interpretacao !== 'sim' && e.interpretacao !== 'nao' && e.interpretacao !== 'lote') ||
+    !Array.isArray(e.itens)
+  ) {
     return null;
   }
+  const validadeMs =
+    e.interpretacao === 'lote' ? JANELA_LOTE_H * 3600_000 : JANELA_ESCOLHA_MIN * 60_000;
+  if (new Date(data.escolha_em).getTime() < agora.getTime() - validadeMs) return null;
   return { interpretacao: e.interpretacao, itens: e.itens };
 }
 

@@ -1,6 +1,7 @@
 import 'server-only';
 import { logger } from '@/lib/log';
 import { bearerConfere } from '@/lib/security/bearer';
+import { purgarEspera, recuperarLotesPresos } from '@/lib/services/lote-whatsapp';
 import type { Database } from '@nogma/db';
 import { createClient as createSbClient } from '@supabase/supabase-js';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -79,6 +80,11 @@ export async function GET(request: NextRequest) {
     log.erro('sweep_whatsapp_respostas_falhou', { erro: erroRespostas.message });
   }
 
+  // Sala de espera do lote: solta lotes presos (função morreu no meio) e
+  // descarta o que tem mais de um dia.
+  const lotesSoltos = await recuperarLotesPresos(supabase);
+  const esperaPurgada = await purgarEspera(supabase);
+
   let rateLimitsPurgados = 0;
   const purge = await supabase.rpc('rate_limit_purge', { p_idade_horas: 24 });
   if (purge.error) {
@@ -95,6 +101,8 @@ export async function GET(request: NextRequest) {
     deleted: data?.length ?? 0,
     rate_limits_purgados: rateLimitsPurgados,
     webhook_eventos_purgados: eventosPurgados ?? 0,
+    lotes_soltos: lotesSoltos,
+    espera_purgada: esperaPurgada,
     cutoff,
   });
 }

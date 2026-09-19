@@ -378,6 +378,8 @@ export type Database = {
           msg_id_pergunta_uazapi: string | null;
           pergunta_enviada: string;
           pagamento_id: string | null;
+          lote_id: string | null;
+          indice_no_lote: number | null;
           resolvida: boolean | null;
           resolvida_via: string | null;
           respondida_em: string | null;
@@ -395,6 +397,8 @@ export type Database = {
           msg_id_pergunta_uazapi?: string | null;
           pergunta_enviada: string;
           pagamento_id?: string | null;
+          lote_id?: string | null;
+          indice_no_lote?: number | null;
           resolvida?: boolean | null;
           resolvida_via?: string | null;
           respondida_em?: string | null;
@@ -412,6 +416,8 @@ export type Database = {
           msg_id_pergunta_uazapi?: string | null;
           pergunta_enviada?: string;
           pagamento_id?: string | null;
+          lote_id?: string | null;
+          indice_no_lote?: number | null;
           resolvida?: boolean | null;
           resolvida_via?: string | null;
           respondida_em?: string | null;
@@ -699,6 +705,7 @@ export type Database = {
         Row: {
           chat_id: string | null;
           grupo_id: string | null;
+          lote_id: string | null;
           registro_id: string | null;
           autorizado_id: string | null;
           confianca_ia: number | null;
@@ -723,6 +730,7 @@ export type Database = {
         Insert: {
           chat_id?: string | null;
           grupo_id?: string | null;
+          lote_id?: string | null;
           registro_id?: string | null;
           autorizado_id?: string | null;
           confianca_ia?: number | null;
@@ -747,6 +755,7 @@ export type Database = {
         Update: {
           chat_id?: string | null;
           grupo_id?: string | null;
+          lote_id?: string | null;
           registro_id?: string | null;
           autorizado_id?: string | null;
           confianca_ia?: number | null;
@@ -1145,6 +1154,39 @@ export type Database = {
           registro_id?: string | null;
           lote_id?: string | null;
           created_at?: string;
+        };
+        Relationships: [];
+      };
+      mensagens_em_espera: {
+        Row: {
+          id: string;
+          msg_id_uazapi: string;
+          chat_id: string;
+          telefone: string;
+          payload: Json;
+          recebido_em: string;
+          lote_id: string | null;
+          processado_em: string | null;
+        };
+        Insert: {
+          id?: string;
+          msg_id_uazapi: string;
+          chat_id: string;
+          telefone: string;
+          payload: Json;
+          recebido_em?: string;
+          lote_id?: string | null;
+          processado_em?: string | null;
+        };
+        Update: {
+          id?: string;
+          msg_id_uazapi?: string;
+          chat_id?: string;
+          telefone?: string;
+          payload?: Json;
+          recebido_em?: string;
+          lote_id?: string | null;
+          processado_em?: string | null;
         };
         Relationships: [];
       };
@@ -1549,6 +1591,10 @@ export type Database = {
       has_role: {
         Args: { roles: Database['public']['Enums']['papel_usuario'][] };
         Returns: boolean;
+      };
+      reivindicar_lote: {
+        Args: { p_chat_id: string; p_telefone: string; p_lote_id: string };
+        Returns: Database['public']['Tables']['mensagens_em_espera']['Row'][];
       };
       increment_webhook_execution: {
         Args: { p_webhook_id: string; p_status: number; p_erro: string | null };

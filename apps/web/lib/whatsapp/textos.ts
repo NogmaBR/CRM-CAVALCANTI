@@ -173,12 +173,15 @@ export function perguntaDeObraParaArquivo(
 export function respostaArquivado(
   obraNome: string,
   categoria: DocCategoria,
-  opts: { link?: string | null; quantidade?: number } = {},
+  opts: { link?: string | null; quantidade?: number; semPasta?: boolean } = {},
 ): string {
   const pasta = CATEGORIA_LABELS[categoria]?.rotulo ?? 'Outros';
   const oQue = opts.quantidade && opts.quantidade > 1 ? `${opts.quantidade} arquivos ` : '';
+  const onde = opts.semPasta
+    ? `na obra *${obraNome}*.`
+    : `na obra *${obraNome}*, pasta *${pasta}*.`;
   return [
-    `📁 Guardei ${oQue}na obra *${obraNome}*, pasta *${pasta}*.`,
+    `📁 Guardei ${oQue}${onde}`,
     opts.link ? `Ver: ${opts.link}` : 'Para ver: menu Obras › a obra › Pastas.',
   ].join('\n');
 }
@@ -310,6 +313,8 @@ export const RESPOSTAS = {
     'Ex.: "cria a obra Sítio do Pedro, cliente Pedro Alves".',
   ].join('\n'),
   moverQualObra: 'Para qual obra eu mudo? Diga o nome dela.',
+  loteQualItem: 'Qual dos itens? Comece com o número. Ex.: "2 é na INOX", "2 não".',
+  itemDoLoteJaResolvido: 'Esse item já foi resolvido. Os outros continuam esperando.',
   jaDesfeito: 'Isso já tinha sido desfeito. Nada mudou.',
   desfazerSemAlvo: [
     'Não achei o que desfazer.',

@@ -400,6 +400,8 @@ export interface PendenciaAberta {
   opcoes: Opcao[];
   /** Para `tipo = 'acao'`: a proposta gravada (relida pelo schema no SIM). */
   acao: Proposta | null;
+  /** Lote (janela de silêncio) de onde veio, quando veio de um. */
+  loteId?: string | null;
 }
 
 export async function buscarConfirmacaoAberta(
@@ -445,7 +447,7 @@ export async function pendenciasAbertas(
   let q = supabase
     .from('confirmacoes_pendentes')
     .select(
-      'id, mensagem_id, pergunta_enviada, created_at, tipo, opcoes, acao, mensagens_whats!inner(telefone_from)',
+      'id, mensagem_id, pergunta_enviada, created_at, tipo, opcoes, acao, lote_id, mensagens_whats!inner(telefone_from)',
     )
     .eq('resolvida', false)
     .gte('created_at', desde)
@@ -501,7 +503,7 @@ export async function buscarConfirmacaoPorId(
 ): Promise<PendenciaAberta | null> {
   const { data, error } = await supabase
     .from('confirmacoes_pendentes')
-    .select('id, mensagem_id, pergunta_enviada, created_at, tipo, opcoes, acao')
+    .select('id, mensagem_id, pergunta_enviada, created_at, tipo, opcoes, acao, lote_id')
     .eq('id', confirmacaoId)
     .eq('resolvida', false)
     .maybeSingle();
@@ -519,6 +521,7 @@ function montarPendencia(linha: {
   tipo: string;
   opcoes: unknown;
   acao: unknown;
+  lote_id?: string | null;
 }): PendenciaAberta {
   return {
     id: linha.id,
@@ -527,7 +530,29 @@ function montarPendencia(linha: {
     tipo: lerTipoPendencia(linha.tipo),
     opcoes: lerOpcoes(linha.opcoes),
     acao: lerProposta(linha.acao),
+    loteId: linha.lote_id ?? null,
   };
+}
+
+/** As pendências abertas de um lote, na ordem da lista que o agente mandou. */
+export async function pendenciasDoLote(
+  supabase: Client,
+  loteId: string,
+): Promise<PendenciaAberta[]> {
+  const { data, error } = await supabase
+    .from('confirmacoes_pendentes')
+    .select(
+      'id, mensagem_id, pergunta_enviada, created_at, tipo, opcoes, acao, lote_id, indice_no_lote',
+    )
+    .eq('lote_id', loteId)
+    .eq('resolvida', false)
+    .order('indice_no_lote', { ascending: true })
+    .limit(50);
+  if (error) {
+    log.erro('buscar_pendencia_falhou', { erro: error });
+    return [];
+  }
+  return (data ?? []).map(montarPendencia);
 }
 
 export function lerTipoPendencia(t: unknown): TipoPendencia {
