@@ -139,8 +139,12 @@ export function respostaPagamentoLancado(d: {
   fornecedor?: string | null;
   /** Link direto para o pagamento no painel; sem ele, o caminho pelo menu. */
   link?: string | null;
+  /** Quem confirmou, quando não foi quem mandou (grupo). */
+  confirmadoPor?: string | null;
 }): string {
-  const linhas = [`✅ Lançado: *${valorLegivel(d.valor)}*`];
+  const linhas = [
+    `✅ Lançado: *${valorLegivel(d.valor)}*${d.confirmadoPor ? ` (confirmado por ${d.confirmadoPor})` : ''}`,
+  ];
   if (d.obra) linhas.push(`Obra: *${d.obra}*`);
   if (d.fornecedor) linhas.push(`Fornecedor: ${d.fornecedor}`);
   linhas.push('', d.link ? `Ver no painel: ${d.link}` : 'Para ver no painel: menu Pagamentos.');
@@ -188,6 +192,89 @@ export function respostaRegistrado(obraNome: string, opts: { link?: string | nul
 }
 
 // ---------------------------------------------------------------------------
+// Corrigir, desfazer, mover, anexar
+// ---------------------------------------------------------------------------
+
+/**
+ * "Troquei a obra para INOX Piratini." + a pergunta remontada. A pessoa vê o
+ * que mudou em uma linha e confirma de novo — correção nunca grava sozinha.
+ */
+export function respostaCorrigida(
+  mudancas: readonly string[],
+  perguntaNova: string | null,
+): string {
+  const lista =
+    mudancas.length === 1
+      ? mudancas[0]
+      : `${mudancas.slice(0, -1).join(', ')} e ${mudancas.at(-1)}`;
+  const cabeca = `Troquei ${lista}.`;
+  if (!perguntaNova) {
+    return [cabeca, 'Confere? Responda *SIM* para lançar, ou *NÃO* para cancelar.'].join('\n');
+  }
+  // A pergunta já começa com "Li o comprovante./Entendi assim." — tira essa
+  // primeira linha, o "Troquei…" ocupa o lugar dela.
+  const corpo = perguntaNova.split('\n').slice(1).join('\n');
+  return [cabeca, corpo].join('\n');
+}
+
+/** "↩️ Desfeito: o pagamento de R$ 1.200,00 na obra Garibaldi." */
+export function respostaDesfeito(oQue: string, depois: string | null): string {
+  const linhas = [`↩️ Desfeito: ${oQue}.`];
+  if (depois) linhas.push(depois);
+  return linhas.join('\n');
+}
+
+/** "📁 Movi para a obra *INOX Piratini*, pasta *Fotos*." */
+export function respostaMovido(obraNome: string, pasta: string): string {
+  return `📁 Movi para a obra *${obraNome}*, pasta *${pasta}*.`;
+}
+
+/** "📎 Anexei ao pagamento de R$ 1.200,00 (Garibaldi)." */
+export function respostaAnexado(d: {
+  valor: number;
+  obra?: string | null;
+  link?: string | null;
+}): string {
+  const linhas = [
+    `📎 Anexei ao pagamento de *${valorLegivel(d.valor)}*${d.obra ? ` (${d.obra})` : ''}.`,
+  ];
+  linhas.push(d.link ? `Ver: ${d.link}` : 'O pagamento agora tem comprovante.');
+  return linhas.join('\n');
+}
+
+/**
+ * Duas ou mais perguntas abertas e um "sim" solto: qual delas? Cada item com
+ * o que identifica o pagamento; o número escolhe, TODOS pega todas.
+ */
+export interface PendenciaResumida {
+  n: number;
+  valor?: number | null;
+  fornecedor?: string | null;
+  obra?: string | null;
+  descricao?: string | null;
+}
+export function perguntaQualPendencia(
+  itens: readonly PendenciaResumida[],
+  interpretacao: 'sim' | 'nao',
+): string {
+  const verbo = interpretacao === 'sim' ? 'confirmar' : 'cancelar';
+  const linhas = [`Tenho ${itens.length} perguntas abertas. *Qual delas você quer ${verbo}?*`, ''];
+  for (const i of itens) {
+    const partes = [
+      i.valor != null ? valorLegivel(i.valor) : null,
+      i.fornecedor,
+      i.obra,
+      i.descricao,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+    linhas.push(`${i.n}) ${partes || 'sem dados'}`);
+  }
+  linhas.push('', `Responda o *número*, ou *TODOS* para ${verbo} todas.`);
+  return linhas.join('\n');
+}
+
+// ---------------------------------------------------------------------------
 // Respostas fixas
 // ---------------------------------------------------------------------------
 
@@ -212,6 +299,23 @@ export const RESPOSTAS = {
     'Esse pedido já tinha sido feito antes — não fiz de novo.',
     'Se quiser mudar alguma coisa, me diga o quê.',
   ].join('\n'),
+  correcaoSemDado: [
+    'Entendi que algo está errado. O que eu troco?',
+    'Diga a obra, o valor, o fornecedor ou a data certa.',
+    'Ou responda *NÃO* para cancelar.',
+  ].join('\n'),
+  correcaoQualObra: 'Qual é a obra certa? Responda o *número* dela na lista acima.',
+  correcaoDeAcao: [
+    'Para mudar um cadastro, responda *NÃO* e peça de novo com o dado certo.',
+    'Ex.: "cria a obra Sítio do Pedro, cliente Pedro Alves".',
+  ].join('\n'),
+  moverQualObra: 'Para qual obra eu mudo? Diga o nome dela.',
+  jaDesfeito: 'Isso já tinha sido desfeito. Nada mudou.',
+  desfazerSemAlvo: [
+    'Não achei o que desfazer.',
+    'Responda em cima da mensagem que quer desfazer (segure e toque em Responder).',
+  ].join('\n'),
+  dicaAnexar: 'Quando tiver a nota, mande em cima desta mensagem que eu anexo.',
   falhaTemporaria: [
     'Não consegui processar agora. A mensagem ficou guardada.',
     'Tente de novo daqui a alguns minutos, ou peça ao gestor pelo painel.',

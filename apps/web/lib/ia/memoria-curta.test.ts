@@ -195,3 +195,25 @@ describe('obraRecente', () => {
     expect(o).toBeNull();
   });
 });
+
+describe('obra dita por correção', () => {
+  it('a obra em conversa_estado vence a dedução pelas mensagens enquanto vale', async () => {
+    const db = banco();
+    (db as unknown as ReturnType<typeof fakeSupabase>)
+      .linhas('obras')
+      .push({ id: 'inox', nome: 'INOX Piratini', deleted_at: null });
+    (db as unknown as ReturnType<typeof fakeSupabase>).linhas('conversa_estado').push({
+      chat_id: 'g@g.us',
+      obra_conversa_reset_em: '2026-09-16T14:45:00Z',
+      obra_conversa_id: 'inox',
+      obra_conversa_em: '2026-09-16T14:45:00Z',
+    });
+    const o = await obraRecente(db, {
+      chatId: 'g@g.us',
+      telefone: '55',
+      autorizadoId: 'aut',
+      agora: AGORA,
+    });
+    expect(o?.nome).toBe('INOX Piratini');
+  });
+});

@@ -6,7 +6,12 @@ import {
   perguntaDeObraParaArquivo,
   perguntaDePagamento,
   perguntaDePagamentoSemObra,
+  perguntaQualPendencia,
+  respostaAnexado,
   respostaArquivado,
+  respostaCorrigida,
+  respostaDesfeito,
+  respostaMovido,
   respostaPagamentoLancado,
   respostaRegistrado,
   valorLegivel,
@@ -59,6 +64,40 @@ const TODOS: Array<[string, string]> = [
   ],
   ['perguntaDePagamento de áudio', perguntaDePagamento({ valor: 300, deAudio: true })],
   ['respostaArquivado em lote', respostaArquivado('Garibaldi', 'fotos', { quantidade: 5 })],
+  [
+    'respostaCorrigida',
+    respostaCorrigida(
+      ['a obra para INOX Piratini', 'o valor'],
+      perguntaDePagamento({ valor: 109.99, obra: 'INOX Piratini', fornecedor: 'VERO S A' }),
+    ),
+  ],
+  ['respostaCorrigida sem pergunta', respostaCorrigida(['a obra para INOX Piratini'], null)],
+  [
+    'respostaDesfeito',
+    respostaDesfeito(
+      'o pagamento de R$ 1.200,00 na obra Garibaldi',
+      'Se quiser, mande de novo com o dado certo.',
+    ),
+  ],
+  ['respostaMovido', respostaMovido('INOX Piratini', 'Fotos')],
+  [
+    'respostaAnexado',
+    respostaAnexado({ valor: 1200, obra: 'Garibaldi', link: 'https://x/pagamentos/1' }),
+  ],
+  [
+    'perguntaQualPendencia',
+    perguntaQualPendencia(
+      [
+        { n: 1, valor: 10, fornecedor: 'Andrissia', obra: 'INOX Piratini' },
+        { n: 2, valor: 8, fornecedor: 'Maria', obra: null },
+      ],
+      'sim',
+    ),
+  ],
+  [
+    'respostaPagamentoLancado confirmado por outro',
+    respostaPagamentoLancado({ valor: 1200, obra: 'Garibaldi', confirmadoPor: 'Hugo' }),
+  ],
   ['perguntaDeObraParaArquivo', perguntaDeObraParaArquivo('documento', OPCOES)],
   ['respostaArquivado', respostaArquivado('Garibaldi', 'fotos')],
   ['respostaRegistrado', respostaRegistrado('Garibaldi')],
@@ -144,6 +183,37 @@ describe('a primeira linha diz o que o agente fez de verdade', () => {
     );
     expect(respostaRegistrado('Casa EJ', { link: 'https://x/obras/1#diario' })).toContain(
       'Ver: https://x/obras/1#diario',
+    );
+  });
+});
+
+describe('corrigir, desfazer, qual delas', () => {
+  it('a correção diz o que mudou e repete a pergunta sem a primeira linha ("Li o comprovante")', () => {
+    const pergunta = perguntaDePagamento({ valor: 109.99, obra: 'INOX Piratini', deAnexo: true });
+    const r = respostaCorrigida(['a obra para INOX Piratini'], pergunta);
+    expect(r.split('\n')[0]).toBe('Troquei a obra para INOX Piratini.');
+    expect(r).not.toContain('Li o comprovante');
+    expect(r).toContain('Obra: *INOX Piratini*');
+    expect(r).toContain('Responda *SIM*');
+    expect(respostaCorrigida(['o valor', 'a data'], null)).toContain('Troquei o valor e a data.');
+  });
+
+  it('"qual delas" numera na ordem, com valor, fornecedor e obra, e explica TODOS', () => {
+    const t = perguntaQualPendencia(
+      [
+        { n: 1, valor: 10, fornecedor: 'Andrissia', obra: 'INOX Piratini' },
+        { n: 2, valor: 8, fornecedor: 'Maria' },
+      ],
+      'nao',
+    );
+    expect(t).toMatch(/1\) R\$\s10,00 · Andrissia · INOX Piratini/u);
+    expect(t).toMatch(/2\) R\$\s8,00 · Maria/u);
+    expect(t).toContain('cancelar todas');
+  });
+
+  it('lançado confirmado por outra pessoa diz quem', () => {
+    expect(respostaPagamentoLancado({ valor: 1, confirmadoPor: 'Hugo' })).toContain(
+      '(confirmado por Hugo)',
     );
   });
 });

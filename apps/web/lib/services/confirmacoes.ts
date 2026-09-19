@@ -414,34 +414,84 @@ export async function buscarConfirmacaoAberta(
      * outra. Se já estiver resolvida, cai na busca comum.
      */
     confirmacaoId?: string | null;
+    /**
+     * No grupo, a pendência é da CONVERSA: qualquer autorizado responde a
+     * pergunta que outro abriu ("sim" do Hugo à foto do Társis). Sem chat
+     * (privado), continua sendo por telefone.
+     */
+    chatId?: string | null;
   } = {},
 ): Promise<PendenciaAberta | null> {
   if (opts.confirmacaoId) {
     const citada = await buscarConfirmacaoPorId(supabase, opts.confirmacaoId);
     if (citada) return citada;
   }
+  const abertas = await pendenciasAbertas(supabase, { telefone, chatId: opts.chatId }, janelaHoras);
+  return abertas[0] ?? null;
+}
 
+/**
+ * Todas as pendências abertas da conversa (grupo) ou do telefone (privado),
+ * da mais recente para a mais antiga, dentro da janela. É com a lista que o
+ * inbound decide: uma → resolve; duas ou mais e resposta sem citação →
+ * pergunta qual.
+ */
+export async function pendenciasAbertas(
+  supabase: Client,
+  quem: { telefone: string; chatId?: string | null },
+  janelaHoras = 24,
+): Promise<PendenciaAberta[]> {
   const desde = new Date(Date.now() - janelaHoras * 3600_000).toISOString();
-
-  const { data, error } = await supabase
+  let q = supabase
     .from('confirmacoes_pendentes')
     .select(
       'id, mensagem_id, pergunta_enviada, created_at, tipo, opcoes, acao, mensagens_whats!inner(telefone_from)',
     )
     .eq('resolvida', false)
-    .eq('mensagens_whats.telefone_from', telefone)
     .gte('created_at', desde)
     .order('created_at', { ascending: false })
-    .limit(1);
-
+    .limit(10);
+  q = quem.chatId
+    ? q.eq('chat_id', quem.chatId)
+    : q.eq('mensagens_whats.telefone_from', quem.telefone);
+  const { data, error } = await q;
   if (error) {
     log.erro('buscar_pendencia_falhou', { erro: error });
-    return null;
+    return [];
   }
+  return (data ?? []).map(montarPendencia);
+}
 
-  const linha = data?.[0];
-  if (!linha) return null;
-  return montarPendencia(linha);
+/** Valor, fornecedor e obra de uma pendência, para listar "qual delas?". */
+export async function resumoDaPendencia(
+  supabase: Client,
+  pendencia: PendenciaAberta,
+): Promise<{
+  valor: number | null;
+  fornecedor: string | null;
+  obra: string | null;
+  descricao: string | null;
+}> {
+  const { data: msg } = await supabase
+    .from('mensagens_whats')
+    .select('dados_extraidos')
+    .eq('id', pendencia.mensagemId)
+    .maybeSingle();
+  const d = lerDadosExtraidos(msg?.dados_extraidos) ?? {};
+  const [obra, fornecedor] = await Promise.all([
+    d.obra_id
+      ? supabase.from('obras').select('nome').eq('id', d.obra_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    d.fornecedor_id
+      ? supabase.from('fornecedores').select('nome').eq('id', d.fornecedor_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+  return {
+    valor: d.valor ?? null,
+    fornecedor: fornecedor.data?.nome ?? d.fornecedor_nome_novo ?? null,
+    obra: obra.data?.nome ?? null,
+    descricao: d.descricao ?? null,
+  };
 }
 
 /** Uma pendência específica, só se ainda estiver aberta. */

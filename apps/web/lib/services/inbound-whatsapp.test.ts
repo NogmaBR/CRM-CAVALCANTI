@@ -66,6 +66,8 @@ vi.mock('@/lib/ia/intencao', () => ({
 const GRUPO = '120363000000000001@g.us';
 const FERNANDO = '5551981944829@s.whatsapp.net';
 const GARI_ID = '11111111-1111-4111-8111-111111111111';
+const INOX_ID = '22222222-2222-4222-8222-222222222222';
+const HUGO = '5532999998174@s.whatsapp.net';
 
 function db() {
   return fakeSupabase(
@@ -75,6 +77,13 @@ function db() {
           id: 'aut-1',
           nome: 'Fernando',
           telefone_norm: '5551981944829',
+          ativo: true,
+          deleted_at: null,
+        },
+        {
+          id: 'aut-2',
+          nome: 'Hugo',
+          telefone_norm: '5532999998174',
           ativo: true,
           deleted_at: null,
         },
@@ -92,13 +101,24 @@ function db() {
       obras: [
         { id: 'o-agu', nome: 'Aguirre', apelidos: [], status: 'ativa', deleted_at: null },
         { id: GARI_ID, nome: 'Garibaldi', apelidos: ['Gari'], status: 'ativa', deleted_at: null },
+        {
+          id: INOX_ID,
+          nome: 'INOX Piratini',
+          apelidos: ['Inox'],
+          status: 'ativa',
+          deleted_at: null,
+        },
       ],
       mensagens_whats: [],
       confirmacoes_pendentes: [],
       documentos: [],
       registros_obra: [],
       whatsapp_respostas: [],
-      fornecedores: [],
+      fornecedores: [
+        { id: 'f-vero', nome: 'VERO S A', deleted_at: null },
+        { id: 'f-mv', nome: 'Mathias Velho', deleted_at: null },
+      ],
+      pagamentos: [],
       recebimentos: [],
       ai_conversations: [],
       ai_messages: [],
@@ -137,6 +157,9 @@ async function inbound() {
   return mod.processarInbound;
 }
 
+/** Cada pendência nasce um pouco depois da anterior (a ordem importa). */
+let relogio = 0;
+
 /** O classificador (mockado) abrindo uma pendência de pagamento, como de verdade. */
 function pendenciaDePagamento(
   f: ReturnType<typeof db>,
@@ -148,11 +171,12 @@ function pendenciaDePagamento(
     f.linhas('confirmacoes_pendentes').push({
       id,
       mensagem_id: mensagemId,
+      chat_id: GRUPO,
       pergunta_enviada: pergunta,
       tipo: 'pagamento',
       opcoes: null,
       resolvida: false,
-      created_at: new Date().toISOString(),
+      created_at: new Date(Date.now() + ++relogio).toISOString(),
     });
     const m = f.linhas('mensagens_whats').find((x) => x.id === mensagemId);
     if (m) {
@@ -213,6 +237,7 @@ describe('agente no grupo', () => {
       f.linhas('confirmacoes_pendentes').push({
         id: 'conf-1',
         mensagem_id: mensagemId,
+        chat_id: GRUPO,
         pergunta_enviada: pergunta,
         tipo: 'obra_documento',
         opcoes,
@@ -309,6 +334,7 @@ describe('agente no grupo', () => {
     f.linhas('confirmacoes_pendentes').push({
       id: 'conf-1',
       mensagem_id: 'm0',
+      chat_id: GRUPO,
       pergunta_enviada: 'De qual obra?',
       tipo: 'obra_registro',
       opcoes: [{ n: 1, id: 'o-agu', nome: 'Aguirre' }],
@@ -354,6 +380,7 @@ describe('agente no grupo', () => {
       f.linhas('confirmacoes_pendentes').push({
         id: 'conf-p',
         mensagem_id: mensagemId,
+        chat_id: GRUPO,
         pergunta_enviada: 'Achei R$ 1200 na Garibaldi. Confirma?',
         tipo: 'pagamento',
         opcoes: null,
@@ -394,6 +421,7 @@ describe('agente no grupo', () => {
       f.linhas('confirmacoes_pendentes').push({
         id: 'conf-sem-obra',
         mensagem_id: mensagemId,
+        chat_id: GRUPO,
         pergunta_enviada:
           'R$ 16,00 — Pix para Gilvando. De qual obra é esse pagamento? 1) Garibaldi',
         tipo: 'pagamento',
@@ -661,6 +689,240 @@ describe('reação, citação, figurinha e emoji solto (rodada de 17/09)', () =>
   });
 });
 
+describe('pendências por conversa, corrigir e desfazer (rodada de 17/09)', () => {
+  beforeEach(() => {
+    assistente.disponivel = false;
+    enviarTexto.mockClear();
+    classifyAndPersist.mockReset();
+  });
+
+  it('no grupo, o "sim" do Hugo confirma a pergunta que o Fernando abriu — e a resposta diz quem confirmou', async () => {
+    const f = db();
+    const processar = await inbound();
+    pendenciaDePagamento(f, 'conf-grupo', { valor: 1200 });
+    await processar(cliente(f), msg({ text: 'paguei 1200 de cimento na Gari' }) as never);
+
+    const r = await processar(cliente(f), msg({ from: HUGO, text: 'sim' }) as never);
+    expect(r.acao).toBe('confirmou_pendencia');
+    expect(f.linhas('pagamentos')[0]).toMatchObject({ valor: 1200 });
+    const ultima = String(enviarTexto.mock.calls.at(-1)?.[1]);
+    expect(ultima).toContain('✅ Lançado');
+    expect(ultima).toContain('confirmado por Hugo');
+    // Lançou por texto, sem nota: ensina a mandar a nota em cima da resposta.
+    expect(ultima).toContain('mande em cima desta mensagem');
+  });
+
+  it('duas perguntas abertas e um "sim" solto: pergunta qual; o número resolve a certa', async () => {
+    const f = db();
+    const processar = await inbound();
+    pendenciaDePagamento(f, 'conf-1', { valor: 10, fornecedor_nome_novo: 'Andrissia' });
+    await processar(cliente(f), msg({ type: 'image', text: undefined }) as never);
+    pendenciaDePagamento(f, 'conf-2', { valor: 8, fornecedor_nome_novo: 'Maria' });
+    await processar(cliente(f), msg({ type: 'image', text: undefined }) as never);
+
+    const r1 = await processar(cliente(f), msg({ text: 'sim' }) as never);
+    expect(r1.acao).toBe('perguntou_qual');
+    const pergunta = String(enviarTexto.mock.calls.at(-1)?.[1]);
+    expect(pergunta).toContain('Qual delas');
+    expect(pergunta).toMatch(/1\) R\$\s10,00 · Andrissia/u);
+    expect(pergunta).toMatch(/2\) R\$\s8,00 · Maria/u);
+    expect(f.linhas('pagamentos')).toHaveLength(0);
+
+    const r2 = await processar(cliente(f), msg({ text: '2' }) as never);
+    expect(r2.acao).toBe('confirmou_pendencia');
+    expect(f.linhas('pagamentos')).toHaveLength(1);
+    expect(f.linhas('pagamentos')[0]).toMatchObject({ valor: 8 });
+    expect(f.linhas('confirmacoes_pendentes').find((c) => c.id === 'conf-1')).toMatchObject({
+      resolvida: false,
+    });
+  });
+
+  it('"sim todos" confirma todas as perguntas abertas de uma vez', async () => {
+    const f = db();
+    const processar = await inbound();
+    pendenciaDePagamento(f, 'conf-a', { valor: 10 });
+    await processar(cliente(f), msg({ type: 'image', text: undefined }) as never);
+    pendenciaDePagamento(f, 'conf-b', { valor: 8 });
+    await processar(cliente(f), msg({ type: 'image', text: undefined }) as never);
+
+    const r = await processar(cliente(f), msg({ text: 'sim todos' }) as never);
+    expect(r.detalhe).toBe('todos:2');
+    expect(
+      f
+        .linhas('pagamentos')
+        .map((p) => p.valor)
+        .sort(),
+    ).toEqual([10, 8].sort());
+  });
+
+  it('"não é na Garibaldi, é na INOX": troca a obra, pergunta de novo, e o SIM lança na INOX', async () => {
+    const f = db();
+    const processar = await inbound();
+    pendenciaDePagamento(f, 'conf-c', { valor: 109.99, obra_id: GARI_ID });
+    await processar(cliente(f), msg({ type: 'document', text: undefined }) as never);
+
+    const r = await processar(cliente(f), msg({ text: 'Não é na Garibaldi, é na INOX' }) as never);
+    expect(r.acao).toBe('corrigiu_pendencia');
+    const pergunta = String(enviarTexto.mock.calls.at(-1)?.[1]);
+    expect(pergunta).toContain('Troquei a obra para INOX Piratini');
+    expect(pergunta).toContain('Obra: *INOX Piratini*');
+    expect(pergunta).toContain('Responda *SIM*');
+    expect(f.linhas('pagamentos')).toHaveLength(0);
+    // A obra da conversa passou a ser a INOX.
+    expect(f.linhas('conversa_estado')[0]).toMatchObject({
+      chat_id: GRUPO,
+      obra_conversa_id: INOX_ID,
+    });
+
+    await processar(cliente(f), msg({ text: 'sim' }) as never);
+    expect(f.linhas('pagamentos')[0]).toMatchObject({ valor: 109.99, obra_id: INOX_ID });
+  });
+
+  it('"o valor é 500" corrige só o valor; "não, esquece" cancela', async () => {
+    const f = db();
+    const processar = await inbound();
+    pendenciaDePagamento(f, 'conf-v', { valor: 50, obra_id: GARI_ID });
+    await processar(cliente(f), msg({ text: 'paguei 50 de churrasco na gari' }) as never);
+
+    await processar(cliente(f), msg({ text: 'o valor é 500' }) as never);
+    expect(String(enviarTexto.mock.calls.at(-1)?.[1])).toContain('Troquei o valor');
+    const m = f.linhas('mensagens_whats')[0] as {
+      dados_extraidos: { valor: number; obra_id: string };
+    };
+    expect(m.dados_extraidos).toMatchObject({ valor: 500, obra_id: GARI_ID });
+
+    const r = await processar(cliente(f), msg({ text: 'não, esquece' }) as never);
+    expect(r.acao).toBe('recusou_pendencia');
+    expect(f.linhas('pagamentos')).toHaveLength(0);
+  });
+
+  it('"não é na Garibaldi, é em outra obra" (sem dizer qual): pede o dado, não anota no diário', async () => {
+    const f = db();
+    const processar = await inbound();
+    pendenciaDePagamento(f, 'conf-o', { valor: 109.99, obra_id: GARI_ID });
+    await processar(cliente(f), msg({ type: 'document', text: undefined }) as never);
+
+    const r = await processar(
+      cliente(f),
+      msg({ text: 'Não é na Garibaldi, é em outra obra' }) as never,
+    );
+    expect(r.acao).toBe('corrigiu_pendencia');
+    expect(r.detalhe).toBe('sem_dado');
+    expect(String(enviarTexto.mock.calls.at(-1)?.[1])).toContain('O que eu troco?');
+    expect(classifyAndPersist).toHaveBeenCalledTimes(1);
+    expect(f.linhas('registros_obra')).toHaveLength(0);
+  });
+
+  it('"desfaz" citando o "📁 Guardei…" arquiva o documento; sem citação, desfaz a última ação da própria pessoa', async () => {
+    const f = db();
+    const processar = await inbound();
+    classifyAndPersist.mockImplementationOnce(async (mensagemId: string) => {
+      const doc = { id: 'doc-1', obra_id: GARI_ID, categoria: 'fotos', deleted_at: null };
+      f.linhas('documentos').push(doc);
+      const m = f.linhas('mensagens_whats').find((x) => x.id === mensagemId);
+      if (m) m.documento_id = 'doc-1';
+      return {
+        ok: true,
+        status: 'confirmada',
+        confianca: 0.9,
+        kind: 'documento_obra',
+        documentoId: 'doc-1',
+        resposta: '📁 Guardei na obra *Garibaldi*, pasta *Fotos*.',
+      };
+    });
+    await processar(cliente(f), msg({ type: 'image', text: undefined }) as never);
+    const idDoGuardei = ultimoEnvio();
+
+    // O Hugo dizendo "desfaz" sem citar não apaga a foto do Fernando.
+    const r0 = await processar(cliente(f), msg({ from: HUGO, text: 'desfaz' }) as never);
+    expect(r0).toMatchObject({ acao: 'desfez', detalhe: 'sem_alvo' });
+    expect(f.linhas('documentos')[0]).toMatchObject({ deleted_at: null });
+
+    const r = await processar(
+      cliente(f),
+      msg({ text: 'Cancela isso', quotedId: idDoGuardei }) as never,
+    );
+    expect(r).toMatchObject({ acao: 'desfez', detalhe: 'documento' });
+    expect(f.linhas('documentos')[0]?.deleted_at).toBeTruthy();
+    expect(String(enviarTexto.mock.calls.at(-1)?.[1])).toContain('↩️ Desfeito');
+  });
+
+  it('"desfaz" sem citação logo depois de lançar: arquiva o pagamento', async () => {
+    const f = db();
+    const processar = await inbound();
+    pendenciaDePagamento(f, 'conf-d', { valor: 300 });
+    await processar(cliente(f), msg({ text: 'paguei 300 de brita na gari' }) as never);
+    await processar(cliente(f), msg({ text: 'sim' }) as never);
+    expect(f.linhas('pagamentos')[0]?.deleted_at).toBeFalsy();
+
+    const r = await processar(cliente(f), msg({ text: 'não era pra lançar' }) as never);
+    expect(r).toMatchObject({ acao: 'desfez', detalhe: 'pagamento' });
+    expect(f.linhas('pagamentos')[0]?.deleted_at).toBeTruthy();
+  });
+
+  it('"essa é da INOX" em cima do "📁 Guardei na Garibaldi" move o arquivo de obra', async () => {
+    const f = db();
+    const processar = await inbound();
+    classifyAndPersist.mockImplementationOnce(async () => {
+      f.linhas('documentos').push({
+        id: 'doc-m',
+        obra_id: GARI_ID,
+        categoria: 'fotos',
+        deleted_at: null,
+      });
+      return {
+        ok: true,
+        status: 'confirmada',
+        confianca: 0.9,
+        kind: 'documento_obra',
+        documentoId: 'doc-m',
+        resposta: '📁 Guardei na obra *Garibaldi*, pasta *Fotos*.',
+      };
+    });
+    await processar(cliente(f), msg({ type: 'image', text: undefined }) as never);
+    const r = await processar(
+      cliente(f),
+      msg({ text: 'essa é da inox', quotedId: ultimoEnvio() }) as never,
+    );
+    expect(r).toMatchObject({ acao: 'moveu', detalhe: 'documento' });
+    expect(f.linhas('documentos')[0]).toMatchObject({ obra_id: INOX_ID });
+    expect(String(enviarTexto.mock.calls.at(-1)?.[1])).toContain(
+      'Movi para a obra *INOX Piratini*',
+    );
+  });
+
+  it('foto mandada EM CIMA do "✅ Lançado" vira o comprovante daquele pagamento', async () => {
+    const f = db();
+    const processar = await inbound();
+    pendenciaDePagamento(f, 'conf-n', { valor: 1200 });
+    await processar(cliente(f), msg({ text: 'paguei 1200 de cimento na gari' }) as never);
+    await processar(cliente(f), msg({ text: 'sim' }) as never);
+    const idDoLancado = ultimoEnvio();
+    baixarMidia.mockResolvedValueOnce({
+      ok: true,
+      bytes: new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]),
+      mime: 'image/jpeg',
+    });
+
+    const r = await processar(
+      cliente(f),
+      msg({
+        type: 'image',
+        text: undefined,
+        quotedId: idDoLancado,
+        media: { url: 'https://midia.uazapi.test/nota.jpg', mimetype: 'image/jpeg' },
+      }) as never,
+    );
+    expect(r.acao).toBe('anexou');
+    expect(r.pagamentoId).toBe(f.linhas('pagamentos')[0]?.id);
+    expect(f.linhas('documentos')[0]).toMatchObject({
+      pagamento_id: f.linhas('pagamentos')[0]?.id,
+    });
+    expect(String(enviarTexto.mock.calls.at(-1)?.[1])).toContain('📎 Anexei ao pagamento');
+    expect(classifyAndPersist).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('ações pelo WhatsApp (assistente ligado)', () => {
   beforeEach(() => {
     assistente.disponivel = true;
@@ -700,12 +962,12 @@ describe('ações pelo WhatsApp (assistente ligado)', () => {
     expect(pergunta).toContain('Nome da obra: *Sítio do Pedro*');
     expect(pergunta).toContain('Responda *SIM*');
     expect(f.linhas('confirmacoes_pendentes')[0]).toMatchObject({ tipo: 'acao', resolvida: false });
-    expect(f.linhas('obras')).toHaveLength(2);
+    expect(f.linhas('obras')).toHaveLength(3);
 
     const r2 = await processar(cliente(f), msg({ text: 'SIM' }));
     expect(r2.acao).toBe('executou_acao');
-    expect(f.linhas('obras')).toHaveLength(3);
-    expect(f.linhas('obras')[2]).toMatchObject({ nome: 'Sítio do Pedro', status: 'ativa' });
+    expect(f.linhas('obras')).toHaveLength(4);
+    expect(f.linhas('obras')[3]).toMatchObject({ nome: 'Sítio do Pedro', status: 'ativa' });
     expect(enviarTexto.mock.calls[1]?.[1]).toContain('✅ Obra *Sítio do Pedro* criada');
     expect(f.linhas('confirmacoes_pendentes')[0]).toMatchObject({
       resolvida: true,
@@ -726,7 +988,7 @@ describe('ações pelo WhatsApp (assistente ligado)', () => {
     await processar(cliente(f), msg({ text: 'cria uma obra chamada Sítio do Pedro' }));
     const r = await processar(cliente(f), msg({ text: 'não' }));
     expect(r.acao).toBe('recusou_pendencia');
-    expect(f.linhas('obras')).toHaveLength(2);
+    expect(f.linhas('obras')).toHaveLength(3);
     expect(f.linhas('confirmacoes_pendentes')[0]).toMatchObject({ resolvida: true });
     expect(enviarTexto.mock.calls[1]?.[1]).toBe('Ok, cancelei. Nada foi gravado.');
   });

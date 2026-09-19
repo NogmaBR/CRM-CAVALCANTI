@@ -169,11 +169,21 @@ export async function obraRecente(
     if (f.chatId) {
       const { data: estado } = await supabase
         .from('conversa_estado')
-        .select('obra_conversa_reset_em')
+        .select('obra_conversa_reset_em, obra_conversa_id, obra_conversa_em')
         .eq('chat_id', f.chatId)
         .maybeSingle();
       const reset = estado?.obra_conversa_reset_em;
       if (reset && reset > desde) desde = reset;
+      // A obra dita por correção ("não, é na INOX") vence tudo enquanto vale.
+      if (estado?.obra_conversa_id && estado.obra_conversa_em && estado.obra_conversa_em >= desde) {
+        const { data: dita } = await supabase
+          .from('obras')
+          .select('id, nome')
+          .eq('id', estado.obra_conversa_id)
+          .is('deleted_at', null)
+          .limit(1);
+        if (dita?.[0]) return { id: dita[0].id, nome: dita[0].nome };
+      }
     }
 
     let q = supabase
