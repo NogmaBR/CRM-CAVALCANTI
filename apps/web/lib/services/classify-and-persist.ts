@@ -5,6 +5,7 @@ import { logger } from '@/lib/log';
 import { CATEGORIAS, type DocCategoria } from '@/lib/status-labels';
 import { hojeBR } from '@/lib/util/datas';
 import type { Opcao } from '@/lib/whatsapp/escolha';
+import { linkDoPainel } from '@/lib/whatsapp/links';
 import {
   perguntaDeObraParaArquivo,
   perguntaDePagamento,
@@ -81,6 +82,9 @@ export async function classifyAndPersist(mensagemId: string): Promise<
        * obra; pagamento continua pelo `confirmacao`.
        */
       resposta?: string;
+      /** O que o arquivamento criou — vai para o rastro da resposta. */
+      documentoId?: string;
+      registroId?: string;
     }
   | { ok: false; error: string }
 > {
@@ -94,7 +98,7 @@ export async function classifyAndPersist(mensagemId: string): Promise<
   const { data: msg, error: msgErr } = await supabase
     .from('mensagens_whats')
     .select(
-      'id, telefone_from, texto_bruto, texto_transcrito, midia_mime, midia_storage_path, chat_id, grupo_id, autorizado_id',
+      'id, telefone_from, texto_bruto, texto_transcrito, midia_mime, midia_storage_path, chat_id, grupo_id, autorizado_id, tipo',
     )
     .eq('id', mensagemId)
     .single();
@@ -289,16 +293,22 @@ export async function classifyAndPersist(mensagemId: string): Promise<
       .update({ confianca_ia: out.confidence, dados_extraidos: out.extracted })
       .eq('id', mensagemId);
 
+    const documentoId = 'documentoId' in resultado ? resultado.documentoId : undefined;
+    const registroId = 'registroId' in resultado ? resultado.registroId : undefined;
     return {
       ok: true,
       status: 'confirmada',
       confianca: out.confidence,
       kind: out.kind,
       confirmacao: null,
+      documentoId,
+      registroId,
       resposta:
         out.kind === 'documento_obra'
-          ? respostaArquivado(obra.nome, categoriaValida(out.extracted.categoria))
-          : respostaRegistrado(obra.nome),
+          ? respostaArquivado(obra.nome, categoriaValida(out.extracted.categoria), {
+              link: documentoId ? linkDoPainel(`/documentos/${documentoId}`) : null,
+            })
+          : respostaRegistrado(obra.nome, { link: linkDoPainel(`/obras/${obra.id}#diario`) }),
     };
   }
 
@@ -380,7 +390,8 @@ export async function classifyAndPersist(mensagemId: string): Promise<
         fornecedor: fornecedor ?? null,
         descricao: out.extracted.descricao ?? null,
         data: out.extracted.data_pagamento ?? null,
-        deAnexo: Boolean(input.midiaStoragePath),
+        deAnexo: Boolean(input.midiaStoragePath) && msg.tipo !== 'audio',
+        deAudio: msg.tipo === 'audio',
       },
       opcoesDeObra,
     );
@@ -417,7 +428,8 @@ export async function classifyAndPersist(mensagemId: string): Promise<
             ? (input.contexto.categorias?.find((c) => c.id === out.extracted.categoria_id)?.nome ??
               null)
             : null,
-          deAnexo: Boolean(input.midiaStoragePath),
+          deAnexo: Boolean(input.midiaStoragePath) && msg.tipo !== 'audio',
+          deAudio: msg.tipo === 'audio',
         })
       : (out.perguntaConfirmacao ??
         'Recebi sua mensagem, mas faltou o valor para lançar.\nMande de novo com o valor, ou o gestor completa no painel.');

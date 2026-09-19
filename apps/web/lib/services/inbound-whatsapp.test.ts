@@ -16,10 +16,13 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
  *  5. Pagamento continua o de sempre: pergunta e "SIM".
  */
 
+let envioSeq = 0;
 const enviarTexto = vi.fn(async (_destino: string, _texto: string) => ({
   ok: true,
-  msgId: 'env-1',
+  msgId: `env-${++envioSeq}`,
 }));
+/** Id (no provider) da última resposta que o bot mandou. */
+const ultimoEnvio = () => `env-${envioSeq}`;
 const classifyAndPersist = vi.fn();
 const baixarMidia = vi.fn(
   async (_url: string | null | undefined): Promise<unknown> => ({
@@ -99,10 +102,13 @@ function db() {
       recebimentos: [],
       ai_conversations: [],
       ai_messages: [],
+      mensagens_enviadas: [],
+      conversa_estado: [],
     },
     {
       unicos: {
         mensagens_whats: [['msg_id_uazapi']],
+        mensagens_enviadas: [['msg_id_uazapi']],
         whatsapp_respostas: [['msg_id_uazapi', 'acao']],
         documentos: [['hash_sha256']],
         registros_obra: [['mensagem_id']],
@@ -129,6 +135,38 @@ function msg(over: Record<string, unknown> = {}) {
 async function inbound() {
   const mod = await import('./inbound-whatsapp');
   return mod.processarInbound;
+}
+
+/** O classificador (mockado) abrindo uma pendência de pagamento, como de verdade. */
+function pendenciaDePagamento(
+  f: ReturnType<typeof db>,
+  id: string,
+  dados: { valor: number; obra_id?: string; fornecedor_nome_novo?: string },
+) {
+  classifyAndPersist.mockImplementationOnce(async (mensagemId: string) => {
+    const pergunta = `Vou lançar R$ ${dados.valor}. Confirma?`;
+    f.linhas('confirmacoes_pendentes').push({
+      id,
+      mensagem_id: mensagemId,
+      pergunta_enviada: pergunta,
+      tipo: 'pagamento',
+      opcoes: null,
+      resolvida: false,
+      created_at: new Date().toISOString(),
+    });
+    const m = f.linhas('mensagens_whats').find((x) => x.id === mensagemId);
+    if (m) {
+      m.status = 'classificada';
+      m.dados_extraidos = { obra_id: GARI_ID, data_pagamento: '2026-09-15', ...dados };
+    }
+    return {
+      ok: true,
+      status: 'classificada',
+      confianca: 0.9,
+      kind: 'pagamento_completo',
+      confirmacao: { id, pergunta },
+    };
+  });
 }
 
 describe('agente no grupo', () => {
@@ -432,8 +470,9 @@ describe('agente no grupo', () => {
       await processar(cliente(f), msg({ chatId: FERNANDO, isGroup: false, text: 'foto da obra' }));
       expect(enviarTexto).toHaveBeenCalledWith(FERNANDO, '📁 Garibaldi › Fotos ✔');
     } finally {
-      process.env.WHATSAPP_ACEITA_PRIVADO = undefined as unknown as string;
-      delete process.env.WHATSAPP_ACEITA_PRIVADO;
+      // `= undefined` gravaria a string "undefined" em process.env; o Biome
+      // não deixa usar `delete`. Reflect faz o mesmo sem o operador.
+      Reflect.deleteProperty(process.env, 'WHATSAPP_ACEITA_PRIVADO');
     }
   });
 
@@ -472,6 +511,153 @@ describe('agente no grupo', () => {
       midia_mime: 'video/mp4',
       midia_storage_path: path,
     });
+  });
+});
+
+describe('reação, citação, figurinha e emoji solto (rodada de 17/09)', () => {
+  beforeEach(() => {
+    assistente.disponivel = false;
+    enviarTexto.mockClear();
+    classifyAndPersist.mockReset();
+  });
+
+  it('toda resposta do bot deixa rastro em mensagens_enviadas, com a entidade certa', async () => {
+    const f = db();
+    const processar = await inbound();
+    pendenciaDePagamento(f, 'conf-r', { valor: 1200 });
+    await processar(cliente(f), msg({ text: 'paguei 1200 de areia na Gari' }) as never);
+
+    const pergunta = f.linhas('mensagens_enviadas').at(-1);
+    expect(pergunta).toMatchObject({
+      chat_id: GRUPO,
+      msg_id_uazapi: ultimoEnvio(),
+      tipo: 'pergunta_pendencia',
+      confirmacao_id: 'conf-r',
+    });
+    expect(f.linhas('confirmacoes_pendentes')[0]).toMatchObject({
+      msg_id_pergunta_uazapi: ultimoEnvio(),
+    });
+
+    await processar(cliente(f), msg({ text: 'sim' }) as never);
+    expect(f.linhas('mensagens_enviadas').at(-1)).toMatchObject({
+      tipo: 'lancado',
+      pagamento_id: f.linhas('pagamentos')[0]?.id,
+      confirmacao_id: 'conf-r',
+    });
+  });
+
+  it('👍 REAGINDO à pergunta de confirmação lança; reação a outra coisa é silêncio', async () => {
+    const f = db();
+    const processar = await inbound();
+    pendenciaDePagamento(f, 'conf-reacao', { valor: 350 });
+    await processar(cliente(f), msg({ text: 'paguei 350 de brita na Gari' }) as never);
+    const idDaPergunta = ultimoEnvio();
+
+    // Reação a uma mensagem qualquer do grupo (não é nossa): nada.
+    const r0 = await processar(
+      cliente(f),
+      msg({ type: 'reaction', text: '👍', reactionTo: 'msg-de-outra-pessoa' }) as never,
+    );
+    expect(r0.acao).toBe('ignorada_reacao');
+    expect(f.linhas('pagamentos')).toHaveLength(0);
+    expect(enviarTexto).toHaveBeenCalledTimes(1);
+
+    // 👍 na pergunta = SIM.
+    const r1 = await processar(
+      cliente(f),
+      msg({ type: 'reaction', text: '👍', reactionTo: idDaPergunta }) as never,
+    );
+    expect(r1.acao).toBe('confirmou_pendencia');
+    expect(f.linhas('pagamentos')[0]).toMatchObject({ valor: 350, obra_id: GARI_ID });
+    expect(enviarTexto).toHaveBeenLastCalledWith(GRUPO, expect.stringContaining('✅ Lançado'));
+  });
+
+  it('❌ reagindo à pergunta recusa; ❤️ (nem sim nem não) é silêncio', async () => {
+    const f = db();
+    const processar = await inbound();
+    pendenciaDePagamento(f, 'conf-nao', { valor: 90 });
+    await processar(cliente(f), msg({ text: 'paguei 90 de cal na Gari' }) as never);
+    const idDaPergunta = ultimoEnvio();
+
+    const r0 = await processar(
+      cliente(f),
+      msg({ type: 'reaction', text: '❤️', reactionTo: idDaPergunta }) as never,
+    );
+    expect(r0.acao).toBe('ignorada_reacao');
+    expect(f.linhas('confirmacoes_pendentes')[0]).toMatchObject({ resolvida: false });
+
+    const r1 = await processar(
+      cliente(f),
+      msg({ type: 'reaction', text: '❌', reactionTo: idDaPergunta }) as never,
+    );
+    expect(r1.acao).toBe('recusou_pendencia');
+    expect(f.linhas('pagamentos')).toHaveLength(0);
+  });
+
+  it('"sim" EM CIMA de uma pergunta resolve aquela, não a mais recente', async () => {
+    const f = db();
+    const processar = await inbound();
+
+    pendenciaDePagamento(f, 'conf-a', { valor: 10, fornecedor_nome_novo: 'Andrissia' });
+    await processar(cliente(f), msg({ type: 'image', text: undefined }) as never);
+    const perguntaA = ultimoEnvio();
+
+    pendenciaDePagamento(f, 'conf-b', { valor: 8, fornecedor_nome_novo: 'Maria' });
+    await processar(cliente(f), msg({ type: 'image', text: undefined }) as never);
+
+    // Sem citação, o "sim" vai para a mais recente (a de R$ 8)…
+    // …mas citando a pergunta de R$ 10, é a de R$ 10 que lança.
+    const r = await processar(cliente(f), msg({ text: 'sim', quotedId: perguntaA }) as never);
+    expect(r.acao).toBe('confirmou_pendencia');
+    expect(f.linhas('pagamentos')).toHaveLength(1);
+    expect(f.linhas('pagamentos')[0]).toMatchObject({ valor: 10 });
+    expect(f.linhas('confirmacoes_pendentes').find((c) => c.id === 'conf-a')).toMatchObject({
+      resolvida: true,
+    });
+    expect(f.linhas('confirmacoes_pendentes').find((c) => c.id === 'conf-b')).toMatchObject({
+      resolvida: false,
+    });
+  });
+
+  it('citar a PRÓPRIA foto que abriu a pendência também aponta para ela', async () => {
+    const f = db();
+    const processar = await inbound();
+    pendenciaDePagamento(f, 'conf-foto', { valor: 16 });
+    const foto = msg({ type: 'image', text: undefined });
+    await processar(cliente(f), foto as never);
+    pendenciaDePagamento(f, 'conf-outra', { valor: 99 });
+    await processar(cliente(f), msg({ type: 'image', text: undefined }) as never);
+
+    const r = await processar(
+      cliente(f),
+      msg({ text: 'sim', quotedId: (foto as { id: string }).id }) as never,
+    );
+    expect(r.acao).toBe('confirmou_pendencia');
+    expect(f.linhas('pagamentos')[0]).toMatchObject({ valor: 16 });
+  });
+
+  it('figurinha: silêncio, nada gravado, nada perguntado', async () => {
+    const f = db();
+    const processar = await inbound();
+    const r = await processar(
+      cliente(f),
+      msg({ type: 'sticker', text: undefined, media: { mimetype: 'image/webp' } }) as never,
+    );
+    expect(r.acao).toBe('ignorada_figurinha');
+    expect(enviarTexto).not.toHaveBeenCalled();
+    expect(classifyAndPersist).not.toHaveBeenCalled();
+    expect(f.linhas('mensagens_whats')).toHaveLength(0);
+  });
+
+  it('👍 ou "ok" SEM pergunta em aberto: silêncio, não "não entendi"', async () => {
+    const f = db();
+    const processar = await inbound();
+    const r1 = await processar(cliente(f), msg({ text: '👍' }) as never);
+    expect(r1.acao).toBe('ignorada_sem_pendencia');
+    const r2 = await processar(cliente(f), msg({ text: 'sim' }) as never);
+    expect(r2.acao).toBe('ignorada_sem_pendencia');
+    expect(enviarTexto).not.toHaveBeenCalled();
+    expect(classifyAndPersist).not.toHaveBeenCalled();
   });
 });
 

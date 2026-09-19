@@ -99,6 +99,51 @@ describe('adaptarPayloadUazapi — v2 → canônico', () => {
     expect(tipo('Esquisito')).toBe('text');
   });
 
+  it('citação: `quoted` vira quotedId (o "responder" do WhatsApp)', () => {
+    const p = UazapiInboundSchema.parse(
+      adaptarPayloadUazapi({
+        event: 'messages',
+        message: {
+          ...V2_GRUPO.message,
+          messageType: 'Conversation',
+          mediaType: undefined,
+          fileURL: undefined,
+          text: 'sim',
+          quoted: '3EB0PERGUNTA',
+        },
+      }),
+    );
+    expect(p.type).toBe('text');
+    expect(p.text).toBe('sim');
+    expect(p.quotedId).toBe('3EB0PERGUNTA');
+    // Sem citação o campo nem existe (o provider manda string vazia).
+    const semCitacao = UazapiInboundSchema.parse(
+      adaptarPayloadUazapi({
+        event: 'messages',
+        message: { ...V2_GRUPO.message, messageType: 'Conversation', text: 'oi', quoted: '' },
+      }),
+    );
+    expect(semCitacao.quotedId).toBeUndefined();
+  });
+
+  it('reação: `reaction` (id da mensagem reagida) vira type reaction + reactionTo, sem mídia', () => {
+    const p = UazapiInboundSchema.parse(
+      adaptarPayloadUazapi({
+        event: 'messages',
+        message: {
+          ...V2_GRUPO.message,
+          messageType: 'ReactionMessage',
+          text: '👍',
+          reaction: '3EB0PERGUNTA',
+        },
+      }),
+    );
+    expect(p.type).toBe('reaction');
+    expect(p.reactionTo).toBe('3EB0PERGUNTA');
+    expect(p.text).toBe('👍');
+    expect(p.media).toBeUndefined();
+  });
+
   it('eco do que o CRM enviou pela API (fromMe + wasSentByApi) é descartado', () => {
     expect(
       adaptarPayloadUazapi({

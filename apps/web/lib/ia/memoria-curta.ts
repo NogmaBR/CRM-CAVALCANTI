@@ -14,18 +14,31 @@ type Client = SupabaseClient<Database>;
  * não resolve a foto. Com ela o modelo recebe as últimas trocas como
  * contexto — e o classificador recebe a obra de que se estava falando.
  *
- * Duas fontes, porque as respostas do agente não ficam em `mensagens_whats`:
+ * Três fontes:
  *
  *   - `mensagens_whats` — o que a pessoa mandou (texto ou transcrição), com
  *     o que o CRM fez (tipo lido e status).
+ *   - `mensagens_enviadas` — o que o agente respondeu de verdade (a pergunta
+ *     de confirmação, o "📁 Guardei…", o "✅ Lançado"). Sem isto o modelo
+ *     via só metade da conversa e "aquela que você mostrou" não resolvia.
  *   - `ai_conversations` → `ai_messages` — perguntas e respostas do
  *     assistente, do mesmo autorizado.
  *
- * Tudo best-effort: falha de leitura → memória vazia, nunca erro.
+ * Janela de um dia e 20 trocas: na rodada de 17/09, com 2 h e 6 trocas, o
+ * agente esquecia a obra dita três mensagens antes. Tudo best-effort: falha
+ * de leitura → memória vazia, nunca erro.
  */
 
-export const JANELA_HORAS = 2;
-export const MAX_TROCAS = 6;
+export const JANELA_HORAS = 24;
+export const MAX_TROCAS = 20;
+
+/**
+ * "A obra de que se estava falando" vale por pouco tempo: 30 minutos. Com 2 h,
+ * depois de "paguei 1200 na Garibaldi" TODA foto do grupo ia para a Garibaldi
+ * pelo resto da tarde (17/09, 16:05). Uma correção ou um desfazer zera a
+ * memória antes disso (`conversa_estado.obra_conversa_reset_em`).
+ */
+export const JANELA_OBRA_MIN = 30;
 
 export interface Troca {
   papel: 'pessoa' | 'agente';
@@ -51,6 +64,7 @@ function curto(s: string | null | undefined, max = 240): string {
 export async function conversaRecente(supabase: Client, f: FiltroMemoria): Promise<Troca[]> {
   const agora = f.agora ?? new Date();
   const desde = new Date(agora.getTime() - JANELA_HORAS * 3600_000).toISOString();
+  const trocas: Troca[] = [];
 
   try {
     let q = supabase
@@ -62,7 +76,7 @@ export async function conversaRecente(supabase: Client, f: FiltroMemoria): Promi
     // Num grupo, o que vale é o chat; no privado, o telefone.
     q = f.chatId ? q.eq('chat_id', f.chatId) : q.eq('telefone_from', f.telefone);
 
-    const [msgs, conversas] = await Promise.all([
+    const [msgs, conversas, enviadas] = await Promise.all([
       q,
       supabase
         .from('ai_conversations')
@@ -71,9 +85,21 @@ export async function conversaRecente(supabase: Client, f: FiltroMemoria): Promi
         .gte('created_at', desde)
         .order('created_at', { ascending: false })
         .limit(MAX_TROCAS),
+      f.chatId
+        ? supabase
+            .from('mensagens_enviadas')
+            .select('texto, tipo, created_at')
+            .eq('chat_id', f.chatId)
+            .gte('created_at', desde)
+            .order('created_at', { ascending: false })
+            .limit(MAX_TROCAS)
+        : Promise.resolve({ data: [] as { texto: string; tipo: string; created_at: string }[] }),
     ]);
 
-    const trocas: Troca[] = [];
+    for (const e of enviadas.data ?? []) {
+      trocas.push({ papel: 'agente', texto: curto(e.texto), quando: e.created_at ?? '' });
+    }
+
     for (const m of msgs.data ?? []) {
       const texto = curto(m.texto_bruto || m.texto_transcrito);
       if (!texto) continue;
@@ -83,7 +109,7 @@ export async function conversaRecente(supabase: Client, f: FiltroMemoria): Promi
       const entendido = [typeof tipo === 'string' ? tipo : null, m.status]
         .filter(Boolean)
         .join(', ');
-      if (entendido) {
+      if (entendido && (enviadas.data ?? []).length === 0) {
         trocas.push({
           papel: 'agente',
           texto: `(entendi como: ${entendido})`,
@@ -136,8 +162,20 @@ export async function obraRecente(
   f: FiltroMemoria,
 ): Promise<{ id: string; nome: string } | null> {
   const agora = f.agora ?? new Date();
-  const desde = new Date(agora.getTime() - JANELA_HORAS * 3600_000).toISOString();
+  let desde = new Date(agora.getTime() - JANELA_OBRA_MIN * 60_000).toISOString();
   try {
+    // Correção ("não é na Garibaldi") ou desfazer zera a memória da obra: só
+    // conta o que foi dito DEPOIS disso.
+    if (f.chatId) {
+      const { data: estado } = await supabase
+        .from('conversa_estado')
+        .select('obra_conversa_reset_em')
+        .eq('chat_id', f.chatId)
+        .maybeSingle();
+      const reset = estado?.obra_conversa_reset_em;
+      if (reset && reset > desde) desde = reset;
+    }
+
     let q = supabase
       .from('mensagens_whats')
       .select('dados_extraidos, created_at')

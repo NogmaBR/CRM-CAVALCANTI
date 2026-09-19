@@ -1103,6 +1103,81 @@ export type Database = {
         };
         Relationships: [];
       };
+      mensagens_enviadas: {
+        Row: {
+          id: string;
+          chat_id: string;
+          msg_id_uazapi: string | null;
+          texto: string;
+          tipo: string;
+          em_resposta_a: string | null;
+          confirmacao_id: string | null;
+          pagamento_id: string | null;
+          documento_id: string | null;
+          registro_id: string | null;
+          lote_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          chat_id: string;
+          msg_id_uazapi?: string | null;
+          texto: string;
+          tipo: string;
+          em_resposta_a?: string | null;
+          confirmacao_id?: string | null;
+          pagamento_id?: string | null;
+          documento_id?: string | null;
+          registro_id?: string | null;
+          lote_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          chat_id?: string;
+          msg_id_uazapi?: string | null;
+          texto?: string;
+          tipo?: string;
+          em_resposta_a?: string | null;
+          confirmacao_id?: string | null;
+          pagamento_id?: string | null;
+          documento_id?: string | null;
+          registro_id?: string | null;
+          lote_id?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      conversa_estado: {
+        Row: {
+          chat_id: string;
+          obra_conversa_reset_em: string | null;
+          obra_conversa_id: string | null;
+          obra_conversa_em: string | null;
+          escolha_pendencias: Json | null;
+          escolha_em: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          chat_id: string;
+          obra_conversa_reset_em?: string | null;
+          obra_conversa_id?: string | null;
+          obra_conversa_em?: string | null;
+          escolha_pendencias?: Json | null;
+          escolha_em?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          chat_id?: string;
+          obra_conversa_reset_em?: string | null;
+          obra_conversa_id?: string | null;
+          obra_conversa_em?: string | null;
+          escolha_pendencias?: Json | null;
+          escolha_em?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       whatsapp_grupos: {
         Row: {
           ativo: boolean;

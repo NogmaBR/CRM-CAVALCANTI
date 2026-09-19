@@ -11,7 +11,8 @@
  *   pagamentos criados por elas (apagados de verdade — eram teste), documentos
  *   de origem whatsapp (linha + arquivo no Storage), registros de obra,
  *   pendências, respostas, chamadas de ferramenta da IA, as próprias
- *   mensagens (com a mídia no Storage) e o rastro em webhook_eventos.
+ *   mensagens (com a mídia no Storage), as respostas do bot
+ *   (mensagens_enviadas) e o rastro em webhook_eventos.
  *
  * Só o que nasceu do telefone/grupo de teste: o acervo do OneDrive e os
  * pagamentos das planilhas não têm mensagem por trás e não são tocados.
@@ -155,6 +156,16 @@ const toolCallsIA = mensagensIA.length
       `ai_tool_calls?select=id&message_id=in.${inList(mensagensIA.map((m) => m.id))}`,
     )
   : [];
+// Respostas do bot: as do grupo inteiro (quando dado) e as que responderam a
+// mensagens do telefone.
+const enviadasFiltro = [];
+if (grupo) enviadasFiltro.push(`chat_id.eq.${encodeURIComponent(grupo)}`);
+if (ids.length) enviadasFiltro.push(`em_resposta_a.in.${inList(ids)}`);
+const enviadas = enviadasFiltro.length
+  ? await rest('GET', `mensagens_enviadas?select=id&or=(${enviadasFiltro.join(',')})`).catch(
+      () => [],
+    )
+  : [];
 const grupoRow = grupo
   ? await rest(
       'GET',
@@ -170,6 +181,7 @@ console.log(`  pendências                  : ${pendencias.length}`);
 console.log(`  respostas (dedupe)          : ${respostas.length}`);
 console.log(`  chamadas de ferramenta IA   : ${toolCalls.length}`);
 console.log(`  eventos do webhook          : ${eventos.length}`);
+console.log(`  respostas do bot (enviadas) : ${enviadas.length}`);
 console.log(`  conversas do assistente     : ${conversas.length}`);
 if (TUDO) {
   console.log(`  autorizado a apagar         : ${autorizado.map((a) => a.nome).join(', ') || '—'}`);
@@ -230,6 +242,14 @@ if (eventos.length) {
   console.log(
     `  webhook_eventos: ${await del('webhook_eventos', `id=in.${inList(eventos.map((e) => e.id))}`)}`,
   );
+}
+if (enviadas.length) {
+  console.log(
+    `  mensagens_enviadas: ${await del('mensagens_enviadas', `id=in.${inList(enviadas.map((e) => e.id))}`)}`,
+  );
+}
+if (grupo) {
+  await rest('DELETE', `conversa_estado?chat_id=eq.${encodeURIComponent(grupo)}`).catch(() => null);
 }
 if (conversaIds.length) {
   if (toolCallsIA.length) {

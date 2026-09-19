@@ -12,6 +12,7 @@ import {
 import { uploadDocumentBuffer } from '@/lib/storage/documents';
 import { interpretarComando } from '@/lib/whatsapp/comandos';
 import { interpretarEscolha } from '@/lib/whatsapp/escolha';
+import { linkDoPainel } from '@/lib/whatsapp/links';
 import { nomeArquivoDaMidia } from '@/lib/whatsapp/nome-arquivo';
 import { interpretarResposta } from '@/lib/whatsapp/resposta';
 import { decidirDestino } from '@/lib/whatsapp/roteador';
@@ -30,7 +31,8 @@ import {
   definirObraDaPendencia,
   recusarConfirmacao,
 } from './confirmacoes';
-import { baixarMidia, enviarTexto, obterLinkDaMidia } from './uazapi';
+import { type AlvoDaMensagem, resolverAlvo, responder } from './responder';
+import { baixarMidia, obterLinkDaMidia } from './uazapi';
 
 /**
  * Processamento de uma mensagem inbound do WhatsApp — o fluxo principal do
@@ -61,6 +63,9 @@ export type AcaoInbound =
   | 'ignorada_nao_autorizada'
   | 'ignorada_grupo_nao_autorizado'
   | 'ignorada_privado'
+  | 'ignorada_figurinha'
+  | 'ignorada_reacao'
+  | 'ignorada_sem_pendencia'
   | 'duplicada'
   | 'confirmou_pendencia'
   | 'recusou_pendencia'
@@ -141,6 +146,33 @@ export async function processarInbound(
   }
 
   // ---------------------------------------------------------------------
+  // 1b. Figurinha, reação e citação.
+  // ---------------------------------------------------------------------
+  // Figurinha não é documento nem resposta: sai em silêncio. Na rodada de
+  // 17/09 uma virou "Recebi o arquivo. De qual obra ele é?".
+  if (payload.type === 'sticker') {
+    log.info('ignorada_figurinha', { telefone });
+    return { acao: 'ignorada_figurinha' };
+  }
+
+  // Reação (👍 na pergunta) e citação ("sim" em cima da pergunta) apontam
+  // para uma mensagem pelo id do provider. `resolverAlvo` diz o que ela é no
+  // CRM — uma pergunta de pendência, um "📁 Guardei…", a foto que a própria
+  // pessoa mandou — e o resto do fluxo age sobre ESSE alvo, não sobre "a
+  // pendência mais recente". Reação a algo que não é nosso: silêncio.
+  const alvo: AlvoDaMensagem | null = await resolverAlvo(
+    supabase,
+    payload.type === 'reaction' ? payload.reactionTo : payload.quotedId,
+  );
+  if (payload.type === 'reaction') {
+    const emoji = interpretarResposta(payload.text);
+    if (!alvo?.confirmacaoId || emoji === 'outro') {
+      log.info('ignorada_reacao', { telefone, alvo: alvo?.tipoDaEnviada ?? null });
+      return { acao: 'ignorada_reacao' };
+    }
+  }
+
+  // ---------------------------------------------------------------------
   // 2. Idempotência.
   // ---------------------------------------------------------------------
   // O UAZAPI reenvia o mesmo evento quando não recebe 200 rápido o bastante.
@@ -175,10 +207,22 @@ export async function processarInbound(
 
   // A pendência aberta pode ser de pagamento (responde SIM/NÃO) ou de obra
   // (responde o número). Só vale a pena buscar quando há texto para
-  // interpretar — foto sem legenda nunca é resposta.
+  // interpretar — foto sem legenda nunca é resposta. Citação ou reação a
+  // uma pergunta específica vence a busca pela mais recente: foi assim que
+  // um "sim" em cima do comprovante de R$ 10 resolveu o de R$ 8 em 17/09.
   const pendencia = textoEfetivo
-    ? await buscarConfirmacaoAberta(supabase, telefone, JANELA_RESPOSTA_HORAS)
+    ? await buscarConfirmacaoAberta(supabase, telefone, JANELA_RESPOSTA_HORAS, {
+        confirmacaoId: alvo?.confirmacaoId ?? null,
+      })
     : null;
+
+  // "sim", "ok", 👍 sem pergunta nenhuma em aberto: não é para ninguém.
+  // Antes caía no classificador e voltava "Não entendi o que fazer com essa
+  // mensagem" — para um joinha. Silêncio, só rastro.
+  if (!pendencia && interpretacao !== 'outro' && !midia.storagePath) {
+    log.info('resposta_sem_pendencia', { telefone, interpretacao });
+    return { acao: 'ignorada_sem_pendencia' };
+  }
 
   // Pendência de AÇÃO (criar obra, contrato, recebimento…): SIM executa o
   // que está gravado na pendência; NÃO cancela. Outra coisa segue o fluxo —
@@ -190,7 +234,7 @@ export async function processarInbound(
         via: 'whatsapp',
         respostaBruta: textoEfetivo ?? '(sem texto)',
       });
-      await gravarMensagem({
+      const gravada = await gravarMensagem({
         supabase,
         payload,
         telefone,
@@ -201,13 +245,19 @@ export async function processarInbound(
         status: r.ok ? 'confirmada' : 'recebida',
       });
       if (r.ok) {
-        await enviarTexto(destino, r.texto);
+        await responder(supabase, destino, r.texto, {
+          tipo: 'acao_executada',
+          emRespostaA: gravada.id,
+          confirmacaoId: pendencia.id,
+        });
         return { acao: 'executou_acao', detalhe: r.proposta.tipo };
       }
       log.aviso('acao_nao_executada', { codigo: r.codigo, motivo: r.motivo });
-      await enviarTexto(
+      await responder(
+        supabase,
         destino,
         r.codigo === 'ja_resolvida' ? RESPOSTAS.acaoJaResolvida : RESPOSTAS.falhaTemporaria,
+        { tipo: 'aviso', emRespostaA: gravada.id, confirmacaoId: pendencia.id },
       );
       return { acao: 'executou_acao', detalhe: r.codigo };
     }
@@ -218,7 +268,7 @@ export async function processarInbound(
         respostaBruta: textoEfetivo ?? '(sem texto)',
         motivo: 'Remetente cancelou a ação',
       });
-      await gravarMensagem({
+      const gravada = await gravarMensagem({
         supabase,
         payload,
         telefone,
@@ -228,7 +278,11 @@ export async function processarInbound(
         tipoDb,
         status: 'recusada',
       });
-      await enviarTexto(destino, RESPOSTAS.acaoCancelada);
+      await responder(supabase, destino, RESPOSTAS.acaoCancelada, {
+        tipo: 'aviso',
+        emRespostaA: gravada.id,
+        confirmacaoId: pendencia.id,
+      });
       return { acao: 'recusou_pendencia', detalhe: 'acao' };
     }
   }
@@ -245,7 +299,10 @@ export async function processarInbound(
       });
       if (!definida.ok) {
         log.aviso('obra_da_pendencia_nao_definida', { codigo: definida.codigo });
-        await enviarTexto(destino, RESPOSTAS.falhaTemporaria);
+        await responder(supabase, destino, RESPOSTAS.falhaTemporaria, {
+          tipo: 'aviso',
+          confirmacaoId: pendencia.id,
+        });
         return { acao: 'confirmou_pendencia', detalhe: definida.codigo };
       }
       return resolverPendencia({
@@ -264,7 +321,7 @@ export async function processarInbound(
       });
     }
     if (interpretacao === 'sim') {
-      await gravarMensagem({
+      const gravada = await gravarMensagem({
         supabase,
         payload,
         telefone,
@@ -274,7 +331,11 @@ export async function processarInbound(
         tipoDb,
         status: 'recebida',
       });
-      await enviarTexto(destino, RESPOSTAS.faltaObra);
+      await responder(supabase, destino, RESPOSTAS.faltaObra, {
+        tipo: 'aviso',
+        emRespostaA: gravada.id,
+        confirmacaoId: pendencia.id,
+      });
       return { acao: 'confirmou_pendencia', detalhe: 'falta_obra' };
     }
   }
@@ -319,7 +380,7 @@ export async function processarInbound(
         respostaBruta: textoEfetivo ?? '(sem texto)',
         motivo: 'Remetente não quis arquivar',
       });
-      await gravarMensagem({
+      const gravada = await gravarMensagem({
         supabase,
         payload,
         telefone,
@@ -329,7 +390,11 @@ export async function processarInbound(
         midia,
         status: 'recusada',
       });
-      await enviarTexto(destino, RESPOSTAS.obraRecusada);
+      await responder(supabase, destino, RESPOSTAS.obraRecusada, {
+        tipo: 'aviso',
+        emRespostaA: gravada.id,
+        confirmacaoId: pendencia.id,
+      });
       return { acao: 'recusou_pendencia' };
     }
     // Não era escolha nem recusa: segue como mensagem comum. A pergunta de
@@ -356,7 +421,7 @@ export async function processarInbound(
       log.erro('comando_falhou', { comando: comando.tipo, err });
       return 'Não consegui consultar isso agora. Tente de novo em instantes.';
     });
-    await enviarTexto(destino, resposta);
+    await responder(supabase, destino, resposta, { tipo: 'resposta' });
     return { acao: 'comando', detalhe: comando.tipo };
   }
 
@@ -386,7 +451,7 @@ export async function processarInbound(
 
     if (decisao.destino === 'saudacao') {
       if (await jaRespondida(supabase, payload.id, 'saudacao')) return { acao: 'duplicada' };
-      await enviarTexto(destino, RESPOSTAS.saudacao);
+      await responder(supabase, destino, RESPOSTAS.saudacao, { tipo: 'resposta' });
       return { acao: 'comando', detalhe: 'saudacao' };
     }
 
@@ -425,7 +490,7 @@ export async function processarInbound(
         });
         if (gravada.duplicada) return { acao: 'duplicada', mensagemId: gravada.id ?? undefined };
         if (!gravada.id) {
-          await enviarTexto(destino, RESPOSTAS.falhaTemporaria);
+          await responder(supabase, destino, RESPOSTAS.falhaTemporaria, { tipo: 'aviso' });
           return { acao: 'erro', detalhe: 'mensagem_nao_gravada' };
         }
         const aberta = await abrirPendenciaDeAcao(supabase, {
@@ -434,14 +499,21 @@ export async function processarInbound(
           chatId: payload.chatId ?? null,
         });
         if (!aberta.ok) {
-          await enviarTexto(destino, RESPOSTAS.falhaTemporaria);
+          await responder(supabase, destino, RESPOSTAS.falhaTemporaria, {
+            tipo: 'aviso',
+            emRespostaA: gravada.id,
+          });
           return { acao: 'erro', mensagemId: gravada.id, detalhe: 'pendencia_acao_nao_aberta' };
         }
-        await enviarTexto(destino, aberta.pergunta);
+        await responder(supabase, destino, aberta.pergunta, {
+          tipo: 'pergunta_pendencia',
+          emRespostaA: gravada.id,
+          confirmacaoId: aberta.id,
+        });
         return { acao: 'acao_proposta', mensagemId: gravada.id, detalhe: resposta.proposta.tipo };
       }
       if (resposta) {
-        await enviarTexto(destino, resposta.texto);
+        await responder(supabase, destino, resposta.texto, { tipo: 'resposta' });
         return {
           acao: 'pergunta',
           detalhe: `${resposta.fontes.length} fonte(s), ${resposta.ferramentas.length} ferramenta(s)`,
@@ -486,7 +558,10 @@ export async function processarInbound(
   // fecha o ciclo do lado dele (revisão adversarial do PR #22, G7).
   if (!classificacao.ok) {
     if (!(await jaRespondida(supabase, payload.id, 'falha_temporaria'))) {
-      await enviarTexto(destino, RESPOSTAS.falhaTemporaria);
+      await responder(supabase, destino, RESPOSTAS.falhaTemporaria, {
+        tipo: 'aviso',
+        emRespostaA: mensagemId,
+      });
     }
     return { acao: 'erro', detalhe: 'classificação falhou; remetente avisado', mensagemId };
   }
@@ -497,13 +572,11 @@ export async function processarInbound(
   // Sem este envio o cliente nunca fica sabendo que precisa confirmar, e o
   // fluxo automático morre na primeira etapa.
   if ('ok' in classificacao && classificacao.ok && classificacao.confirmacao) {
-    const envio = await enviarTexto(destino, classificacao.confirmacao.pergunta);
-    if (envio.ok && envio.msgId) {
-      await supabase
-        .from('confirmacoes_pendentes')
-        .update({ msg_id_pergunta_uazapi: envio.msgId })
-        .eq('id', classificacao.confirmacao.id);
-    }
+    await responder(supabase, destino, classificacao.confirmacao.pergunta, {
+      tipo: 'pergunta_pendencia',
+      emRespostaA: mensagemId,
+      confirmacaoId: classificacao.confirmacao.id,
+    });
   }
 
   // Texto que não deu em nada (`nao_identificado`): antes era silêncio, e a
@@ -516,14 +589,22 @@ export async function processarInbound(
     !midia.storagePath &&
     !(await jaRespondida(supabase, payload.id, 'nao_entendi'))
   ) {
-    await enviarTexto(destino, RESPOSTAS.naoEntendi);
+    await responder(supabase, destino, RESPOSTAS.naoEntendi, {
+      tipo: 'aviso',
+      emRespostaA: mensagemId,
+    });
   }
 
   // Documento ou registro de obra resolvido sem pergunta: avisa onde foi
   // parar ("📁 Garibaldi › Fotos ✔"). Uma vez só, mesmo com retry.
   if ('ok' in classificacao && classificacao.ok && classificacao.resposta) {
     if (!(await jaRespondida(supabase, payload.id, `arquivado:${classificacao.kind}`))) {
-      await enviarTexto(destino, classificacao.resposta);
+      await responder(supabase, destino, classificacao.resposta, {
+        tipo: classificacao.kind === 'documento_obra' ? 'arquivado' : 'anotado',
+        emRespostaA: mensagemId,
+        documentoId: classificacao.documentoId ?? null,
+        registroId: classificacao.registroId ?? null,
+      });
     }
   }
 
@@ -570,7 +651,7 @@ async function resolverPendencia(ctx: ContextoResolucao): Promise<ResultadoInbou
       userId: null, // não há sessão: quem autorizou foi o próprio remetente
     });
 
-    await gravarMensagem({
+    const gravada = await gravarMensagem({
       ...ctx,
       status: resultado.ok ? 'confirmada' : 'recebida',
       autorizadoId: ctx.autorizadoId,
@@ -582,13 +663,24 @@ async function resolverPendencia(ctx: ContextoResolucao): Promise<ResultadoInbou
       // extração não tinha valor ou obra. Avisamos em vez de silenciar —
       // senão ele acha que lançou e não lançou.
       log.aviso('confirmacao_sem_pagamento', { codigo: resultado.codigo });
-      await enviarTexto(destino, RESPOSTAS.confirmadoSemPagamento);
+      await responder(supabase, destino, RESPOSTAS.confirmadoSemPagamento, {
+        tipo: 'aviso',
+        emRespostaA: gravada.id,
+        confirmacaoId: pendencia.id,
+      });
       return { acao: 'confirmou_pendencia', detalhe: resultado.codigo };
     }
 
-    await enviarTexto(
+    await responder(
+      supabase,
       destino,
       await textoDoLancado(supabase, resultado.pagamentoId, ctx.rotuloObra),
+      {
+        tipo: 'lancado',
+        emRespostaA: gravada.id,
+        confirmacaoId: pendencia.id,
+        pagamentoId: resultado.pagamentoId,
+      },
     );
     return { acao: 'confirmou_pendencia', pagamentoId: resultado.pagamentoId };
   }
@@ -600,9 +692,17 @@ async function resolverPendencia(ctx: ContextoResolucao): Promise<ResultadoInbou
     motivo: 'Recusada pelo remetente no WhatsApp',
   });
 
-  await gravarMensagem({ ...ctx, status: 'recusada', autorizadoId: ctx.autorizadoId });
+  const gravada = await gravarMensagem({
+    ...ctx,
+    status: 'recusada',
+    autorizadoId: ctx.autorizadoId,
+  });
 
-  await enviarTexto(destino, RESPOSTAS.recusado);
+  await responder(supabase, destino, RESPOSTAS.recusado, {
+    tipo: 'aviso',
+    emRespostaA: gravada.id,
+    confirmacaoId: pendencia.id,
+  });
   return { acao: 'recusou_pendencia' };
 }
 
@@ -623,15 +723,28 @@ async function resolverEscolhaDeObra(
     userId: null,
   });
 
-  await gravarMensagem({ ...ctx, status: resultado.ok ? 'confirmada' : 'recebida' });
+  const gravada = await gravarMensagem({
+    ...ctx,
+    status: resultado.ok ? 'confirmada' : 'recebida',
+  });
 
   if (!resultado.ok) {
     log.aviso('escolha_de_obra_falhou', { codigo: resultado.codigo });
-    await enviarTexto(destino, RESPOSTAS.falhaTemporaria);
+    await responder(supabase, destino, RESPOSTAS.falhaTemporaria, {
+      tipo: 'aviso',
+      emRespostaA: gravada.id,
+      confirmacaoId: pendencia.id,
+    });
     return { acao: 'escolheu_obra', detalhe: resultado.codigo };
   }
 
-  await enviarTexto(destino, resultado.resposta);
+  await responder(supabase, destino, resultado.resposta, {
+    tipo: pendencia.tipo === 'obra_registro' ? 'anotado' : 'arquivado',
+    emRespostaA: gravada.id,
+    confirmacaoId: pendencia.id,
+    documentoId: resultado.documentoId ?? null,
+    registroId: resultado.registroId ?? null,
+  });
   return { acao: 'escolheu_obra', detalhe: pendencia.tipo };
 }
 
@@ -874,6 +987,7 @@ async function textoDoLancado(
       valor: Number(data.valor),
       obra: obra.data?.nome ?? rotuloObra ?? null,
       fornecedor: fornecedor.data?.nome ?? null,
+      link: linkDoPainel(`/pagamentos/${pagamentoId}`),
     });
   } catch {
     return RESPOSTAS.confirmado;
