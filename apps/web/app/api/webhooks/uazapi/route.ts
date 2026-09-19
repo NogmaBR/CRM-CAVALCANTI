@@ -3,6 +3,12 @@ import { comContexto, logger } from '@/lib/log';
 import { UazapiInboundSchema, normalizeTelefone } from '@/lib/schemas/uazapi';
 import { LIMITES, ipDaRequest, resposta429, verificarLimite } from '@/lib/security/rate-limit';
 import { processarInbound } from '@/lib/services/inbound-whatsapp';
+import {
+  esperarEFecharLote,
+  janelaDoLoteMs,
+  processarLote,
+  receberNoLote,
+} from '@/lib/services/lote-whatsapp';
 import { adaptarPayloadUazapi } from '@/lib/webhooks/adaptar-uazapi';
 import { autenticarWebhookUazapi } from '@/lib/webhooks/autenticar-uazapi';
 import { registrarEventoWebhook } from '@/lib/webhooks/eventos';
@@ -177,6 +183,50 @@ export async function POST(request: NextRequest) {
         // que a consistência.
         log.erro('fila_indisponivel_processando_sincrono', { err });
       }
+    }
+
+    // -----------------------------------------------------------------------
+    // Janela de silêncio (lote)
+    // -----------------------------------------------------------------------
+    // Foto e "inox" dois segundos depois, cinco fotos seguidas, três
+    // comprovantes: cada webhook chegava sozinho e respondia sozinho. Agora a
+    // mensagem vai para a sala de espera, a função dorme a janela, e só a
+    // invocação da mensagem mais recente do remetente fecha o lote e responde
+    // — uma vez. Reação, figurinha e mensagem sem mídia nem texto não esperam:
+    // nada nelas depende do que vem depois. `WHATSAPP_JANELA_LOTE_MS=0` volta
+    // ao processamento imediato.
+    const esperaLote =
+      janelaDoLoteMs() > 0 && payload.type !== 'reaction' && payload.type !== 'sticker';
+    if (esperaLote) {
+      const recebida = await receberNoLote(supabase, payload);
+      if (recebida === 'duplicada') {
+        log.info('processada', { acao: 'duplicada', detalhe: 'lote' });
+        await rastro({ bruto: json, payload, acao: 'duplicada', detalhe: 'lote' });
+        return NextResponse.json({ ok: true, acao: 'duplicada' });
+      }
+      if (recebida === 'guardada') {
+        const lote = await esperarEFecharLote(supabase, payload);
+        if (!lote) {
+          log.info('processada', { acao: 'em_lote' });
+          await rastro({ bruto: json, payload, acao: 'em_lote' });
+          return NextResponse.json({ ok: true, acao: 'em_lote' });
+        }
+        const resultado = await processarLote(supabase, lote.loteId, lote.mensagens).catch(
+          (err) => {
+            log.erro('processamento_falhou', { err, lote: lote.loteId });
+            return { acao: 'erro' as const, detalhe: 'erro interno; veja o log pela correlação' };
+          },
+        );
+        log.info('processada', {
+          acao: resultado.acao,
+          detalhe: resultado.detalhe,
+          lote: lote.loteId,
+          mensagens: lote.mensagens.length,
+        });
+        await rastro({ bruto: json, payload, acao: resultado.acao, detalhe: resultado.detalhe });
+        return NextResponse.json({ ok: true, ...resultado, lote: lote.mensagens.length });
+      }
+      // 'erro' ao guardar: cai no processamento imediato, como sempre.
     }
 
     const resultado = await processarInbound(supabase, payload).catch((err) => {

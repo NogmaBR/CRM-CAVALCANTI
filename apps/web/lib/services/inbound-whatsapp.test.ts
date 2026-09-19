@@ -31,6 +31,7 @@ const baixarMidia = vi.fn(
   }),
 );
 const uploadDocumentBuffer = vi.fn(async (_p: string, _b: ArrayBuffer, _m: string) => {});
+let hashSeq = 0;
 
 vi.mock('./uazapi', () => ({
   enviarTexto: (...a: [string, string]) => enviarTexto(...a),
@@ -47,7 +48,8 @@ vi.mock('@/lib/storage/documents', () => ({
   uploadDocumentBuffer: (...a: [string, ArrayBuffer, string]) => uploadDocumentBuffer(...a),
   downloadDocumentBytes: vi.fn(async () => new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1])),
   makeStoragePath: (o: string, d: string, n: string) => `${o}/${d}/${n}`,
-  sha256Hex: () => 'hash-fixo',
+  // Cada arquivo com o seu hash: cinco fotos são cinco documentos.
+  sha256Hex: () => `hash-${++hashSeq}`,
 }));
 /** O assistente é ligado por teste: `assistente.disponivel = true` + `perguntar` falso. */
 const assistente = {
@@ -124,11 +126,13 @@ function db() {
       ai_messages: [],
       mensagens_enviadas: [],
       conversa_estado: [],
+      mensagens_em_espera: [],
     },
     {
       unicos: {
         mensagens_whats: [['msg_id_uazapi']],
         mensagens_enviadas: [['msg_id_uazapi']],
+        mensagens_em_espera: [['msg_id_uazapi']],
         whatsapp_respostas: [['msg_id_uazapi', 'acao']],
         documentos: [['hash_sha256']],
         registros_obra: [['mensagem_id']],
@@ -137,7 +141,19 @@ function db() {
     },
   );
 }
-const cliente = (f: ReturnType<typeof db>) => f as unknown as SupabaseClient<Database>;
+const cliente = (f: ReturnType<typeof db>) => {
+  // A RPC atômica do lote, sobre a tabela em memória.
+  f.rpcs.reivindicar_lote = (args) => {
+    const linhas = f
+      .linhas('mensagens_em_espera')
+      .filter(
+        (l) => l.chat_id === args.p_chat_id && l.telefone === args.p_telefone && l.lote_id == null,
+      );
+    for (const l of linhas) l.lote_id = args.p_lote_id;
+    return linhas.map((l) => ({ ...l }));
+  };
+  return f as unknown as SupabaseClient<Database>;
+};
 
 function msg(over: Record<string, unknown> = {}) {
   return {
@@ -160,18 +176,58 @@ async function inbound() {
 /** Cada pendência nasce um pouco depois da anterior (a ordem importa). */
 let relogio = 0;
 
+type LoteOpts = { loteId?: string | null; indiceNoLote?: number | null };
+
+/** O classificador (mockado) abrindo a pergunta de obra de uma foto sem obra. */
+function pendenciaDeObra(f: ReturnType<typeof db>, id: string) {
+  classifyAndPersist.mockImplementationOnce(async (mensagemId: string, lote?: LoteOpts) => {
+    const opcoes = [
+      { n: 1, id: 'o-agu', nome: 'Aguirre', apelidos: [] },
+      { n: 2, id: GARI_ID, nome: 'Garibaldi', apelidos: ['Gari'] },
+    ];
+    f.linhas('confirmacoes_pendentes').push({
+      id,
+      mensagem_id: mensagemId,
+      chat_id: GRUPO,
+      pergunta_enviada: 'De qual obra?',
+      tipo: 'obra_documento',
+      opcoes,
+      resolvida: false,
+      lote_id: lote?.loteId ?? null,
+      indice_no_lote: lote?.indiceNoLote ?? null,
+      created_at: new Date(Date.now() + ++relogio).toISOString(),
+    });
+    const m = f.linhas('mensagens_whats').find((x) => x.id === mensagemId);
+    if (m) {
+      m.status = 'classificada';
+      m.dados_extraidos = { categoria: 'fotos', tipo_documento: 'outro' };
+      m.midia_storage_path = `whatsapp/${mensagemId}/foto.jpg`;
+      m.midia_mime = 'image/jpeg';
+    }
+    return {
+      ok: true,
+      status: 'classificada',
+      confianca: 0.6,
+      kind: 'documento_obra',
+      confirmacao: { id, pergunta: 'De qual obra?' },
+    };
+  });
+}
+
 /** O classificador (mockado) abrindo uma pendência de pagamento, como de verdade. */
 function pendenciaDePagamento(
   f: ReturnType<typeof db>,
   id: string,
   dados: { valor: number; obra_id?: string; fornecedor_nome_novo?: string },
 ) {
-  classifyAndPersist.mockImplementationOnce(async (mensagemId: string) => {
+  classifyAndPersist.mockImplementationOnce(async (mensagemId: string, lote?: LoteOpts) => {
     const pergunta = `Vou lançar R$ ${dados.valor}. Confirma?`;
     f.linhas('confirmacoes_pendentes').push({
       id,
       mensagem_id: mensagemId,
       chat_id: GRUPO,
+      lote_id: lote?.loteId ?? null,
+      indice_no_lote: lote?.indiceNoLote ?? null,
       pergunta_enviada: pergunta,
       tipo: 'pagamento',
       opcoes: null,
@@ -920,6 +976,221 @@ describe('pendências por conversa, corrigir e desfazer (rodada de 17/09)', () =
     });
     expect(String(enviarTexto.mock.calls.at(-1)?.[1])).toContain('📎 Anexei ao pagamento');
     expect(classifyAndPersist).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('lote: a janela de silêncio (rodada de 17/09)', () => {
+  beforeEach(() => {
+    assistente.disponivel = false;
+    enviarTexto.mockClear();
+    classifyAndPersist.mockReset();
+  });
+
+  async function lote() {
+    const mod = await import('./lote-whatsapp');
+    return mod;
+  }
+  const semEspera = { dormir: async () => {} };
+
+  it('só a invocação da mensagem mais recente fecha o lote; a anterior sai sem responder', async () => {
+    const f = db();
+    const { receberNoLote, esperarEFecharLote } = await lote();
+    const a = msg({
+      type: 'image',
+      text: undefined,
+      timestamp: 1_000,
+      media: { mimetype: 'image/jpeg' },
+    });
+    const b = msg({ text: 'inox', timestamp: 1_002 });
+    expect(await receberNoLote(cliente(f), a as never, { agora: () => new Date(1_000) })).toBe(
+      'guardada',
+    );
+    expect(await receberNoLote(cliente(f), b as never, { agora: () => new Date(2_000) })).toBe(
+      'guardada',
+    );
+    // Retry do provider da mesma mensagem: duplicada, sem processar nada.
+    expect(await receberNoLote(cliente(f), a as never)).toBe('duplicada');
+
+    // A invocação de `a` acorda e vê que `b` chegou depois: sai.
+    expect(await esperarEFecharLote(cliente(f), a as never, semEspera)).toBeNull();
+    // A de `b` é a mais recente: leva as duas.
+    const fechado = await esperarEFecharLote(cliente(f), b as never, semEspera);
+    expect(fechado?.mensagens.map((m) => m.id).sort()).toEqual([a.id, b.id].sort());
+    // Ninguém mais consegue reivindicar.
+    expect(await esperarEFecharLote(cliente(f), b as never, semEspera)).toBeNull();
+  });
+
+  it('foto + "inox" na janela: uma classificação só, com "inox" de legenda', async () => {
+    const f = db();
+    const { processarLote } = await lote();
+    classifyAndPersist.mockResolvedValueOnce({
+      ok: true,
+      status: 'confirmada',
+      confianca: 0.9,
+      kind: 'documento_obra',
+      documentoId: 'doc-1',
+      resposta: '📁 Guardei na obra *INOX Piratini*, pasta *Fotos*.',
+    });
+    const a = msg({
+      type: 'image',
+      text: undefined,
+      timestamp: 1_000,
+      media: { mimetype: 'image/jpeg' },
+    });
+    const b = msg({ text: 'Inox', timestamp: 1_002 });
+    await processarLote(cliente(f), 'lote-1', [a, b] as never);
+    expect(classifyAndPersist).toHaveBeenCalledTimes(1);
+    expect(f.linhas('mensagens_whats')).toHaveLength(1);
+    expect(f.linhas('mensagens_whats')[0]).toMatchObject({
+      texto_bruto: 'Inox',
+      lote_id: 'lote-1',
+    });
+    expect(enviarTexto).toHaveBeenCalledTimes(1);
+    expect(String(enviarTexto.mock.calls.at(-1)?.[1])).toContain('Guardei na obra *INOX Piratini*');
+  });
+
+  it('três comprovantes: UMA lista numerada; "sim" lança os três', async () => {
+    const f = db();
+    const { processarLote } = await lote();
+    pendenciaDePagamento(f, 'c1', { valor: 8, fornecedor_nome_novo: 'Maria' });
+    pendenciaDePagamento(f, 'c2', { valor: 16, fornecedor_nome_novo: 'Gilvando' });
+    pendenciaDePagamento(f, 'c3', { valor: 10, fornecedor_nome_novo: 'Andrissia' });
+    const fotos = [1, 2, 3].map((i) =>
+      msg({
+        type: 'image',
+        text: undefined,
+        timestamp: 1_000 + i,
+        media: { mimetype: 'image/jpeg' },
+      }),
+    );
+    await processarLote(cliente(f), 'lote-2', fotos as never);
+
+    expect(classifyAndPersist).toHaveBeenCalledTimes(3);
+    expect(enviarTexto).toHaveBeenCalledTimes(1);
+    const lista = String(enviarTexto.mock.calls.at(-1)?.[1]);
+    expect(lista).toContain('Li 3 comprovantes:');
+    expect(lista).toMatch(/1\) R\$\s8,00 · Maria/u);
+    expect(lista).toMatch(/3\) R\$\s10,00 · Andrissia/u);
+    expect(f.linhas('mensagens_enviadas').at(-1)).toMatchObject({ lote_id: 'lote-2' });
+    expect(f.linhas('conversa_estado')[0]).toMatchObject({
+      escolha_pendencias: { interpretacao: 'lote' },
+    });
+
+    const processar = await inbound();
+    const r = await processar(cliente(f), msg({ text: 'sim' }) as never);
+    expect(r.detalhe).toBe('lote:3');
+    expect(
+      f
+        .linhas('pagamentos')
+        .map((p) => p.valor)
+        .sort(),
+    ).toEqual([10, 16, 8].sort());
+    expect(f.linhas('conversa_estado')[0]).toMatchObject({ escolha_pendencias: null });
+  });
+
+  it('"2 não" recusa só o 2; "3 é na Garibaldi" corrige só o 3; "1" confirma o 1', async () => {
+    const f = db();
+    const { processarLote } = await lote();
+    pendenciaDePagamento(f, 'c1', { valor: 8, obra_id: INOX_ID });
+    pendenciaDePagamento(f, 'c2', { valor: 16, obra_id: INOX_ID });
+    pendenciaDePagamento(f, 'c3', { valor: 10, obra_id: INOX_ID });
+    const fotos = [1, 2, 3].map((i) =>
+      msg({
+        type: 'image',
+        text: undefined,
+        timestamp: 1_000 + i,
+        media: { mimetype: 'image/jpeg' },
+      }),
+    );
+    await processarLote(cliente(f), 'lote-3', fotos as never);
+    const processar = await inbound();
+
+    const r1 = await processar(cliente(f), msg({ text: '2 não' }) as never);
+    expect(r1.acao).toBe('recusou_pendencia');
+    expect(f.linhas('confirmacoes_pendentes').find((c) => c.id === 'c2')).toMatchObject({
+      resolvida: true,
+      resultado: 'recusada',
+    });
+
+    const r2 = await processar(cliente(f), msg({ text: '3 é na Garibaldi' }) as never);
+    expect(r2.acao).toBe('corrigiu_pendencia');
+    expect(String(enviarTexto.mock.calls.at(-1)?.[1])).toContain('Troquei a obra para Garibaldi');
+    const m3 = f
+      .linhas('mensagens_whats')
+      .find(
+        (m) => m.id === f.linhas('confirmacoes_pendentes').find((c) => c.id === 'c3')?.mensagem_id,
+      ) as { dados_extraidos: { obra_id: string } };
+    expect(m3.dados_extraidos.obra_id).toBe(GARI_ID);
+
+    const r3 = await processar(cliente(f), msg({ text: '1' }) as never);
+    expect(r3.acao).toBe('confirmou_pendencia');
+    expect(f.linhas('pagamentos')).toHaveLength(1);
+    expect(f.linhas('pagamentos')[0]).toMatchObject({ valor: 8 });
+  });
+
+  it('cinco fotos sem obra: UMA pergunta; o número guarda as cinco e a resposta diz "5 arquivos"', async () => {
+    const f = db();
+    const { processarLote } = await lote();
+    for (let i = 1; i <= 5; i++) pendenciaDeObra(f, `d${i}`);
+    const fotos = [1, 2, 3, 4, 5].map((i) =>
+      msg({
+        type: 'image',
+        text: undefined,
+        timestamp: 1_000 + i,
+        media: { mimetype: 'image/jpeg' },
+      }),
+    );
+    await processarLote(cliente(f), 'lote-4', fotos as never);
+    expect(enviarTexto).toHaveBeenCalledTimes(1);
+    const pergunta = String(enviarTexto.mock.calls.at(-1)?.[1]);
+    expect(pergunta).toContain('Recebi 5 arquivos. *De qual obra?*');
+    expect(pergunta).toContain('2) Garibaldi');
+
+    const processar = await inbound();
+    const r = await processar(cliente(f), msg({ text: '2' }) as never);
+    expect(r.acao).toBe('escolheu_obra');
+    expect(f.linhas('documentos')).toHaveLength(5);
+    expect(f.linhas('documentos').every((d) => d.obra_id === GARI_ID)).toBe(true);
+    expect(f.linhas('confirmacoes_pendentes').every((c) => c.resolvida === true)).toBe(true);
+    expect(String(enviarTexto.mock.calls.at(-1)?.[1])).toContain(
+      'Guardei 5 arquivos na obra *Garibaldi*',
+    );
+  });
+
+  it('lote com um comprovante só: sai a pergunta completa daquele item, não a lista', async () => {
+    const f = db();
+    const { processarLote } = await lote();
+    pendenciaDePagamento(f, 'c1', { valor: 8 });
+    classifyAndPersist.mockImplementationOnce(async (mensagemId: string) => {
+      const m = f.linhas('mensagens_whats').find((x) => x.id === mensagemId);
+      if (m) m.documento_id = 'doc-x';
+      return {
+        ok: true,
+        status: 'confirmada',
+        confianca: 0.9,
+        kind: 'documento_obra',
+        documentoId: 'doc-x',
+        resposta: '📁 Guardei na obra *Garibaldi*, pasta *Fotos*.',
+      };
+    });
+    const fotos = [1, 2].map((i) =>
+      msg({
+        type: 'image',
+        text: undefined,
+        timestamp: 1_000 + i,
+        media: { mimetype: 'image/jpeg' },
+      }),
+    );
+    // A segunda mensagem é um documento guardado: o resumo tem 1 pagamento + 1 guardado.
+    f.linhas('documentos').push({
+      id: 'doc-x',
+      obra_id: GARI_ID,
+      categoria: 'fotos',
+      deleted_at: null,
+    });
+    await processarLote(cliente(f), 'lote-5', fotos as never);
+    const texto = String(enviarTexto.mock.calls.at(-1)?.[1]);
+    expect(texto).toContain('Li 1 comprovante:');
   });
 });
 

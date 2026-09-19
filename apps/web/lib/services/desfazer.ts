@@ -59,6 +59,7 @@ export async function ultimaAcaoDoRemetente(
           pagamentoId: e.pagamento_id,
           documentoId: e.documento_id,
           registroId: e.registro_id,
+          loteId: null,
         };
       }
     }

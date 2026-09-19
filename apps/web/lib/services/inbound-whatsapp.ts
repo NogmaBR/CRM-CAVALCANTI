@@ -31,6 +31,7 @@ import {
   RESPOSTAS,
   perguntaQualPendencia,
   respostaAnexado,
+  respostaArquivado,
   respostaPagamentoLancado,
 } from '@/lib/whatsapp/textos';
 import type { Database } from '@nogma/db';
@@ -46,6 +47,7 @@ import {
   buscarConfirmacaoPorId,
   definirObraDaPendencia,
   pendenciasAbertas,
+  pendenciasDoLote,
   recusarConfirmacao,
   resumoDaPendencia,
 } from './confirmacoes';
@@ -57,8 +59,8 @@ import {
   limparEscolha,
   zerarObraDaConversa,
 } from './escolha-pendencia';
-import { type AlvoDaMensagem, resolverAlvo, responder } from './responder';
-import { baixarMidia, obterLinkDaMidia } from './uazapi';
+import { type AlvoDaMensagem, type Rastro, resolverAlvo, responder } from './responder';
+import { type ResultadoEnvio, baixarMidia, obterLinkDaMidia } from './uazapi';
 
 /**
  * Processamento de uma mensagem inbound do WhatsApp — o fluxo principal do
@@ -115,6 +117,32 @@ export interface ResultadoInbound {
   detalhe?: string;
 }
 
+/** Uma resposta que o agente mandaria, capturada em vez de enviada (lote). */
+export interface RespostaColetada {
+  destino: string;
+  texto: string;
+  rastro: Rastro;
+}
+
+export interface OpcoesInbound {
+  /** Lote a que esta mensagem pertence (janela de silêncio). */
+  loteId?: string | null;
+  /** Posição no lote (1-based): "2 não" aponta para o item 2. */
+  indiceNoLote?: number | null;
+  /**
+   * Quando dado, nada é enviado: as respostas vão para cá e quem processa o
+   * lote monta UMA resposta com tudo. Sem ele, o comportamento de sempre.
+   */
+  coletor?: RespostaColetada[];
+}
+
+type Enviar = (
+  supabase: Client,
+  destino: string,
+  texto: string,
+  rastro: Rastro,
+) => Promise<ResultadoEnvio>;
+
 /**
  * Janela em que uma resposta curta ainda é lida como resposta à pergunta.
  * Passado o prazo, "ok" volta a ser mensagem comum e a pendência antiga fica
@@ -127,7 +155,16 @@ const JANELA_RESPOSTA_HORAS = 24;
 export async function processarInbound(
   supabase: Client,
   payload: UazapiInbound,
+  opts: OpcoesInbound = {},
 ): Promise<ResultadoInbound> {
+  // No lote, as respostas são recolhidas; fora dele, `responder` de sempre.
+  const coletor = opts.coletor;
+  const enviar: Enviar = coletor
+    ? async (_s, destino, texto, rastro) => {
+        coletor.push({ destino, texto, rastro: { ...rastro, loteId: opts.loteId ?? null } });
+        return { ok: true, msgId: null };
+      }
+    : responder;
   // Num grupo, `from` é quem falou (o participante) e `chatId` é o grupo. A
   // autorização é pela pessoa; a resposta vai para o chat de origem.
   const telefone = normalizeTelefone(payload.from);
@@ -253,6 +290,8 @@ export async function processarInbound(
     midia,
     tipoDb,
     textoEfetivo,
+    enviar,
+    loteId: opts.loteId ?? null,
   };
 
   // 4a. Nota mandada EM CIMA do "✅ Lançado": anexa ao pagamento, sem
@@ -280,10 +319,15 @@ export async function processarInbound(
     if (r) return r;
   }
 
-  // 4d. "Qual delas?" perguntado há pouco: o número (ou TODOS) escolhe.
-  if (chatDaPendencia && textoEfetivo && !alvo && !midia.storagePath) {
+  // 4d. A lista de um lote ("Li 3 comprovantes: 1) … 2) …") ou o "qual
+  // delas?" perguntado há pouco: SIM/NÃO para todos, o número para um,
+  // "2 não" / "2 é na INOX" para mudar um.
+  if (chatDaPendencia && textoEfetivo && !midia.storagePath && (!alvo || alvo.loteId)) {
     const escolha = await lerEscolha(supabase, chatDaPendencia);
-    if (escolha) {
+    if (escolha?.interpretacao === 'lote') {
+      const r = await responderLote(ctxMsg, chatDaPendencia, escolha, interpretacao);
+      if (r) return r;
+    } else if (escolha && !alvo) {
       const opcoes = escolha.itens.map((i) => ({ n: i.n, id: i.confirmacaoId, nome: String(i.n) }));
       const escolhida = alcance === 'todos' ? null : interpretarEscolha(textoEfetivo, opcoes);
       const alvos = alcance === 'todos' ? opcoes : escolhida ? [escolhida] : [];
@@ -380,7 +424,7 @@ export async function processarInbound(
       log.erro('comando_falhou', { comando: comando.tipo, err });
       return 'Não consegui consultar isso agora. Tente de novo em instantes.';
     });
-    await responder(supabase, destino, resposta, { tipo: 'resposta' });
+    await enviar(supabase, destino, resposta, { tipo: 'resposta' });
     return { acao: 'comando', detalhe: comando.tipo };
   }
 
@@ -410,7 +454,7 @@ export async function processarInbound(
 
     if (decisao.destino === 'saudacao') {
       if (await jaRespondida(supabase, payload.id, 'saudacao')) return { acao: 'duplicada' };
-      await responder(supabase, destino, RESPOSTAS.saudacao, { tipo: 'resposta' });
+      await enviar(supabase, destino, RESPOSTAS.saudacao, { tipo: 'resposta' });
       return { acao: 'comando', detalhe: 'saudacao' };
     }
 
@@ -449,7 +493,7 @@ export async function processarInbound(
         });
         if (gravada.duplicada) return { acao: 'duplicada', mensagemId: gravada.id ?? undefined };
         if (!gravada.id) {
-          await responder(supabase, destino, RESPOSTAS.falhaTemporaria, { tipo: 'aviso' });
+          await enviar(supabase, destino, RESPOSTAS.falhaTemporaria, { tipo: 'aviso' });
           return { acao: 'erro', detalhe: 'mensagem_nao_gravada' };
         }
         const aberta = await abrirPendenciaDeAcao(supabase, {
@@ -458,13 +502,13 @@ export async function processarInbound(
           chatId: payload.chatId ?? null,
         });
         if (!aberta.ok) {
-          await responder(supabase, destino, RESPOSTAS.falhaTemporaria, {
+          await enviar(supabase, destino, RESPOSTAS.falhaTemporaria, {
             tipo: 'aviso',
             emRespostaA: gravada.id,
           });
           return { acao: 'erro', mensagemId: gravada.id, detalhe: 'pendencia_acao_nao_aberta' };
         }
-        await responder(supabase, destino, aberta.pergunta, {
+        await enviar(supabase, destino, aberta.pergunta, {
           tipo: 'pergunta_pendencia',
           emRespostaA: gravada.id,
           confirmacaoId: aberta.id,
@@ -472,7 +516,7 @@ export async function processarInbound(
         return { acao: 'acao_proposta', mensagemId: gravada.id, detalhe: resposta.proposta.tipo };
       }
       if (resposta) {
-        await responder(supabase, destino, resposta.texto, { tipo: 'resposta' });
+        await enviar(supabase, destino, resposta.texto, { tipo: 'resposta' });
         return {
           acao: 'pergunta',
           detalhe: `${resposta.fontes.length} fonte(s), ${resposta.ferramentas.length} ferramenta(s)`,
@@ -490,6 +534,7 @@ export async function processarInbound(
     telefone,
     grupoId: grupo?.id ?? null,
     autorizadoId: autorizado.id,
+    loteId: opts.loteId ?? null,
     tipoDb,
     midia,
     status: 'recebida',
@@ -506,7 +551,10 @@ export async function processarInbound(
     return { acao: 'erro', detalhe: 'falha ao gravar mensagem' };
   }
 
-  const classificacao = await classifyAndPersist(mensagemId).catch((err) => ({
+  const classificacao = await classifyAndPersist(mensagemId, {
+    loteId: opts.loteId ?? null,
+    indiceNoLote: opts.indiceNoLote ?? null,
+  }).catch((err) => ({
     ok: false as const,
     error: err instanceof Error ? err.message : String(err),
   }));
@@ -517,7 +565,7 @@ export async function processarInbound(
   // fecha o ciclo do lado dele (revisão adversarial do PR #22, G7).
   if (!classificacao.ok) {
     if (!(await jaRespondida(supabase, payload.id, 'falha_temporaria'))) {
-      await responder(supabase, destino, RESPOSTAS.falhaTemporaria, {
+      await enviar(supabase, destino, RESPOSTAS.falhaTemporaria, {
         tipo: 'aviso',
         emRespostaA: mensagemId,
       });
@@ -531,7 +579,7 @@ export async function processarInbound(
   // Sem este envio o cliente nunca fica sabendo que precisa confirmar, e o
   // fluxo automático morre na primeira etapa.
   if ('ok' in classificacao && classificacao.ok && classificacao.confirmacao) {
-    await responder(supabase, destino, classificacao.confirmacao.pergunta, {
+    await enviar(supabase, destino, classificacao.confirmacao.pergunta, {
       tipo: 'pergunta_pendencia',
       emRespostaA: mensagemId,
       confirmacaoId: classificacao.confirmacao.id,
@@ -548,7 +596,7 @@ export async function processarInbound(
     !midia.storagePath &&
     !(await jaRespondida(supabase, payload.id, 'nao_entendi'))
   ) {
-    await responder(supabase, destino, RESPOSTAS.naoEntendi, {
+    await enviar(supabase, destino, RESPOSTAS.naoEntendi, {
       tipo: 'aviso',
       emRespostaA: mensagemId,
     });
@@ -558,7 +606,7 @@ export async function processarInbound(
   // parar ("📁 Garibaldi › Fotos ✔"). Uma vez só, mesmo com retry.
   if ('ok' in classificacao && classificacao.ok && classificacao.resposta) {
     if (!(await jaRespondida(supabase, payload.id, `arquivado:${classificacao.kind}`))) {
-      await responder(supabase, destino, classificacao.resposta, {
+      await enviar(supabase, destino, classificacao.resposta, {
         tipo: classificacao.kind === 'documento_obra' ? 'arquivado' : 'anotado',
         emRespostaA: mensagemId,
         documentoId: classificacao.documentoId ?? null,
@@ -585,6 +633,8 @@ interface ContextoDaMensagem {
   midia: MidiaMaterializada;
   tipoDb: Database['public']['Enums']['msg_tipo'];
   textoEfetivo: string | null;
+  enviar: Enviar;
+  loteId: string | null;
 }
 
 /**
@@ -597,7 +647,7 @@ async function responderPendencia(
   pendencia: PendenciaAberta,
   interpretacao: Interpretacao,
 ): Promise<ResultadoInbound | null> {
-  const { supabase, payload, telefone, destino, midia, tipoDb, textoEfetivo } = c;
+  const { supabase, payload, telefone, destino, midia, tipoDb, textoEfetivo, enviar } = c;
   // Pendência de AÇÃO (criar obra, contrato, recebimento…): SIM executa o
   // que está gravado na pendência; NÃO cancela. Outra coisa segue o fluxo —
   // a pergunta continua aberta pelas 24 h.
@@ -614,12 +664,13 @@ async function responderPendencia(
         telefone,
         grupoId: c.grupoId,
         autorizadoId: c.autorizado.id,
+        loteId: c.loteId,
         midia,
         tipoDb,
         status: r.ok ? 'confirmada' : 'recebida',
       });
       if (r.ok) {
-        await responder(supabase, destino, r.texto, {
+        await enviar(supabase, destino, r.texto, {
           tipo: 'acao_executada',
           emRespostaA: gravada.id,
           confirmacaoId: pendencia.id,
@@ -627,7 +678,7 @@ async function responderPendencia(
         return { acao: 'executou_acao', detalhe: r.proposta.tipo };
       }
       log.aviso('acao_nao_executada', { codigo: r.codigo, motivo: r.motivo });
-      await responder(
+      await enviar(
         supabase,
         destino,
         r.codigo === 'ja_resolvida' ? RESPOSTAS.acaoJaResolvida : RESPOSTAS.falhaTemporaria,
@@ -648,11 +699,12 @@ async function responderPendencia(
         telefone,
         grupoId: c.grupoId,
         autorizadoId: c.autorizado.id,
+        loteId: c.loteId,
         midia,
         tipoDb,
         status: 'recusada',
       });
-      await responder(supabase, destino, RESPOSTAS.acaoCancelada, {
+      await enviar(supabase, destino, RESPOSTAS.acaoCancelada, {
         tipo: 'aviso',
         emRespostaA: gravada.id,
         confirmacaoId: pendencia.id,
@@ -673,7 +725,7 @@ async function responderPendencia(
       });
       if (!definida.ok) {
         log.aviso('obra_da_pendencia_nao_definida', { codigo: definida.codigo });
-        await responder(supabase, destino, RESPOSTAS.falhaTemporaria, {
+        await enviar(supabase, destino, RESPOSTAS.falhaTemporaria, {
           tipo: 'aviso',
           confirmacaoId: pendencia.id,
         });
@@ -688,6 +740,9 @@ async function responderPendencia(
         destino,
         grupoId: c.grupoId,
         autorizadoId: c.autorizado.id,
+        autorizadoNome: c.autorizado.nome,
+        enviar: c.enviar,
+        loteId: c.loteId,
         textoEfetivo,
         midia,
         tipoDb,
@@ -701,11 +756,12 @@ async function responderPendencia(
         telefone,
         grupoId: c.grupoId,
         autorizadoId: c.autorizado.id,
+        loteId: c.loteId,
         midia,
         tipoDb,
         status: 'recebida',
       });
-      await responder(supabase, destino, RESPOSTAS.faltaObra, {
+      await enviar(supabase, destino, RESPOSTAS.faltaObra, {
         tipo: 'aviso',
         emRespostaA: gravada.id,
         confirmacaoId: pendencia.id,
@@ -725,6 +781,8 @@ async function responderPendencia(
       grupoId: c.grupoId,
       autorizadoId: c.autorizado.id,
       autorizadoNome: c.autorizado.nome,
+      enviar: c.enviar,
+      loteId: c.loteId,
       textoEfetivo,
       midia,
       tipoDb,
@@ -743,6 +801,8 @@ async function responderPendencia(
         destino,
         grupoId: c.grupoId,
         autorizadoId: c.autorizado.id,
+        enviar: c.enviar,
+        loteId: c.loteId,
         textoEfetivo,
         midia,
         tipoDb,
@@ -761,11 +821,12 @@ async function responderPendencia(
         telefone,
         grupoId: c.grupoId,
         autorizadoId: c.autorizado.id,
+        loteId: c.loteId,
         tipoDb,
         midia,
         status: 'recusada',
       });
-      await responder(supabase, destino, RESPOSTAS.obraRecusada, {
+      await enviar(supabase, destino, RESPOSTAS.obraRecusada, {
         tipo: 'aviso',
         emRespostaA: gravada.id,
         confirmacaoId: pendencia.id,
@@ -787,7 +848,7 @@ async function anexarAoPagamentoCitado(
   c: ContextoDaMensagem,
   pagamentoId: string,
 ): Promise<ResultadoInbound> {
-  const { supabase, destino, midia } = c;
+  const { supabase, destino, midia, enviar } = c;
   const gravada = await gravarMensagem({ ...c, autorizadoId: c.autorizado.id, status: 'recebida' });
   if (gravada.duplicada) return { acao: 'duplicada' };
   const { data: pag } = await supabase
@@ -797,7 +858,7 @@ async function anexarAoPagamentoCitado(
     .is('deleted_at', null)
     .maybeSingle();
   if (!pag) {
-    await responder(supabase, destino, RESPOSTAS.falhaTemporaria, {
+    await enviar(supabase, destino, RESPOSTAS.falhaTemporaria, {
       tipo: 'aviso',
       emRespostaA: gravada.id,
     });
@@ -818,7 +879,7 @@ async function anexarAoPagamentoCitado(
   });
   if (!r.ok) {
     log.aviso('anexo_citado_falhou', { motivo: r.motivo });
-    await responder(supabase, destino, RESPOSTAS.falhaTemporaria, {
+    await enviar(supabase, destino, RESPOSTAS.falhaTemporaria, {
       tipo: 'aviso',
       emRespostaA: gravada.id,
       pagamentoId: pag.id,
@@ -836,7 +897,7 @@ async function anexarAoPagamentoCitado(
     .select('nome')
     .eq('id', pag.obra_id)
     .maybeSingle();
-  await responder(
+  await enviar(
     supabase,
     destino,
     respostaAnexado({
@@ -854,7 +915,7 @@ async function desfazer(
   alvo: AlvoDaMensagem | null,
   chatDaPendencia: string | null,
 ): Promise<ResultadoInbound> {
-  const { supabase, destino, telefone, textoEfetivo } = c;
+  const { supabase, destino, telefone, textoEfetivo, enviar } = c;
   const gravada = await gravarMensagem({ ...c, autorizadoId: c.autorizado.id, status: 'recebida' });
   if (gravada.duplicada) return { acao: 'duplicada' };
 
@@ -880,11 +941,12 @@ async function desfazer(
         pagamentoId: null,
         documentoId: null,
         registroId: null,
+        loteId: null,
       };
     }
   }
   if (!alvoReal) {
-    await responder(supabase, destino, RESPOSTAS.desfazerSemAlvo, {
+    await enviar(supabase, destino, RESPOSTAS.desfazerSemAlvo, {
       tipo: 'aviso',
       emRespostaA: gravada.id,
     });
@@ -893,7 +955,7 @@ async function desfazer(
 
   const r = await desfazerAlvo(supabase, alvoReal, { respostaBruta: textoEfetivo ?? '' });
   if (!r.ok) {
-    await responder(
+    await enviar(
       supabase,
       destino,
       r.codigo === 'ja_desfeito' ? RESPOSTAS.jaDesfeito : RESPOSTAS.falhaTemporaria,
@@ -902,7 +964,7 @@ async function desfazer(
     return { acao: 'desfez', mensagemId: gravada.id ?? undefined, detalhe: r.codigo };
   }
   if (c.payload.chatId) await zerarObraDaConversa(supabase, c.payload.chatId);
-  await responder(supabase, destino, r.resposta, {
+  await enviar(supabase, destino, r.resposta, {
     tipo: 'aviso',
     emRespostaA: gravada.id,
     confirmacaoId: alvoReal.confirmacaoId,
@@ -939,7 +1001,7 @@ async function moverCitado(
   c: ContextoDaMensagem,
   alvo: AlvoDaMensagem,
 ): Promise<ResultadoInbound | null> {
-  const { supabase, destino, textoEfetivo } = c;
+  const { supabase, destino, textoEfetivo, enviar } = c;
   const nomes = await nomesDoCadastro(supabase);
   const obra = acharNomeado(normalizarNome(textoEfetivo), nomes.obras);
   if (!obra && !pareceCorrecao(textoEfetivo)) return null;
@@ -947,7 +1009,7 @@ async function moverCitado(
   const gravada = await gravarMensagem({ ...c, autorizadoId: c.autorizado.id, status: 'recebida' });
   if (gravada.duplicada) return { acao: 'duplicada' };
   if (!obra) {
-    await responder(supabase, destino, RESPOSTAS.moverQualObra, {
+    await enviar(supabase, destino, RESPOSTAS.moverQualObra, {
       tipo: 'aviso',
       emRespostaA: gravada.id,
       documentoId: alvo.documentoId,
@@ -957,7 +1019,7 @@ async function moverCitado(
   }
   const r = await moverParaObra(supabase, alvo, obra);
   if (!r.ok) {
-    await responder(
+    await enviar(
       supabase,
       destino,
       r.codigo === 'ja_desfeito' ? `Já está na obra *${obra.nome}*.` : RESPOSTAS.falhaTemporaria,
@@ -966,13 +1028,80 @@ async function moverCitado(
     return { acao: 'moveu', mensagemId: gravada.id ?? undefined, detalhe: r.codigo };
   }
   if (c.payload.chatId) await zerarObraDaConversa(supabase, c.payload.chatId, obra);
-  await responder(supabase, destino, r.resposta, {
+  await enviar(supabase, destino, r.resposta, {
     tipo: alvo.registroId ? 'anotado' : 'arquivado',
     emRespostaA: gravada.id,
     documentoId: alvo.documentoId,
     registroId: alvo.registroId,
   });
   return { acao: 'moveu', mensagemId: gravada.id ?? undefined, detalhe: r.oQue };
+}
+
+/**
+ * Resposta à lista de um lote. "sim"/"não" → todos os itens ainda abertos;
+ * "2" ou "2 sim" → confirma o 2; "2 não" → recusa o 2; "2 é na INOX" →
+ * corrige o 2. Sem número e sem sim/não, `null`: segue o fluxo (e a correção
+ * sem número, com 2+ itens, pede o número).
+ */
+async function responderLote(
+  c: ContextoDaMensagem,
+  chatId: string,
+  escolha: { itens: Array<{ n: number; confirmacaoId: string }> },
+  interpretacao: Interpretacao,
+): Promise<ResultadoInbound | null> {
+  const { supabase, destino, enviar } = c;
+  const texto = c.textoEfetivo ?? '';
+  const m = texto.match(/^\s*(\d{1,2})\s*[).:\-]?\s*([\s\S]*)$/u);
+  const abertos = (
+    await Promise.all(escolha.itens.map((i) => buscarConfirmacaoPorId(supabase, i.confirmacaoId)))
+  ).filter((p): p is PendenciaAberta => p != null);
+
+  if (m?.[1]) {
+    const n = Number(m[1]);
+    const item = escolha.itens.find((i) => i.n === n);
+    if (!item) return null;
+    const p = abertos.find((x) => x.id === item.confirmacaoId);
+    const resto = (m[2] ?? '').trim();
+    if (!p) {
+      await enviar(supabase, destino, RESPOSTAS.itemDoLoteJaResolvido, { tipo: 'aviso' });
+      return { acao: 'ignorada_sem_pendencia', detalhe: `lote:item_${n}_resolvido` };
+    }
+    const doResto = resto ? interpretarResposta(resto) : 'sim';
+    let r: ResultadoInbound | null;
+    if (doResto !== 'outro') {
+      r = await responderPendencia(c, p, doResto);
+    } else {
+      r = await corrigir({ ...c, textoEfetivo: resto }, p, chatId);
+    }
+    if (abertos.length <= 1) await limparEscolha(supabase, chatId);
+    return r;
+  }
+
+  if (interpretacao !== 'outro') {
+    let ultimo: ResultadoInbound = { acao: 'ignorada_sem_pendencia' };
+    for (const p of abertos) ultimo = (await responderPendencia(c, p, interpretacao)) ?? ultimo;
+    await limparEscolha(supabase, chatId);
+    return { ...ultimo, detalhe: `lote:${abertos.length}` };
+  }
+
+  if (abertos.length > 1 && pareceCorrecao(texto)) {
+    const gravada = await gravarMensagem({
+      ...c,
+      autorizadoId: c.autorizado.id,
+      status: 'recebida',
+    });
+    if (gravada.duplicada) return { acao: 'duplicada' };
+    await enviar(supabase, destino, RESPOSTAS.loteQualItem, {
+      tipo: 'aviso',
+      emRespostaA: gravada.id,
+    });
+    return {
+      acao: 'corrigiu_pendencia',
+      mensagemId: gravada.id ?? undefined,
+      detalhe: 'lote_sem_numero',
+    };
+  }
+  return null;
 }
 
 /** Duas ou mais perguntas esperando SIM/NÃO e um "sim" solto: qual? */
@@ -982,7 +1111,7 @@ async function perguntarQual(
   candidatas: PendenciaAberta[],
   interpretacao: Interpretacao,
 ): Promise<ResultadoInbound> {
-  const { supabase, destino } = c;
+  const { supabase, destino, enviar } = c;
   const gravada = await gravarMensagem({ ...c, autorizadoId: c.autorizado.id, status: 'recebida' });
   if (gravada.duplicada) return { acao: 'duplicada' };
   // Da mais antiga para a mais nova: é a ordem em que a pessoa viu as perguntas.
@@ -995,7 +1124,7 @@ async function perguntarQual(
     interpretacao: escolha,
     itens: ordenadas.map((p, i) => ({ n: i + 1, confirmacaoId: p.id })),
   });
-  await responder(supabase, destino, perguntaQualPendencia(itens, escolha), {
+  await enviar(supabase, destino, perguntaQualPendencia(itens, escolha), {
     tipo: 'aviso',
     emRespostaA: gravada.id,
   });
@@ -1015,7 +1144,7 @@ async function corrigir(
   pendencia: PendenciaAberta,
   chatDaPendencia: string | null,
 ): Promise<ResultadoInbound> {
-  const { supabase, destino, textoEfetivo } = c;
+  const { supabase, destino, textoEfetivo, enviar } = c;
   const texto = textoEfetivo ?? '';
   const nomes = await nomesDoCadastro(supabase);
   const patch = await extrairCorrecao(texto, {
@@ -1040,7 +1169,7 @@ async function corrigir(
   const rastro = { emRespostaA: gravada.id, confirmacaoId: pendencia.id };
 
   if (pendencia.tipo === 'acao') {
-    await responder(supabase, destino, RESPOSTAS.correcaoDeAcao, { tipo: 'aviso', ...rastro });
+    await enviar(supabase, destino, RESPOSTAS.correcaoDeAcao, { tipo: 'aviso', ...rastro });
     return { acao: 'corrigiu_pendencia', mensagemId: gravada.id ?? undefined, detalhe: 'acao' };
   }
 
@@ -1059,12 +1188,12 @@ async function corrigir(
         jaGravada: gravada.id,
       });
     }
-    await responder(supabase, destino, RESPOSTAS.correcaoQualObra, { tipo: 'aviso', ...rastro });
+    await enviar(supabase, destino, RESPOSTAS.correcaoQualObra, { tipo: 'aviso', ...rastro });
     return { acao: 'corrigiu_pendencia', mensagemId: gravada.id ?? undefined, detalhe: 'sem_obra' };
   }
 
   if (campos.length === 0) {
-    await responder(supabase, destino, RESPOSTAS.correcaoSemDado, { tipo: 'aviso', ...rastro });
+    await enviar(supabase, destino, RESPOSTAS.correcaoSemDado, { tipo: 'aviso', ...rastro });
     return { acao: 'corrigiu_pendencia', mensagemId: gravada.id ?? undefined, detalhe: 'sem_dado' };
   }
 
@@ -1075,7 +1204,7 @@ async function corrigir(
     respostaBruta: texto,
   });
   if (!r.ok) {
-    await responder(
+    await enviar(
       supabase,
       destino,
       r.codigo === 'sem_mudanca' ? RESPOSTAS.correcaoSemDado : RESPOSTAS.falhaTemporaria,
@@ -1083,7 +1212,7 @@ async function corrigir(
     );
     return { acao: 'corrigiu_pendencia', mensagemId: gravada.id ?? undefined, detalhe: r.codigo };
   }
-  await responder(supabase, destino, r.resposta, { tipo: 'pergunta_pendencia', ...rastro });
+  await enviar(supabase, destino, r.resposta, { tipo: 'pergunta_pendencia', ...rastro });
   return {
     acao: 'corrigiu_pendencia',
     mensagemId: gravada.id ?? undefined,
@@ -1110,6 +1239,8 @@ interface ContextoResolucao {
   rotuloObra?: string;
   /** A mensagem já foi gravada por quem chamou (correção): não gravar de novo. */
   jaGravada?: string | null;
+  enviar: Enviar;
+  loteId: string | null;
 }
 
 /**
@@ -1120,7 +1251,7 @@ interface ContextoResolucao {
  * cliente e não de um clique do gestor.
  */
 async function resolverPendencia(ctx: ContextoResolucao): Promise<ResultadoInbound> {
-  const { supabase, pendencia, interpretacao, destino, textoEfetivo } = ctx;
+  const { supabase, pendencia, interpretacao, destino, textoEfetivo, enviar } = ctx;
   const respostaBruta = textoEfetivo ?? '(sem texto)';
 
   if (interpretacao === 'sim') {
@@ -1143,7 +1274,7 @@ async function resolverPendencia(ctx: ContextoResolucao): Promise<ResultadoInbou
       // extração não tinha valor ou obra. Avisamos em vez de silenciar —
       // senão ele acha que lançou e não lançou.
       log.aviso('confirmacao_sem_pagamento', { codigo: resultado.codigo });
-      await responder(supabase, destino, RESPOSTAS.confirmadoSemPagamento, {
+      await enviar(supabase, destino, RESPOSTAS.confirmadoSemPagamento, {
         tipo: 'aviso',
         emRespostaA: gravada.id,
         confirmacaoId: pendencia.id,
@@ -1151,7 +1282,7 @@ async function resolverPendencia(ctx: ContextoResolucao): Promise<ResultadoInbou
       return { acao: 'confirmou_pendencia', detalhe: resultado.codigo };
     }
 
-    await responder(
+    await enviar(
       supabase,
       destino,
       await textoDoLancado(supabase, resultado.pagamentoId, {
@@ -1183,7 +1314,7 @@ async function resolverPendencia(ctx: ContextoResolucao): Promise<ResultadoInbou
     autorizadoId: ctx.autorizadoId,
   });
 
-  await responder(supabase, destino, RESPOSTAS.recusado, {
+  await enviar(supabase, destino, RESPOSTAS.recusado, {
     tipo: 'aviso',
     emRespostaA: gravada.id,
     confirmacaoId: pendencia.id,
@@ -1199,7 +1330,7 @@ async function resolverPendencia(ctx: ContextoResolucao): Promise<ResultadoInbou
 async function resolverEscolhaDeObra(
   ctx: Omit<ContextoResolucao, 'interpretacao'> & { obraId: string },
 ): Promise<ResultadoInbound> {
-  const { supabase, pendencia, destino, textoEfetivo } = ctx;
+  const { supabase, pendencia, destino, textoEfetivo, enviar } = ctx;
   const resultado = await aplicarEscolhaDeObra(supabase, {
     confirmacaoId: pendencia.id,
     obraId: ctx.obraId,
@@ -1217,7 +1348,7 @@ async function resolverEscolhaDeObra(
 
   if (!resultado.ok) {
     log.aviso('escolha_de_obra_falhou', { codigo: resultado.codigo });
-    await responder(supabase, destino, RESPOSTAS.falhaTemporaria, {
+    await enviar(supabase, destino, RESPOSTAS.falhaTemporaria, {
       tipo: 'aviso',
       emRespostaA: gravada.id,
       confirmacaoId: pendencia.id,
@@ -1225,7 +1356,39 @@ async function resolverEscolhaDeObra(
     return { acao: 'escolheu_obra', detalhe: resultado.codigo };
   }
 
-  await responder(supabase, destino, resultado.resposta, {
+  // "Recebi 5 arquivos. De qual obra?": a resposta vale para todos os do
+  // lote — os outros quatro vão para a mesma obra, e a resposta diz "5".
+  let resposta = resultado.resposta;
+  if (pendencia.loteId) {
+    const irmas = (await pendenciasDoLote(supabase, pendencia.loteId)).filter(
+      (p) => p.id !== pendencia.id && p.tipo !== 'pagamento',
+    );
+    let resolvidas = 0;
+    for (const irma of irmas) {
+      const r = await aplicarEscolhaDeObra(supabase, {
+        confirmacaoId: irma.id,
+        obraId: ctx.obraId,
+        via: 'whatsapp',
+        respostaBruta: textoEfetivo ?? '(sem texto)',
+        userId: null,
+      });
+      if (r.ok) resolvidas += 1;
+    }
+    if (resolvidas > 0) {
+      const { data: obra } = await supabase
+        .from('obras')
+        .select('nome')
+        .eq('id', ctx.obraId)
+        .maybeSingle();
+      resposta = respostaArquivado(obra?.nome ?? 'obra', 'outro', {
+        quantidade: resolvidas + 1,
+        semPasta: true,
+        link: linkDoPainel(`/obras/${ctx.obraId}#pastas`),
+      });
+    }
+  }
+
+  await enviar(supabase, destino, resposta, {
     tipo: pendencia.tipo === 'obra_registro' ? 'anotado' : 'arquivado',
     emRespostaA: gravada.id,
     confirmacaoId: pendencia.id,
@@ -1245,6 +1408,7 @@ interface ArgsGravar {
   midia: MidiaMaterializada;
   status: Database['public']['Enums']['msg_status'];
   pagamentoId?: string | null;
+  loteId?: string | null;
 }
 
 async function gravarMensagem(
@@ -1268,6 +1432,7 @@ async function gravarMensagem(
       recebida_em: toIsoDate(payload.timestamp),
       status,
       pagamento_id: args.pagamentoId ?? null,
+      lote_id: args.loteId ?? null,
     })
     .select('id')
     .single();
