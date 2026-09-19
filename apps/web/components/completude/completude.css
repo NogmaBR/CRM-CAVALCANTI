@@ -346,3 +346,23 @@
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
+
+/* Chip "Sem comprovante": vermelho quando ativo, para o filtro dizer o que é. */
+.obras-filter-tab--alerta {
+  color: var(--danger);
+}
+.obras-filter-tab--alerta.is-active {
+  color: var(--danger);
+  box-shadow: inset 0 -2px 0 var(--danger);
+}
+
+/* ---- coluna Comprovante (lista de pagamentos) ------------------------ */
+.comprovante {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.comprovante--falta {
+  cursor: pointer;
+}

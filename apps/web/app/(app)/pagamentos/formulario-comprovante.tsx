@@ -22,6 +22,7 @@ export function FormularioDeComprovante({
 }) {
   return (
     <form
+      id="comprovante"
       action={action}
       className={`form-comprovante${compacto ? ' form-comprovante--compacto' : ''}`}
       encType="multipart/form-data"

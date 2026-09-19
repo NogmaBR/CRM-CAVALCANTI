@@ -2,13 +2,20 @@ import { Miniatura } from '@/components/arquivos/miniatura';
 import { TopBar } from '@/components/layout/topbar';
 import { Badge } from '@/components/nogma/Badge';
 import { rotuloDoMime, urlDoArquivo } from '@/lib/arquivos/tipo-visual';
-import { type MensagemFeedItem, type MsgStatus, listMensagens } from '@/lib/data/mensagens';
+import {
+  type MensagemFeedItem,
+  type MsgStatus,
+  listConversa,
+  listConversas,
+  listMensagens,
+} from '@/lib/data/mensagens';
 import {
   MSG_STATUS_LABEL as STATUS_LABEL,
   MSG_STATUS_VARIANT as STATUS_VARIANT,
 } from '@/lib/status-labels';
 import { ArrowRight, MessageSquare, Paperclip } from 'lucide-react';
 import Link from 'next/link';
+import { Conversa, ListaDeConversas } from './conversa';
 import './whatsapp.css';
 
 export const metadata = { title: 'WhatsApp' };
@@ -50,9 +57,10 @@ function formatDateTime(iso: string | null | undefined): string {
 export default async function WhatsAppPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; visao?: string; chat?: string }>;
 }) {
   const params = await searchParams;
+  if (params.visao === 'conversa') return <VisaoConversa chat={params.chat ?? null} />;
   // `?status=` só vale se for um status conhecido; antes qualquer lixo virava
   // 'Nenhuma mensagem com status "undefined"'.
   const pedido = params.status ?? '';
@@ -63,7 +71,15 @@ export default async function WhatsAppPage({
 
   return (
     <>
-      <TopBar title="WhatsApp" subtitle="Fila de mensagens recebidas e classificadas pela IA" />
+      <TopBar
+        title="WhatsApp"
+        subtitle="Fila de mensagens recebidas e classificadas pela IA"
+        actions={
+          <Link href="/whatsapp?visao=conversa" className="wa-visao-link">
+            Ver como conversa
+          </Link>
+        }
+      />
       <div className="nos-page-body">
         <nav className="whatsapp-filter-tabs" aria-label="Filtrar por status">
           {FILTER_OPTIONS.map((opt) => {
@@ -98,6 +114,30 @@ export default async function WhatsAppPage({
             ))}
           </ul>
         )}
+      </div>
+    </>
+  );
+}
+
+/** A conversa dos dois lados (pessoa e agente), por chat. */
+async function VisaoConversa({ chat }: { chat: string | null }) {
+  const conversas = await listConversas();
+  const atual = chat ?? conversas[0]?.chatId ?? null;
+  const baloes = atual ? await listConversa(atual) : [];
+  return (
+    <>
+      <TopBar
+        title="WhatsApp"
+        subtitle="A conversa inteira: o que a equipe mandou e o que o agente respondeu"
+        actions={
+          <Link href="/whatsapp" className="wa-visao-link">
+            Ver como fila
+          </Link>
+        }
+      />
+      <div className="nos-page-body wa-inbox">
+        <ListaDeConversas conversas={conversas} atual={atual} />
+        <Conversa baloes={baloes} />
       </div>
     </>
   );

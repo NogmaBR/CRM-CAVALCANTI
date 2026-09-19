@@ -1,5 +1,6 @@
 'use client';
 
+import { colunaDeComprovante } from '@/components/completude/coluna-comprovante';
 import { colunaDeSituacao } from '@/components/completude/coluna-situacao';
 import { DataTable } from '@/components/data-table';
 import { Badge } from '@/components/nogma/Badge';
@@ -137,10 +138,13 @@ export function PagamentosTable({
           return <Badge variant={STATUS_VARIANT[s]}>{STATUS_LABEL[s]}</Badge>;
         },
       },
-      // O semáforo: o que falta neste lançamento (comprovante, fornecedor,
-      // etapa…). Pesquisável pelo rótulo ("sem comprovante") e ordenável
-      // pelo nível, para o vermelho subir.
-      ...(completude ? [colunaDeSituacao<Pagamento>(completude)] : []),
+      // Comprovante sozinho (✓/✗), sem abrir o lançamento — a pergunta que o
+      // gestor mais faz. Depois o semáforo: tudo que falta neste lançamento.
+      // Pesquisáveis pelo rótulo ("sem comprovante") e ordenáveis, para o
+      // vermelho subir.
+      ...(completude
+        ? [colunaDeComprovante<Pagamento>(completude), colunaDeSituacao<Pagamento>(completude)]
+        : []),
       // Escondidas de início (`visibilidadeInicial` abaixo): existem só para
       // a busca global cobrir descrição e observações (QA, ISSUE-011). O
       // `?? ''` importa — com `null` na primeira linha o TanStack decide que
