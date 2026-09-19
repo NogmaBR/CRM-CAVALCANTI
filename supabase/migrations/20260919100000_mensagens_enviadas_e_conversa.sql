@@ -71,6 +71,14 @@ GRANT ALL ON mensagens_enviadas TO service_role;
 CREATE TABLE IF NOT EXISTS conversa_estado (
   chat_id TEXT PRIMARY KEY,
   obra_conversa_reset_em TIMESTAMPTZ,
+  -- A obra que a pessoa disse por correção ("não, é na INOX"): vence a
+  -- dedução pelas mensagens enquanto estiver dentro da janela.
+  obra_conversa_id UUID REFERENCES obras(id) ON DELETE SET NULL,
+  obra_conversa_em TIMESTAMPTZ,
+  -- "Qual pendência?" em aberto: [{ n, confirmacao_id }] e a resposta que a
+  -- pessoa deu ('sim'/'nao'), esperando o número. Vale 10 minutos.
+  escolha_pendencias JSONB,
+  escolha_em TIMESTAMPTZ,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

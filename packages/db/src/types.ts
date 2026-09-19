@@ -1152,16 +1152,28 @@ export type Database = {
         Row: {
           chat_id: string;
           obra_conversa_reset_em: string | null;
+          obra_conversa_id: string | null;
+          obra_conversa_em: string | null;
+          escolha_pendencias: Json | null;
+          escolha_em: string | null;
           updated_at: string;
         };
         Insert: {
           chat_id: string;
           obra_conversa_reset_em?: string | null;
+          obra_conversa_id?: string | null;
+          obra_conversa_em?: string | null;
+          escolha_pendencias?: Json | null;
+          escolha_em?: string | null;
           updated_at?: string;
         };
         Update: {
           chat_id?: string;
           obra_conversa_reset_em?: string | null;
+          obra_conversa_id?: string | null;
+          obra_conversa_em?: string | null;
+          escolha_pendencias?: Json | null;
+          escolha_em?: string | null;
           updated_at?: string;
         };
         Relationships: [];
