@@ -18,12 +18,15 @@ export function FiltroDeSituacao({
   atual,
   buildHref,
   contagem,
+  extra,
 }: {
   atual: Situacao;
   /** Recebe o valor do filtro e devolve a URL com os outros filtros mantidos. */
   buildHref: (situacao: Situacao) => string;
   /** Quantos itens caem em cada opção (opcional — aparece entre parênteses). */
   contagem?: Partial<Record<Situacao, number>>;
+  /** Um chip a mais, independente da situação (ex.: "Sem comprovante"). */
+  extra?: { ativo: boolean; href: string; label: string; n?: number };
 }) {
   return (
     <div className="filtro-situacao">
@@ -47,6 +50,20 @@ export function FiltroDeSituacao({
             </Link>
           );
         })}
+        {extra ? (
+          <Link
+            href={extra.href}
+            className={
+              extra.ativo
+                ? 'obras-filter-tab obras-filter-tab--alerta is-active'
+                : 'obras-filter-tab obras-filter-tab--alerta'
+            }
+            aria-pressed={extra.ativo}
+          >
+            {extra.label}
+            {extra.n != null ? <span className="filtro-situacao__n">({extra.n})</span> : null}
+          </Link>
+        ) : null}
       </nav>
       <ul className="semaforo-legenda" aria-label="Legenda das cores">
         <li>

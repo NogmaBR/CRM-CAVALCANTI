@@ -1,7 +1,7 @@
 import 'server-only';
+import { Document, Font, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 import type { ReactNode } from 'react';
-import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
-import { nogmaColors as c, spacing as s, fontSizes as f } from './theme';
+import { nogmaColors as c, fontSizes as f, spacing as s } from './theme';
 
 /**
  * Primitivos compartilhados para PDFs Nogma. Todos usam Helvetica
@@ -200,8 +200,11 @@ function nowFormatted(): string {
 export function NogmaHeader({ subtitle }: { subtitle?: string }) {
   return (
     <View style={styles.headerBar} fixed>
+      {/* O relatório é do cliente, não da Nogma: cabeçalho com o nome dele
+          (reunião de 18/09). A data de emissão fica — é o que diz "de quando
+          é este número". */}
       <Text style={styles.brand}>
-        NOGMA<Text style={styles.brandAccent}> · </Text>Gestor de Obras
+        CAVALCANTI CONSTRUÇÕES<Text style={styles.brandAccent}> · </Text>Relatório
       </Text>
       <View style={styles.headerMeta}>
         <Text>Emitido {nowFormatted()}</Text>
@@ -214,7 +217,7 @@ export function NogmaHeader({ subtitle }: { subtitle?: string }) {
 export function NogmaFooter() {
   return (
     <View style={styles.footerBar} fixed>
-      <Text>Nogma · Cavalcanti Construções · Documento confidencial</Text>
+      <Text>Cavalcanti Construções · Documento confidencial · gerado pelo CRM Nogma</Text>
       <Text
         render={({ pageNumber, totalPages }: { pageNumber: number; totalPages: number }) =>
           `Página ${pageNumber} de ${totalPages}`
@@ -234,7 +237,7 @@ export function NogmaDoc({
   headerSubtitle?: string;
 }) {
   return (
-    <Document title={title} author="Nogma Gestor de Obras" creator="Nogma Gestor de Obras">
+    <Document title={title} author="Cavalcanti Construções" creator="CRM Nogma">
       <Page size="A4" style={styles.page}>
         <NogmaHeader subtitle={headerSubtitle} />
         {children}

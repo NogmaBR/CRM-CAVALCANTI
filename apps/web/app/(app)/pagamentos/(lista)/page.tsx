@@ -45,6 +45,7 @@ export default async function PagamentosPage({
     fornecedor_id?: string;
     categoria_id?: string;
     situacao?: string;
+    comprovante?: string;
   }>;
 }) {
   const params = await searchParams;
@@ -75,9 +76,11 @@ async function PagamentosConteudo({
     fornecedor_id?: string;
     categoria_id?: string;
     situacao?: string;
+    comprovante?: string;
   };
 }) {
   const status = params.status ?? '';
+  const soSemComprovante = params.comprovante === 'sem';
   const obraId = params.obra_id ?? '';
   const fornecedorId = params.fornecedor_id ?? '';
   const categoriaId = params.categoria_id ?? '';
@@ -124,10 +127,15 @@ async function PagamentosConteudo({
     else contagem.pendente += 1;
     if (c.nivel === 'critico') contagem.critico += 1;
   }
+  const semComprovante = (id: string) =>
+    (completudeMap.get(id)?.faltas ?? []).some((f) => f.chave === 'comprovante');
+  const totalSemComprovante = isArquivado ? 0 : todos.filter((p) => semComprovante(p.id)).length;
   const pagamentos = isArquivado
     ? todos
-    : todos.filter((p) =>
-        passaNoFiltro(completudeMap.get(p.id) ?? { nivel: 'completo' }, situacao),
+    : todos.filter(
+        (p) =>
+          passaNoFiltro(completudeMap.get(p.id) ?? { nivel: 'completo' }, situacao) &&
+          (!soSemComprovante || semComprovante(p.id)),
       );
 
   const buildHref = (overrides: Partial<Record<string, string>>) => {
@@ -138,6 +146,7 @@ async function PagamentosConteudo({
       fornecedor_id: fornecedorId,
       categoria_id: categoriaId,
       situacao,
+      comprovante: soSemComprovante ? 'sem' : '',
       ...overrides,
     };
     for (const [k, v] of Object.entries(merged)) {
@@ -175,6 +184,12 @@ async function PagamentosConteudo({
           atual={situacao}
           buildHref={(v) => buildHref({ situacao: v })}
           contagem={contagem}
+          extra={{
+            ativo: soSemComprovante,
+            href: buildHref({ comprovante: soSemComprovante ? '' : 'sem' }),
+            label: 'Sem comprovante',
+            n: totalSemComprovante,
+          }}
         />
       ) : null}
 
