@@ -1,4 +1,6 @@
 import 'server-only';
+import { extrairCorrecao } from '@/lib/ia/correcao';
+import { normalizarNome } from '@/lib/ia/resolver-nomes';
 import { transcreverAudio } from '@/lib/ia/transcricao';
 import { logger } from '@/lib/log';
 import {
@@ -10,27 +12,51 @@ import {
   toIsoDate,
 } from '@/lib/schemas/uazapi';
 import { uploadDocumentBuffer } from '@/lib/storage/documents';
+import { hojeBR } from '@/lib/util/datas';
 import { interpretarComando } from '@/lib/whatsapp/comandos';
+import {
+  acharNomeado,
+  alcanceDaResposta,
+  pareceCorrecao,
+  pareceDesfazer,
+  semAlcance,
+} from '@/lib/whatsapp/correcao';
 import { interpretarEscolha } from '@/lib/whatsapp/escolha';
 import { linkDoPainel } from '@/lib/whatsapp/links';
 import { nomeArquivoDaMidia } from '@/lib/whatsapp/nome-arquivo';
-import { interpretarResposta } from '@/lib/whatsapp/resposta';
+import { type Interpretacao, interpretarResposta } from '@/lib/whatsapp/resposta';
 import { decidirDestino } from '@/lib/whatsapp/roteador';
 import { variantesTelefoneBR } from '@/lib/whatsapp/telefone-br';
-import { RESPOSTAS, respostaPagamentoLancado } from '@/lib/whatsapp/textos';
+import {
+  RESPOSTAS,
+  perguntaQualPendencia,
+  respostaAnexado,
+  respostaPagamentoLancado,
+} from '@/lib/whatsapp/textos';
 import type { Database } from '@nogma/db';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { abrirPendenciaDeAcao, aplicarAcao } from './acoes-whatsapp';
+import { anexarMidiaComoDocumento } from './anexar-midia';
 import { classifyAndPersist } from './classify-and-persist';
 import { executarComando } from './comandos-whatsapp';
 import {
   type PendenciaAberta,
   aplicarConfirmacao,
   aplicarEscolhaDeObra,
-  buscarConfirmacaoAberta,
+  buscarConfirmacaoPorId,
   definirObraDaPendencia,
+  pendenciasAbertas,
   recusarConfirmacao,
+  resumoDaPendencia,
 } from './confirmacoes';
+import { corrigirPendencia } from './corrigir-pendencia';
+import { desfazerAlvo, moverParaObra, ultimaAcaoDoRemetente } from './desfazer';
+import {
+  guardarEscolha,
+  lerEscolha,
+  limparEscolha,
+  zerarObraDaConversa,
+} from './escolha-pendencia';
 import { type AlvoDaMensagem, resolverAlvo, responder } from './responder';
 import { baixarMidia, obterLinkDaMidia } from './uazapi';
 
@@ -71,6 +97,11 @@ export type AcaoInbound =
   | 'recusou_pendencia'
   | 'escolheu_obra'
   | 'classificada'
+  | 'corrigiu_pendencia'
+  | 'perguntou_qual'
+  | 'desfez'
+  | 'moveu'
+  | 'anexou'
   | 'comando'
   | 'pergunta'
   | 'acao_proposta'
@@ -199,22 +230,115 @@ export async function processarInbound(
   const textoEfetivo = payload.text?.trim() || midia.transcricao || null;
 
   // ---------------------------------------------------------------------
-  // 4. Isto é resposta a uma pergunta em aberto?
+  // 4. Isto é resposta a uma pergunta em aberto? Correção? Desfazer?
   // ---------------------------------------------------------------------
   // Precisa vir ANTES da classificação: "sim" classificado do zero não
-  // significa nada, e é justamente o elo que faltava no fluxo.
-  const interpretacao = interpretarResposta(textoEfetivo);
+  // significa nada, e é justamente o elo que faltava no fluxo. "sim todos"
+  // vale para todas as perguntas abertas.
+  const alcance = alcanceDaResposta(textoEfetivo);
+  const interpretacao: Interpretacao =
+    alcance === 'todos'
+      ? interpretarResposta(semAlcance(textoEfetivo ?? ''))
+      : interpretarResposta(textoEfetivo);
+  // No grupo a pendência é da CONVERSA (qualquer autorizado responde); no
+  // privado, do telefone.
+  const chatDaPendencia = emGrupo ? (payload.chatId ?? null) : null;
+  const ctxMsg: ContextoDaMensagem = {
+    supabase,
+    payload,
+    telefone,
+    destino,
+    grupoId: grupo?.id ?? null,
+    autorizado,
+    midia,
+    tipoDb,
+    textoEfetivo,
+  };
 
-  // A pendência aberta pode ser de pagamento (responde SIM/NÃO) ou de obra
-  // (responde o número). Só vale a pena buscar quando há texto para
-  // interpretar — foto sem legenda nunca é resposta. Citação ou reação a
-  // uma pergunta específica vence a busca pela mais recente: foi assim que
-  // um "sim" em cima do comprovante de R$ 10 resolveu o de R$ 8 em 17/09.
-  const pendencia = textoEfetivo
-    ? await buscarConfirmacaoAberta(supabase, telefone, JANELA_RESPOSTA_HORAS, {
-        confirmacaoId: alvo?.confirmacaoId ?? null,
-      })
+  // 4a. Nota mandada EM CIMA do "✅ Lançado": anexa ao pagamento, sem
+  // classificar de novo. É o caminho do "lançou por texto, a nota vem depois".
+  if (midia.storagePath && alvo?.pagamentoId) {
+    return anexarAoPagamentoCitado(ctxMsg, alvo.pagamentoId);
+  }
+
+  // 4b. "Desfaz", "cancela isso": o alvo é o que foi citado; sem citação, a
+  // última coisa que o agente fez por causa DESTA pessoa neste chat (30 min);
+  // sem isso, a pergunta aberta mais recente.
+  if (textoEfetivo && !midia.storagePath && pareceDesfazer(textoEfetivo)) {
+    return desfazer(ctxMsg, alvo, chatDaPendencia);
+  }
+
+  // 4c. Correção em cima de um "📁 Guardei…" / "📝 Anotei…": move de obra.
+  if (
+    textoEfetivo &&
+    !midia.storagePath &&
+    alvo &&
+    !alvo.confirmacaoId &&
+    (alvo.documentoId || alvo.registroId)
+  ) {
+    const r = await moverCitado(ctxMsg, alvo);
+    if (r) return r;
+  }
+
+  // 4d. "Qual delas?" perguntado há pouco: o número (ou TODOS) escolhe.
+  if (chatDaPendencia && textoEfetivo && !alvo && !midia.storagePath) {
+    const escolha = await lerEscolha(supabase, chatDaPendencia);
+    if (escolha) {
+      const opcoes = escolha.itens.map((i) => ({ n: i.n, id: i.confirmacaoId, nome: String(i.n) }));
+      const escolhida = alcance === 'todos' ? null : interpretarEscolha(textoEfetivo, opcoes);
+      const alvos = alcance === 'todos' ? opcoes : escolhida ? [escolhida] : [];
+      if (alvos.length > 0) {
+        await limparEscolha(supabase, chatDaPendencia);
+        let ultimo: ResultadoInbound = { acao: 'ignorada_sem_pendencia' };
+        for (const o of alvos) {
+          const p = await buscarConfirmacaoPorId(supabase, o.id);
+          if (!p) continue;
+          ultimo = (await responderPendencia(ctxMsg, p, escolha.interpretacao)) ?? ultimo;
+        }
+        return { ...ultimo, detalhe: `escolha:${alvos.length}` };
+      }
+    }
+  }
+
+  // 4e. Que pendência esta mensagem responde? Citação/reação vence; senão a
+  // mais recente da conversa. Com duas ou mais esperando SIM/NÃO e a resposta
+  // solta, pergunta qual — foi assim que um "sim" lançou o pagamento errado
+  // em 17/09. Só vale a pena buscar quando há texto: foto sem legenda nunca
+  // é resposta.
+  const abertas = textoEfetivo
+    ? await pendenciasAbertas(
+        supabase,
+        { telefone, chatId: chatDaPendencia },
+        JANELA_RESPOSTA_HORAS,
+      )
+    : [];
+  let pendencia: PendenciaAberta | null = alvo?.confirmacaoId
+    ? await buscarConfirmacaoPorId(supabase, alvo.confirmacaoId)
     : null;
+  const esperamSimNao = abertas.filter(
+    (p) => p.tipo === 'acao' || (p.tipo === 'pagamento' && p.opcoes.length === 0),
+  );
+  if (!pendencia && interpretacao !== 'outro' && textoEfetivo) {
+    if (alcance === 'todos' && esperamSimNao.length > 0) {
+      let ultimo: ResultadoInbound = { acao: 'ignorada_sem_pendencia' };
+      for (const p of esperamSimNao) {
+        ultimo = (await responderPendencia(ctxMsg, p, interpretacao)) ?? ultimo;
+      }
+      return { ...ultimo, detalhe: `todos:${esperamSimNao.length}` };
+    }
+    if (esperamSimNao.length >= 2 && chatDaPendencia) {
+      return perguntarQual(ctxMsg, chatDaPendencia, esperamSimNao, interpretacao);
+    }
+    pendencia = esperamSimNao[0] ?? abertas[0] ?? null;
+  }
+  if (!pendencia && interpretacao === 'outro' && textoEfetivo) {
+    // Um número ou nome de obra responde a pergunta mais recente que tem
+    // opções — não necessariamente a última pergunta de todas.
+    pendencia =
+      abertas.find((p) => p.opcoes.length > 0 && interpretarEscolha(textoEfetivo, p.opcoes)) ??
+      abertas[0] ??
+      null;
+  }
 
   // "sim", "ok", 👍 sem pergunta nenhuma em aberto: não é para ninguém.
   // Antes caía no classificador e voltava "Não entendi o que fazer com essa
@@ -224,184 +348,19 @@ export async function processarInbound(
     return { acao: 'ignorada_sem_pendencia' };
   }
 
-  // Pendência de AÇÃO (criar obra, contrato, recebimento…): SIM executa o
-  // que está gravado na pendência; NÃO cancela. Outra coisa segue o fluxo —
-  // a pergunta continua aberta pelas 24 h.
-  if (pendencia && pendencia.tipo === 'acao') {
-    if (interpretacao === 'sim') {
-      const r = await aplicarAcao(supabase, {
-        confirmacaoId: pendencia.id,
-        via: 'whatsapp',
-        respostaBruta: textoEfetivo ?? '(sem texto)',
-      });
-      const gravada = await gravarMensagem({
-        supabase,
-        payload,
-        telefone,
-        grupoId: grupo?.id ?? null,
-        autorizadoId: autorizado.id,
-        midia,
-        tipoDb,
-        status: r.ok ? 'confirmada' : 'recebida',
-      });
-      if (r.ok) {
-        await responder(supabase, destino, r.texto, {
-          tipo: 'acao_executada',
-          emRespostaA: gravada.id,
-          confirmacaoId: pendencia.id,
-        });
-        return { acao: 'executou_acao', detalhe: r.proposta.tipo };
-      }
-      log.aviso('acao_nao_executada', { codigo: r.codigo, motivo: r.motivo });
-      await responder(
-        supabase,
-        destino,
-        r.codigo === 'ja_resolvida' ? RESPOSTAS.acaoJaResolvida : RESPOSTAS.falhaTemporaria,
-        { tipo: 'aviso', emRespostaA: gravada.id, confirmacaoId: pendencia.id },
-      );
-      return { acao: 'executou_acao', detalhe: r.codigo };
-    }
-    if (interpretacao === 'nao') {
-      await recusarConfirmacao(supabase, {
-        confirmacaoId: pendencia.id,
-        via: 'whatsapp',
-        respostaBruta: textoEfetivo ?? '(sem texto)',
-        motivo: 'Remetente cancelou a ação',
-      });
-      const gravada = await gravarMensagem({
-        supabase,
-        payload,
-        telefone,
-        grupoId: grupo?.id ?? null,
-        autorizadoId: autorizado.id,
-        midia,
-        tipoDb,
-        status: 'recusada',
-      });
-      await responder(supabase, destino, RESPOSTAS.acaoCancelada, {
-        tipo: 'aviso',
-        emRespostaA: gravada.id,
-        confirmacaoId: pendencia.id,
-      });
-      return { acao: 'recusou_pendencia', detalhe: 'acao' };
-    }
-  }
+  if (pendencia) {
+    const resolvido = await responderPendencia(ctxMsg, pendencia, interpretacao);
+    if (resolvido) return resolvido;
 
-  // Pendência de pagamento que perguntou a obra (veio sem obra): o número
-  // escolhe a obra e confirma de uma vez. "sim" sozinho não basta — falta a
-  // obra, e a resposta diz isso em vez de "o gestor vai revisar".
-  if (pendencia && pendencia.tipo === 'pagamento' && pendencia.opcoes.length > 0) {
-    const escolha = interpretarEscolha(textoEfetivo, pendencia.opcoes);
-    if (escolha) {
-      const definida = await definirObraDaPendencia(supabase, {
-        confirmacaoId: pendencia.id,
-        obraId: escolha.id,
-      });
-      if (!definida.ok) {
-        log.aviso('obra_da_pendencia_nao_definida', { codigo: definida.codigo });
-        await responder(supabase, destino, RESPOSTAS.falhaTemporaria, {
-          tipo: 'aviso',
-          confirmacaoId: pendencia.id,
-        });
-        return { acao: 'confirmou_pendencia', detalhe: definida.codigo };
-      }
-      return resolverPendencia({
-        supabase,
-        pendencia,
-        interpretacao: 'sim',
-        payload,
-        telefone,
-        destino,
-        grupoId: grupo?.id ?? null,
-        autorizadoId: autorizado.id,
-        textoEfetivo,
-        midia,
-        tipoDb,
-        rotuloObra: escolha.nome,
-      });
+    // 4f. Não era sim/não/número: é correção? "não é na Garibaldi, é na
+    // INOX", "o valor é 500". Ajusta a pendência e pergunta de novo — nunca
+    // grava. Pendência de obra (opções): a obra citada escolhe.
+    if (textoEfetivo && !midia.storagePath && pareceCorrecao(textoEfetivo)) {
+      return corrigir(ctxMsg, pendencia, chatDaPendencia);
     }
-    if (interpretacao === 'sim') {
-      const gravada = await gravarMensagem({
-        supabase,
-        payload,
-        telefone,
-        grupoId: grupo?.id ?? null,
-        autorizadoId: autorizado.id,
-        midia,
-        tipoDb,
-        status: 'recebida',
-      });
-      await responder(supabase, destino, RESPOSTAS.faltaObra, {
-        tipo: 'aviso',
-        emRespostaA: gravada.id,
-        confirmacaoId: pendencia.id,
-      });
-      return { acao: 'confirmou_pendencia', detalhe: 'falta_obra' };
-    }
+    // Não era escolha, recusa nem correção: segue como mensagem comum. A
+    // pergunta continua aberta pelas 24 h.
   }
-
-  if (pendencia && pendencia.tipo === 'pagamento' && interpretacao !== 'outro') {
-    return resolverPendencia({
-      supabase,
-      pendencia,
-      interpretacao,
-      payload,
-      telefone,
-      destino,
-      grupoId: grupo?.id ?? null,
-      autorizadoId: autorizado.id,
-      textoEfetivo,
-      midia,
-      tipoDb,
-    });
-  }
-
-  if (pendencia && pendencia.tipo !== 'pagamento') {
-    const escolha = interpretarEscolha(textoEfetivo, pendencia.opcoes);
-    if (escolha) {
-      return resolverEscolhaDeObra({
-        supabase,
-        pendencia,
-        obraId: escolha.id,
-        payload,
-        telefone,
-        destino,
-        grupoId: grupo?.id ?? null,
-        autorizadoId: autorizado.id,
-        textoEfetivo,
-        midia,
-        tipoDb,
-      });
-    }
-    if (interpretacao === 'nao') {
-      await recusarConfirmacao(supabase, {
-        confirmacaoId: pendencia.id,
-        via: 'whatsapp',
-        respostaBruta: textoEfetivo ?? '(sem texto)',
-        motivo: 'Remetente não quis arquivar',
-      });
-      const gravada = await gravarMensagem({
-        supabase,
-        payload,
-        telefone,
-        grupoId: grupo?.id ?? null,
-        autorizadoId: autorizado.id,
-        tipoDb,
-        midia,
-        status: 'recusada',
-      });
-      await responder(supabase, destino, RESPOSTAS.obraRecusada, {
-        tipo: 'aviso',
-        emRespostaA: gravada.id,
-        confirmacaoId: pendencia.id,
-      });
-      return { acao: 'recusou_pendencia' };
-    }
-    // Não era escolha nem recusa: segue como mensagem comum. A pergunta de
-    // obra continua aberta pelas 24 h.
-  }
-  // Sem pendência aberta, "ok" é só uma mensagem qualquer — segue o fluxo
-  // normal e provavelmente vira `nao_identificado`, que é o correto.
 
   // ---------------------------------------------------------------------
   // 5. É um comando de consulta?
@@ -615,6 +574,523 @@ export async function processarInbound(
 // Etapas
 // ---------------------------------------------------------------------------
 
+/** O que uma mensagem carrega, para as etapas que respondem pendência. */
+interface ContextoDaMensagem {
+  supabase: Client;
+  payload: UazapiInbound;
+  telefone: string;
+  destino: string;
+  grupoId: string | null;
+  autorizado: { id: string; nome: string };
+  midia: MidiaMaterializada;
+  tipoDb: Database['public']['Enums']['msg_tipo'];
+  textoEfetivo: string | null;
+}
+
+/**
+ * Aplica a interpretação (sim/não/número) a UMA pendência. `null` quando a
+ * mensagem não resolve essa pendência (não era escolha, recusa nem
+ * confirmação) — o chamador decide o que fazer com ela.
+ */
+async function responderPendencia(
+  c: ContextoDaMensagem,
+  pendencia: PendenciaAberta,
+  interpretacao: Interpretacao,
+): Promise<ResultadoInbound | null> {
+  const { supabase, payload, telefone, destino, midia, tipoDb, textoEfetivo } = c;
+  // Pendência de AÇÃO (criar obra, contrato, recebimento…): SIM executa o
+  // que está gravado na pendência; NÃO cancela. Outra coisa segue o fluxo —
+  // a pergunta continua aberta pelas 24 h.
+  if (pendencia && pendencia.tipo === 'acao') {
+    if (interpretacao === 'sim') {
+      const r = await aplicarAcao(supabase, {
+        confirmacaoId: pendencia.id,
+        via: 'whatsapp',
+        respostaBruta: textoEfetivo ?? '(sem texto)',
+      });
+      const gravada = await gravarMensagem({
+        supabase,
+        payload,
+        telefone,
+        grupoId: c.grupoId,
+        autorizadoId: c.autorizado.id,
+        midia,
+        tipoDb,
+        status: r.ok ? 'confirmada' : 'recebida',
+      });
+      if (r.ok) {
+        await responder(supabase, destino, r.texto, {
+          tipo: 'acao_executada',
+          emRespostaA: gravada.id,
+          confirmacaoId: pendencia.id,
+        });
+        return { acao: 'executou_acao', detalhe: r.proposta.tipo };
+      }
+      log.aviso('acao_nao_executada', { codigo: r.codigo, motivo: r.motivo });
+      await responder(
+        supabase,
+        destino,
+        r.codigo === 'ja_resolvida' ? RESPOSTAS.acaoJaResolvida : RESPOSTAS.falhaTemporaria,
+        { tipo: 'aviso', emRespostaA: gravada.id, confirmacaoId: pendencia.id },
+      );
+      return { acao: 'executou_acao', detalhe: r.codigo };
+    }
+    if (interpretacao === 'nao') {
+      await recusarConfirmacao(supabase, {
+        confirmacaoId: pendencia.id,
+        via: 'whatsapp',
+        respostaBruta: textoEfetivo ?? '(sem texto)',
+        motivo: 'Remetente cancelou a ação',
+      });
+      const gravada = await gravarMensagem({
+        supabase,
+        payload,
+        telefone,
+        grupoId: c.grupoId,
+        autorizadoId: c.autorizado.id,
+        midia,
+        tipoDb,
+        status: 'recusada',
+      });
+      await responder(supabase, destino, RESPOSTAS.acaoCancelada, {
+        tipo: 'aviso',
+        emRespostaA: gravada.id,
+        confirmacaoId: pendencia.id,
+      });
+      return { acao: 'recusou_pendencia', detalhe: 'acao' };
+    }
+  }
+
+  // Pendência de pagamento que perguntou a obra (veio sem obra): o número
+  // escolhe a obra e confirma de uma vez. "sim" sozinho não basta — falta a
+  // obra, e a resposta diz isso em vez de "o gestor vai revisar".
+  if (pendencia && pendencia.tipo === 'pagamento' && pendencia.opcoes.length > 0) {
+    const escolha = interpretarEscolha(textoEfetivo, pendencia.opcoes);
+    if (escolha) {
+      const definida = await definirObraDaPendencia(supabase, {
+        confirmacaoId: pendencia.id,
+        obraId: escolha.id,
+      });
+      if (!definida.ok) {
+        log.aviso('obra_da_pendencia_nao_definida', { codigo: definida.codigo });
+        await responder(supabase, destino, RESPOSTAS.falhaTemporaria, {
+          tipo: 'aviso',
+          confirmacaoId: pendencia.id,
+        });
+        return { acao: 'confirmou_pendencia', detalhe: definida.codigo };
+      }
+      return resolverPendencia({
+        supabase,
+        pendencia,
+        interpretacao: 'sim',
+        payload,
+        telefone,
+        destino,
+        grupoId: c.grupoId,
+        autorizadoId: c.autorizado.id,
+        textoEfetivo,
+        midia,
+        tipoDb,
+        rotuloObra: escolha.nome,
+      });
+    }
+    if (interpretacao === 'sim') {
+      const gravada = await gravarMensagem({
+        supabase,
+        payload,
+        telefone,
+        grupoId: c.grupoId,
+        autorizadoId: c.autorizado.id,
+        midia,
+        tipoDb,
+        status: 'recebida',
+      });
+      await responder(supabase, destino, RESPOSTAS.faltaObra, {
+        tipo: 'aviso',
+        emRespostaA: gravada.id,
+        confirmacaoId: pendencia.id,
+      });
+      return { acao: 'confirmou_pendencia', detalhe: 'falta_obra' };
+    }
+  }
+
+  if (pendencia && pendencia.tipo === 'pagamento' && interpretacao !== 'outro') {
+    return resolverPendencia({
+      supabase,
+      pendencia,
+      interpretacao,
+      payload,
+      telefone,
+      destino,
+      grupoId: c.grupoId,
+      autorizadoId: c.autorizado.id,
+      autorizadoNome: c.autorizado.nome,
+      textoEfetivo,
+      midia,
+      tipoDb,
+    });
+  }
+
+  if (pendencia && pendencia.tipo !== 'pagamento') {
+    const escolha = interpretarEscolha(textoEfetivo, pendencia.opcoes);
+    if (escolha) {
+      return resolverEscolhaDeObra({
+        supabase,
+        pendencia,
+        obraId: escolha.id,
+        payload,
+        telefone,
+        destino,
+        grupoId: c.grupoId,
+        autorizadoId: c.autorizado.id,
+        textoEfetivo,
+        midia,
+        tipoDb,
+      });
+    }
+    if (interpretacao === 'nao') {
+      await recusarConfirmacao(supabase, {
+        confirmacaoId: pendencia.id,
+        via: 'whatsapp',
+        respostaBruta: textoEfetivo ?? '(sem texto)',
+        motivo: 'Remetente não quis arquivar',
+      });
+      const gravada = await gravarMensagem({
+        supabase,
+        payload,
+        telefone,
+        grupoId: c.grupoId,
+        autorizadoId: c.autorizado.id,
+        tipoDb,
+        midia,
+        status: 'recusada',
+      });
+      await responder(supabase, destino, RESPOSTAS.obraRecusada, {
+        tipo: 'aviso',
+        emRespostaA: gravada.id,
+        confirmacaoId: pendencia.id,
+      });
+      return { acao: 'recusou_pendencia' };
+    }
+    // Não era escolha nem recusa: segue como mensagem comum. A pergunta de
+    // obra continua aberta pelas 24 h.
+  }
+  return null;
+}
+
+/**
+ * A pessoa mandou a nota EM CIMA do "✅ Lançado" (ou da mensagem que virou
+ * o pagamento): vira documento ligado àquele pagamento. Tira o vermelho de
+ * "sem comprovante" sem passar pelo painel.
+ */
+async function anexarAoPagamentoCitado(
+  c: ContextoDaMensagem,
+  pagamentoId: string,
+): Promise<ResultadoInbound> {
+  const { supabase, destino, midia } = c;
+  const gravada = await gravarMensagem({ ...c, autorizadoId: c.autorizado.id, status: 'recebida' });
+  if (gravada.duplicada) return { acao: 'duplicada' };
+  const { data: pag } = await supabase
+    .from('pagamentos')
+    .select('id, valor, obra_id, fornecedor_id')
+    .eq('id', pagamentoId)
+    .is('deleted_at', null)
+    .maybeSingle();
+  if (!pag) {
+    await responder(supabase, destino, RESPOSTAS.falhaTemporaria, {
+      tipo: 'aviso',
+      emRespostaA: gravada.id,
+    });
+    return {
+      acao: 'anexou',
+      mensagemId: gravada.id ?? undefined,
+      detalhe: 'pagamento_nao_encontrado',
+    };
+  }
+  const r = await anexarMidiaComoDocumento(supabase, {
+    storagePath: midia.storagePath,
+    mime: midia.mime,
+    pagamentoId: pag.id,
+    obraId: pag.obra_id,
+    fornecedorId: pag.fornecedor_id,
+    dados: null,
+    userId: null,
+  });
+  if (!r.ok) {
+    log.aviso('anexo_citado_falhou', { motivo: r.motivo });
+    await responder(supabase, destino, RESPOSTAS.falhaTemporaria, {
+      tipo: 'aviso',
+      emRespostaA: gravada.id,
+      pagamentoId: pag.id,
+    });
+    return { acao: 'anexou', mensagemId: gravada.id ?? undefined, detalhe: r.motivo };
+  }
+  if (gravada.id) {
+    await supabase
+      .from('mensagens_whats')
+      .update({ status: 'confirmada', pagamento_id: pag.id, documento_id: r.documentoId })
+      .eq('id', gravada.id);
+  }
+  const { data: obra } = await supabase
+    .from('obras')
+    .select('nome')
+    .eq('id', pag.obra_id)
+    .maybeSingle();
+  await responder(
+    supabase,
+    destino,
+    respostaAnexado({
+      valor: Number(pag.valor),
+      obra: obra?.nome ?? null,
+      link: linkDoPainel(`/pagamentos/${pag.id}`),
+    }),
+    { tipo: 'arquivado', emRespostaA: gravada.id, pagamentoId: pag.id, documentoId: r.documentoId },
+  );
+  return { acao: 'anexou', mensagemId: gravada.id ?? undefined, pagamentoId: pag.id };
+}
+
+async function desfazer(
+  c: ContextoDaMensagem,
+  alvo: AlvoDaMensagem | null,
+  chatDaPendencia: string | null,
+): Promise<ResultadoInbound> {
+  const { supabase, destino, telefone, textoEfetivo } = c;
+  const gravada = await gravarMensagem({ ...c, autorizadoId: c.autorizado.id, status: 'recebida' });
+  if (gravada.duplicada) return { acao: 'duplicada' };
+
+  let alvoReal: AlvoDaMensagem | null =
+    alvo && (alvo.pagamentoId || alvo.documentoId || alvo.registroId || alvo.confirmacaoId)
+      ? alvo
+      : null;
+  if (!alvoReal && c.payload.chatId) {
+    alvoReal = await ultimaAcaoDoRemetente(supabase, { chatId: c.payload.chatId, telefone });
+  }
+  if (!alvoReal) {
+    const [aberta] = await pendenciasAbertas(
+      supabase,
+      { telefone, chatId: chatDaPendencia },
+      JANELA_RESPOSTA_HORAS,
+    );
+    if (aberta) {
+      alvoReal = {
+        enviadaId: null,
+        tipoDaEnviada: null,
+        mensagemId: aberta.mensagemId,
+        confirmacaoId: aberta.id,
+        pagamentoId: null,
+        documentoId: null,
+        registroId: null,
+      };
+    }
+  }
+  if (!alvoReal) {
+    await responder(supabase, destino, RESPOSTAS.desfazerSemAlvo, {
+      tipo: 'aviso',
+      emRespostaA: gravada.id,
+    });
+    return { acao: 'desfez', mensagemId: gravada.id ?? undefined, detalhe: 'sem_alvo' };
+  }
+
+  const r = await desfazerAlvo(supabase, alvoReal, { respostaBruta: textoEfetivo ?? '' });
+  if (!r.ok) {
+    await responder(
+      supabase,
+      destino,
+      r.codigo === 'ja_desfeito' ? RESPOSTAS.jaDesfeito : RESPOSTAS.falhaTemporaria,
+      { tipo: 'aviso', emRespostaA: gravada.id },
+    );
+    return { acao: 'desfez', mensagemId: gravada.id ?? undefined, detalhe: r.codigo };
+  }
+  if (c.payload.chatId) await zerarObraDaConversa(supabase, c.payload.chatId);
+  await responder(supabase, destino, r.resposta, {
+    tipo: 'aviso',
+    emRespostaA: gravada.id,
+    confirmacaoId: alvoReal.confirmacaoId,
+    pagamentoId: alvoReal.pagamentoId,
+    documentoId: alvoReal.documentoId,
+    registroId: alvoReal.registroId,
+  });
+  return { acao: 'desfez', mensagemId: gravada.id ?? undefined, detalhe: r.oQue };
+}
+
+/** Obras ativas e fornecedores vivos, por nome — para correção e mover. */
+async function nomesDoCadastro(supabase: Client) {
+  const [obras, fornecedores] = await Promise.all([
+    supabase
+      .from('obras')
+      .select('id, nome, apelidos')
+      .is('deleted_at', null)
+      .eq('status', 'ativa')
+      .limit(50),
+    supabase.from('fornecedores').select('id, nome').is('deleted_at', null).limit(500),
+  ]);
+  return {
+    obras: (obras.data ?? []).map((o) => ({ id: o.id, nome: o.nome, apelidos: o.apelidos ?? [] })),
+    fornecedores: (fornecedores.data ?? []).map((f) => ({ id: f.id, nome: f.nome })),
+  };
+}
+
+/**
+ * "Essa é da INOX" em cima de um "📁 Guardei na obra Garibaldi": move. Sem
+ * obra reconhecível e sem cara de correção, `null` — a mensagem segue como
+ * qualquer outra (pode ser uma pergunta sobre a foto).
+ */
+async function moverCitado(
+  c: ContextoDaMensagem,
+  alvo: AlvoDaMensagem,
+): Promise<ResultadoInbound | null> {
+  const { supabase, destino, textoEfetivo } = c;
+  const nomes = await nomesDoCadastro(supabase);
+  const obra = acharNomeado(normalizarNome(textoEfetivo), nomes.obras);
+  if (!obra && !pareceCorrecao(textoEfetivo)) return null;
+
+  const gravada = await gravarMensagem({ ...c, autorizadoId: c.autorizado.id, status: 'recebida' });
+  if (gravada.duplicada) return { acao: 'duplicada' };
+  if (!obra) {
+    await responder(supabase, destino, RESPOSTAS.moverQualObra, {
+      tipo: 'aviso',
+      emRespostaA: gravada.id,
+      documentoId: alvo.documentoId,
+      registroId: alvo.registroId,
+    });
+    return { acao: 'moveu', mensagemId: gravada.id ?? undefined, detalhe: 'sem_obra' };
+  }
+  const r = await moverParaObra(supabase, alvo, obra);
+  if (!r.ok) {
+    await responder(
+      supabase,
+      destino,
+      r.codigo === 'ja_desfeito' ? `Já está na obra *${obra.nome}*.` : RESPOSTAS.falhaTemporaria,
+      { tipo: 'aviso', emRespostaA: gravada.id },
+    );
+    return { acao: 'moveu', mensagemId: gravada.id ?? undefined, detalhe: r.codigo };
+  }
+  if (c.payload.chatId) await zerarObraDaConversa(supabase, c.payload.chatId, obra);
+  await responder(supabase, destino, r.resposta, {
+    tipo: alvo.registroId ? 'anotado' : 'arquivado',
+    emRespostaA: gravada.id,
+    documentoId: alvo.documentoId,
+    registroId: alvo.registroId,
+  });
+  return { acao: 'moveu', mensagemId: gravada.id ?? undefined, detalhe: r.oQue };
+}
+
+/** Duas ou mais perguntas esperando SIM/NÃO e um "sim" solto: qual? */
+async function perguntarQual(
+  c: ContextoDaMensagem,
+  chatId: string,
+  candidatas: PendenciaAberta[],
+  interpretacao: Interpretacao,
+): Promise<ResultadoInbound> {
+  const { supabase, destino } = c;
+  const gravada = await gravarMensagem({ ...c, autorizadoId: c.autorizado.id, status: 'recebida' });
+  if (gravada.duplicada) return { acao: 'duplicada' };
+  // Da mais antiga para a mais nova: é a ordem em que a pessoa viu as perguntas.
+  const ordenadas = [...candidatas].reverse().slice(0, 9);
+  const itens = await Promise.all(
+    ordenadas.map(async (p, i) => ({ n: i + 1, ...(await resumoDaPendencia(supabase, p)) })),
+  );
+  const escolha = interpretacao === 'nao' ? 'nao' : 'sim';
+  await guardarEscolha(supabase, chatId, {
+    interpretacao: escolha,
+    itens: ordenadas.map((p, i) => ({ n: i + 1, confirmacaoId: p.id })),
+  });
+  await responder(supabase, destino, perguntaQualPendencia(itens, escolha), {
+    tipo: 'aviso',
+    emRespostaA: gravada.id,
+  });
+  return {
+    acao: 'perguntou_qual',
+    mensagemId: gravada.id ?? undefined,
+    detalhe: `${itens.length}`,
+  };
+}
+
+/**
+ * Correção de uma pendência: extrai o que mudar (padrões, e o modelo quando
+ * há), aplica e pergunta de novo. Pendência de obra: a obra citada escolhe.
+ */
+async function corrigir(
+  c: ContextoDaMensagem,
+  pendencia: PendenciaAberta,
+  chatDaPendencia: string | null,
+): Promise<ResultadoInbound> {
+  const { supabase, destino, textoEfetivo } = c;
+  const texto = textoEfetivo ?? '';
+  const nomes = await nomesDoCadastro(supabase);
+  const patch = await extrairCorrecao(texto, {
+    ...nomes,
+    hoje: hojeBR(),
+    perguntaEnviada: pendencia.perguntaEnviada,
+  });
+  const campos = Object.keys(patch).filter((k) => k !== 'cancelar');
+
+  if (patch.cancelar) {
+    // "não, esquece" = recusa de sempre.
+    return (
+      (await responderPendencia(c, pendencia, 'nao')) ?? {
+        acao: 'recusou_pendencia',
+        detalhe: 'correcao',
+      }
+    );
+  }
+
+  const gravada = await gravarMensagem({ ...c, autorizadoId: c.autorizado.id, status: 'recebida' });
+  if (gravada.duplicada) return { acao: 'duplicada' };
+  const rastro = { emRespostaA: gravada.id, confirmacaoId: pendencia.id };
+
+  if (pendencia.tipo === 'acao') {
+    await responder(supabase, destino, RESPOSTAS.correcaoDeAcao, { tipo: 'aviso', ...rastro });
+    return { acao: 'corrigiu_pendencia', mensagemId: gravada.id ?? undefined, detalhe: 'acao' };
+  }
+
+  if (pendencia.tipo !== 'pagamento') {
+    // Pergunta de obra: a obra citada é a escolha.
+    if (patch.obra) {
+      const opcao = pendencia.opcoes.find((o) => o.id === patch.obra?.id);
+      const obraId = opcao?.id ?? patch.obra.id;
+      if (chatDaPendencia) await zerarObraDaConversa(supabase, chatDaPendencia, patch.obra);
+      return resolverEscolhaDeObra({
+        ...c,
+        pendencia,
+        obraId,
+        grupoId: c.grupoId,
+        autorizadoId: c.autorizado.id,
+        jaGravada: gravada.id,
+      });
+    }
+    await responder(supabase, destino, RESPOSTAS.correcaoQualObra, { tipo: 'aviso', ...rastro });
+    return { acao: 'corrigiu_pendencia', mensagemId: gravada.id ?? undefined, detalhe: 'sem_obra' };
+  }
+
+  if (campos.length === 0) {
+    await responder(supabase, destino, RESPOSTAS.correcaoSemDado, { tipo: 'aviso', ...rastro });
+    return { acao: 'corrigiu_pendencia', mensagemId: gravada.id ?? undefined, detalhe: 'sem_dado' };
+  }
+
+  const r = await corrigirPendencia(supabase, {
+    pendencia,
+    patch,
+    chatId: chatDaPendencia,
+    respostaBruta: texto,
+  });
+  if (!r.ok) {
+    await responder(
+      supabase,
+      destino,
+      r.codigo === 'sem_mudanca' ? RESPOSTAS.correcaoSemDado : RESPOSTAS.falhaTemporaria,
+      { tipo: 'aviso', ...rastro },
+    );
+    return { acao: 'corrigiu_pendencia', mensagemId: gravada.id ?? undefined, detalhe: r.codigo };
+  }
+  await responder(supabase, destino, r.resposta, { tipo: 'pergunta_pendencia', ...rastro });
+  return {
+    acao: 'corrigiu_pendencia',
+    mensagemId: gravada.id ?? undefined,
+    detalhe: r.mudancas.join(', '),
+  };
+}
+
 interface ContextoResolucao {
   supabase: Client;
   pendencia: PendenciaAberta;
@@ -625,11 +1101,15 @@ interface ContextoResolucao {
   destino: string;
   grupoId: string | null;
   autorizadoId: string;
+  /** Quem respondeu — entra na resposta quando não é quem abriu a pendência. */
+  autorizadoNome?: string;
   textoEfetivo: string | null;
   midia: MidiaMaterializada;
   tipoDb: Database['public']['Enums']['msg_tipo'];
   /** Quando a confirmação veio pelo número da obra: entra na resposta. */
   rotuloObra?: string;
+  /** A mensagem já foi gravada por quem chamou (correção): não gravar de novo. */
+  jaGravada?: string | null;
 }
 
 /**
@@ -674,7 +1154,12 @@ async function resolverPendencia(ctx: ContextoResolucao): Promise<ResultadoInbou
     await responder(
       supabase,
       destino,
-      await textoDoLancado(supabase, resultado.pagamentoId, ctx.rotuloObra),
+      await textoDoLancado(supabase, resultado.pagamentoId, {
+        rotuloObra: ctx.rotuloObra,
+        pendencia,
+        telefone: ctx.telefone,
+        autorizadoNome: ctx.autorizadoNome,
+      }),
       {
         tipo: 'lancado',
         emRespostaA: gravada.id,
@@ -723,10 +1208,12 @@ async function resolverEscolhaDeObra(
     userId: null,
   });
 
-  const gravada = await gravarMensagem({
-    ...ctx,
-    status: resultado.ok ? 'confirmada' : 'recebida',
-  });
+  const gravada = ctx.jaGravada
+    ? { id: ctx.jaGravada, duplicada: false }
+    : await gravarMensagem({ ...ctx, status: resultado.ok ? 'confirmada' : 'recebida' });
+  if (ctx.jaGravada && resultado.ok) {
+    await supabase.from('mensagens_whats').update({ status: 'confirmada' }).eq('id', ctx.jaGravada);
+  }
 
   if (!resultado.ok) {
     log.aviso('escolha_de_obra_falhou', { codigo: resultado.codigo });
@@ -966,7 +1453,12 @@ async function buscarAutorizado(
 async function textoDoLancado(
   supabase: Client,
   pagamentoId: string,
-  rotuloObra?: string,
+  extras: {
+    rotuloObra?: string;
+    pendencia?: PendenciaAberta;
+    telefone?: string;
+    autorizadoNome?: string;
+  } = {},
 ): Promise<string> {
   try {
     const { data } = await supabase
@@ -975,20 +1467,39 @@ async function textoDoLancado(
       .eq('id', pagamentoId)
       .maybeSingle();
     if (!data) return RESPOSTAS.confirmado;
-    const [obra, fornecedor] = await Promise.all([
+    const [obra, fornecedor, origem] = await Promise.all([
       data.obra_id
         ? supabase.from('obras').select('nome').eq('id', data.obra_id).maybeSingle()
         : Promise.resolve({ data: null }),
       data.fornecedor_id
         ? supabase.from('fornecedores').select('nome').eq('id', data.fornecedor_id).maybeSingle()
         : Promise.resolve({ data: null }),
+      extras.pendencia
+        ? supabase
+            .from('mensagens_whats')
+            .select('telefone_from, midia_storage_path')
+            .eq('id', extras.pendencia.mensagemId)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
     ]);
-    return respostaPagamentoLancado({
-      valor: Number(data.valor),
-      obra: obra.data?.nome ?? rotuloObra ?? null,
-      fornecedor: fornecedor.data?.nome ?? null,
-      link: linkDoPainel(`/pagamentos/${pagamentoId}`),
-    });
+    // Quem confirmou não é quem mandou (no grupo, o gestor confirma a foto
+    // do encarregado): a resposta diz. E lançamento por texto, sem nota:
+    // ensina a mandar a nota em cima desta mensagem.
+    const outraPessoa =
+      origem.data?.telefone_from &&
+      extras.telefone &&
+      !variantesTelefoneBR(extras.telefone).includes(origem.data.telefone_from);
+    const linhas = [
+      respostaPagamentoLancado({
+        valor: Number(data.valor),
+        obra: obra.data?.nome ?? extras.rotuloObra ?? null,
+        fornecedor: fornecedor.data?.nome ?? null,
+        link: linkDoPainel(`/pagamentos/${pagamentoId}`),
+        confirmadoPor: outraPessoa ? (extras.autorizadoNome ?? null) : null,
+      }),
+    ];
+    if (origem.data && !origem.data.midia_storage_path) linhas.push(RESPOSTAS.dicaAnexar);
+    return linhas.join('\n');
   } catch {
     return RESPOSTAS.confirmado;
   }

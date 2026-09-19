@@ -3,8 +3,9 @@
  *
  * Cobre o subconjunto do query builder que os serviços usam:
  * `from().select().eq().is().not().in().order().limit()` com terminais
- * `maybeSingle()`, `single()` e `await` direto; `insert()`, `update()` e
- * `delete()` com os mesmos filtros e `.select()` opcional. Joins embutidos
+ * `maybeSingle()`, `single()` e `await` direto; `insert()`, `update()`,
+ * `upsert()` (por `onConflict`) e `delete()` com os mesmos filtros e
+ * `.select()` opcional. Joins embutidos
  * (`obras ( id, nome )`) não são resolvidos — o teste que precisar deles põe
  * o objeto já na linha.
  *
@@ -68,7 +69,8 @@ class Consulta implements PromiseLike<{ data: unknown; error: unknown }> {
   private filtros: Filtro[] = [];
   private ordem: { coluna: string; asc: boolean } | null = null;
   private teto: number | null = null;
-  private operacao: 'select' | 'insert' | 'update' | 'delete' = 'select';
+  private operacao: 'select' | 'insert' | 'update' | 'delete' | 'upsert' = 'select';
+  private chaveUpsert = 'id';
   private carga: Linha | Linha[] | null = null;
   private devolveLinhas = true;
 
@@ -91,6 +93,14 @@ class Consulta implements PromiseLike<{ data: unknown; error: unknown }> {
   update(carga: Linha) {
     this.operacao = 'update';
     this.carga = carga;
+    this.devolveLinhas = false;
+    return this;
+  }
+  /** Insere, ou atualiza a linha que já tem a mesma chave de `onConflict`. */
+  upsert(carga: Linha | Linha[], opts: { onConflict?: string } = {}) {
+    this.operacao = 'upsert';
+    this.carga = carga;
+    this.chaveUpsert = opts.onConflict ?? 'id';
     this.devolveLinhas = false;
     return this;
   }
@@ -177,6 +187,25 @@ class Consulta implements PromiseLike<{ data: unknown; error: unknown }> {
       }
       this.db.log.push({ op: 'insert', tabela: this.tabela, linhas: criadas });
       return { data: criadas, error: null };
+    }
+
+    if (this.operacao === 'upsert') {
+      const linhas = Array.isArray(this.carga) ? this.carga : [this.carga as Linha];
+      const resultado: Linha[] = [];
+      for (const l of linhas) {
+        const chaves = this.chaveUpsert.split(',').map((c) => c.trim());
+        const existente = tabela.find((e) => chaves.every((k) => e[k] === l[k]));
+        if (existente) {
+          Object.assign(existente, l);
+          resultado.push(existente);
+        } else {
+          const nova = { id: novoId(), created_at: new Date().toISOString(), ...l };
+          tabela.push(nova);
+          resultado.push(nova);
+        }
+      }
+      this.db.log.push({ op: 'update', tabela: this.tabela, linhas: resultado, patch: this.carga });
+      return { data: resultado, error: null };
     }
 
     if (this.operacao === 'update') {
