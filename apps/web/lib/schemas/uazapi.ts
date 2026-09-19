@@ -20,6 +20,7 @@ const msgTipoUazapi = z.enum([
   'video',
   'sticker',
   'location',
+  'reaction',
 ]);
 export type MsgTipoUazapi = z.infer<typeof msgTipoUazapi>;
 
@@ -30,7 +31,8 @@ export type MsgTipoDb = 'texto' | 'imagem' | 'pdf' | 'audio' | 'video' | 'arquiv
  *
  * `document` só é `pdf` quando o MIME diz que é; planilha, Word e o resto são
  * `arquivo`. Figurinha é imagem (webp). Vídeo é vídeo — antes virava `texto` e
- * o arquivo se perdia. `location` continua `texto` (não há arquivo).
+ * o arquivo se perdia. `location` e `reaction` continuam `texto` (não há
+ * arquivo; a reação nem chega a ser gravada).
  */
 export function mapTipoToDb(t: MsgTipoUazapi, mime?: string | null): MsgTipoDb {
   const m = (String(mime ?? '').split(';')[0] ?? '').trim().toLowerCase();
@@ -85,6 +87,10 @@ export const UazapiInboundSchema = z
     text: z.string().optional(),
     // Mídia (quando type ∈ image/document/audio/video)
     media: uazapiMedia.optional(),
+    // Id (no provider) da mensagem que esta cita — o "responder" do WhatsApp.
+    quotedId: z.string().min(1).optional(),
+    // Para `type = 'reaction'`: id da mensagem reagida; o emoji vem em `text`.
+    reactionTo: z.string().min(1).optional(),
     // Objeto raw provider (guardamos como referência opcional em dados_extraidos)
     raw: z.unknown().optional(),
   })

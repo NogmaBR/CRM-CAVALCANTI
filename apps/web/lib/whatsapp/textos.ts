@@ -75,6 +75,20 @@ export interface DadosDoPagamento {
   categoria?: string | null;
   /** Veio de foto/PDF (nota, comprovante)? Muda a primeira linha. */
   deAnexo?: boolean;
+  /** Veio de áudio transcrito? "Ouvi o áudio" — a pessoa sabe que foi ouvida. */
+  deAudio?: boolean;
+}
+
+/**
+ * A primeira linha diz o que o agente fez de verdade: leu um arquivo, ouviu
+ * um áudio ou entendeu um texto. "Li o comprovante" em cima de uma mensagem
+ * de texto foi apontado na reunião de 18/09 como o tipo de frase que tira a
+ * confiança — a pessoa sabe que não mandou comprovante nenhum.
+ */
+function comoEntendi(d: Pick<DadosDoPagamento, 'deAnexo' | 'deAudio'>): string {
+  if (d.deAnexo) return 'Li o comprovante.';
+  if (d.deAudio) return 'Ouvi o áudio.';
+  return 'Entendi assim.';
 }
 
 /**
@@ -84,9 +98,7 @@ export interface DadosDoPagamento {
  */
 export function perguntaDePagamento(d: DadosDoPagamento): string {
   const linhas = [
-    d.deAnexo
-      ? 'Li o comprovante. Vou *lançar este pagamento*:'
-      : 'Entendi assim. Vou *lançar este pagamento*:',
+    `${comoEntendi(d)} Vou *lançar este pagamento*:`,
     '',
     `• Valor: *${valorLegivel(d.valor)}*`,
     `• Obra: *${d.obra ?? 'não informada'}*`,
@@ -109,7 +121,7 @@ export function perguntaDePagamentoSemObra(
   opcoes: readonly Opcao[],
 ): string {
   const linhas = [
-    d.deAnexo ? 'Li o comprovante:' : 'Entendi assim:',
+    comoEntendi(d).replace(/\.$/u, ':'),
     '',
     `• Valor: *${valorLegivel(d.valor)}*`,
     `• Fornecedor: ${d.fornecedor ?? 'não informado'}`,
@@ -125,11 +137,13 @@ export function respostaPagamentoLancado(d: {
   valor: number;
   obra?: string | null;
   fornecedor?: string | null;
+  /** Link direto para o pagamento no painel; sem ele, o caminho pelo menu. */
+  link?: string | null;
 }): string {
   const linhas = [`✅ Lançado: *${valorLegivel(d.valor)}*`];
   if (d.obra) linhas.push(`Obra: *${d.obra}*`);
   if (d.fornecedor) linhas.push(`Fornecedor: ${d.fornecedor}`);
-  linhas.push('', 'Para ver no painel: menu Pagamentos.');
+  linhas.push('', d.link ? `Ver no painel: ${d.link}` : 'Para ver no painel: menu Pagamentos.');
   return linhas.join('\n');
 }
 
@@ -148,20 +162,28 @@ export function perguntaDeObraParaArquivo(
   return [cabeca, '', listaNumerada(opcoes), '', RODAPE_NUMERO].join('\n');
 }
 
-/** "📁 Guardei na obra *Garibaldi*, pasta *Fotos*." */
-export function respostaArquivado(obraNome: string, categoria: DocCategoria): string {
+/**
+ * "📁 Guardei na obra *Casa EJ*, pasta *Fotos*." — ou "Guardei 5 arquivos"
+ * quando veio um lote. Com link direto quando o chamador tem o id.
+ */
+export function respostaArquivado(
+  obraNome: string,
+  categoria: DocCategoria,
+  opts: { link?: string | null; quantidade?: number } = {},
+): string {
   const pasta = CATEGORIA_LABELS[categoria]?.rotulo ?? 'Outros';
+  const oQue = opts.quantidade && opts.quantidade > 1 ? `${opts.quantidade} arquivos ` : '';
   return [
-    `📁 Guardei na obra *${obraNome}*, pasta *${pasta}*.`,
-    'Para ver: menu Obras › a obra › Pastas.',
+    `📁 Guardei ${oQue}na obra *${obraNome}*, pasta *${pasta}*.`,
+    opts.link ? `Ver: ${opts.link}` : 'Para ver: menu Obras › a obra › Pastas.',
   ].join('\n');
 }
 
-/** "📝 Anotei no diário da obra *Garibaldi*." */
-export function respostaRegistrado(obraNome: string): string {
+/** "📝 Anotei no diário da obra *Casa EJ*." */
+export function respostaRegistrado(obraNome: string, opts: { link?: string | null } = {}): string {
   return [
     `📝 Anotei no diário da obra *${obraNome}*.`,
-    'Para ver: menu Obras › a obra › Diário.',
+    opts.link ? `Ver: ${opts.link}` : 'Para ver: menu Obras › a obra › Diário.',
   ].join('\n');
 }
 
@@ -186,7 +208,10 @@ export const RESPOSTAS = {
   ].join('\n'),
   obraRecusada: 'Ok, não guardei. Se quiser, o gestor pode guardar pelo painel.',
   acaoCancelada: 'Ok, cancelei. Nada foi gravado.',
-  acaoJaResolvida: 'Essa ação já foi resolvida. Se precisar, peça de novo.',
+  acaoJaResolvida: [
+    'Esse pedido já tinha sido feito antes — não fiz de novo.',
+    'Se quiser mudar alguma coisa, me diga o quê.',
+  ].join('\n'),
   falhaTemporaria: [
     'Não consegui processar agora. A mensagem ficou guardada.',
     'Tente de novo daqui a alguns minutos, ou peça ao gestor pelo painel.',
@@ -198,13 +223,9 @@ export const RESPOSTAS = {
     'Para ver tudo que eu faço, mande: ajuda',
   ].join(String.fromCharCode(10)),
   naoEntendi: [
-    'Não entendi o que fazer com essa mensagem.',
-    '',
-    'Para lançar um pagamento, mande assim:',
-    '"paguei 1.200 de cimento pro Mathias na Garibaldi"',
-    'Ou mande a foto da nota ou do comprovante.',
-    '',
-    'Para perguntar, pode escrever normal: "como está a obra Garibaldi?"',
+    'Não entendi essa.',
+    'Gasto? Diga o valor e a obra, ou mande a foto da nota.',
+    'Dúvida? Pergunte normal. Para ver tudo que faço, mande: ajuda',
   ].join('\n'),
 } as const;
 

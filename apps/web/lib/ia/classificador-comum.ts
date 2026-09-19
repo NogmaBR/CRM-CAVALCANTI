@@ -97,7 +97,7 @@ As mensagens são informais, ditadas ou digitadas no canteiro de obra. Exemplos 
 - "segue a nota do material" com uma foto anexada (pagamento: nota fiscal)
 - foto do andamento da laje, com ou sem legenda (documento_obra, pasta fotos)
 - PDF "Proposta comercial revisada" (documento_obra, pasta proposta)
-- áudio "hoje a equipe terminou o contrapiso da Garibaldi, amanhã começa o reboco" (registro_obra)
+- áudio "hoje a equipe terminou o contrapiso da obra do Recreio, amanhã começa o reboco" (registro_obra)
 - "bom dia" (nao_identificado)
 
 Quando houver uma foto ou PDF anexado, ele costuma ser a nota fiscal, o comprovante de pagamento ou o contrato. Leia o documento: valor total, data, número da nota, nome do fornecedor e a obra (quando aparecer no endereço ou na descrição). O texto da mensagem, quando existir, complementa ou corrige o que está no documento.

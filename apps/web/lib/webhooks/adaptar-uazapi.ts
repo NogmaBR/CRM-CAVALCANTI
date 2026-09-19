@@ -42,7 +42,7 @@
  * (chaves e tipos, nunca valores): é por ele que se ajusta este mapa.
  */
 
-type Tipo = 'text' | 'image' | 'document' | 'audio' | 'video' | 'sticker' | 'location';
+type Tipo = 'text' | 'image' | 'document' | 'audio' | 'video' | 'sticker' | 'location' | 'reaction';
 
 const POR_MESSAGE_TYPE: Record<string, Tipo> = {
   conversation: 'text',
@@ -56,6 +56,7 @@ const POR_MESSAGE_TYPE: Record<string, Tipo> = {
   stickermessage: 'sticker',
   locationmessage: 'location',
   livelocationmessage: 'location',
+  reactionmessage: 'reaction',
 };
 
 const POR_MEDIA_TYPE: Record<string, Tipo> = {
@@ -66,6 +67,7 @@ const POR_MEDIA_TYPE: Record<string, Tipo> = {
   video: 'video',
   sticker: 'sticker',
   location: 'location',
+  reaction: 'reaction',
 };
 
 function tipoDe(messageType: unknown, mediaType: unknown): Tipo {
@@ -132,7 +134,15 @@ export function adaptarPayloadUazapi(raw: unknown): unknown {
 
   const isGroup =
     typeof msg.isGroup === 'boolean' ? msg.isGroup : Boolean(chatId?.endsWith('@g.us'));
-  const type = tipoDe(msg.messageType, msg.mediaType);
+
+  // Reação: o provider manda em `reaction` o id da mensagem reagida e o emoji
+  // em `text`. Não é conteúdo — é resposta a algo. Sem isto, o 👍 na pergunta
+  // de confirmação chegava como mensagem comum e virava "não entendi".
+  const reactionTo = str(msg.reaction);
+  const type = reactionTo ? 'reaction' : tipoDe(msg.messageType, msg.mediaType);
+  // Citação ("responder" no WhatsApp): o id da mensagem citada. É o que faz
+  // "sim" em cima de UMA pergunta resolver aquela, não a mais recente.
+  const quotedId = str(msg.quoted);
 
   const url = str(msg.fileURL) ?? str(msg.mediaUrl) ?? str(msg.url);
   const media =
@@ -154,7 +164,9 @@ export function adaptarPayloadUazapi(raw: unknown): unknown {
     isGroup,
     senderName: str(msg.senderName) ?? str(msg.pushName),
     text: texto(msg),
-    media,
+    media: type === 'reaction' ? undefined : media,
+    quotedId,
+    reactionTo,
     raw,
   };
 }

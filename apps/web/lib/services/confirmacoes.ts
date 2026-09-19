@@ -10,6 +10,7 @@ import { anexarMidiaComoDocumento } from '@/lib/services/anexar-midia';
 import { CATEGORIAS, type DocCategoria } from '@/lib/status-labels';
 import { hojeBR } from '@/lib/util/datas';
 import type { Opcao } from '@/lib/whatsapp/escolha';
+import { linkDoPainel } from '@/lib/whatsapp/links';
 import type { Database } from '@nogma/db';
 import type { Json } from '@nogma/db/types';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -405,7 +406,21 @@ export async function buscarConfirmacaoAberta(
   supabase: Client,
   telefone: string,
   janelaHoras = 24,
+  opts: {
+    /**
+     * A pendência que a pessoa citou ou reagiu (id resolvido pelo rastro das
+     * respostas). Quando vem, vence a busca pela mais recente: "sim" em cima
+     * da pergunta de R$ 10 resolve a de R$ 10, mesmo que a última aberta seja
+     * outra. Se já estiver resolvida, cai na busca comum.
+     */
+    confirmacaoId?: string | null;
+  } = {},
 ): Promise<PendenciaAberta | null> {
+  if (opts.confirmacaoId) {
+    const citada = await buscarConfirmacaoPorId(supabase, opts.confirmacaoId);
+    if (citada) return citada;
+  }
+
   const desde = new Date(Date.now() - janelaHoras * 3600_000).toISOString();
 
   const { data, error } = await supabase
@@ -426,7 +441,35 @@ export async function buscarConfirmacaoAberta(
 
   const linha = data?.[0];
   if (!linha) return null;
+  return montarPendencia(linha);
+}
 
+/** Uma pendência específica, só se ainda estiver aberta. */
+export async function buscarConfirmacaoPorId(
+  supabase: Client,
+  confirmacaoId: string,
+): Promise<PendenciaAberta | null> {
+  const { data, error } = await supabase
+    .from('confirmacoes_pendentes')
+    .select('id, mensagem_id, pergunta_enviada, created_at, tipo, opcoes, acao')
+    .eq('id', confirmacaoId)
+    .eq('resolvida', false)
+    .maybeSingle();
+  if (error) {
+    log.erro('buscar_pendencia_falhou', { erro: error });
+    return null;
+  }
+  return data ? montarPendencia(data) : null;
+}
+
+function montarPendencia(linha: {
+  id: string;
+  mensagem_id: string;
+  pergunta_enviada: string;
+  tipo: string;
+  opcoes: unknown;
+  acao: unknown;
+}): PendenciaAberta {
   return {
     id: linha.id,
     mensagemId: linha.mensagem_id,
@@ -457,7 +500,14 @@ export function lerOpcoes(v: unknown): Opcao[] {
 }
 
 export type ResultadoEscolha =
-  | { ok: true; resposta: string; jaEstavaResolvida: boolean }
+  | {
+      ok: true;
+      resposta: string;
+      jaEstavaResolvida: boolean;
+      /** O que foi criado: vai para o rastro da resposta (é o alvo de um "desfaz"). */
+      documentoId?: string;
+      registroId?: string;
+    }
   | {
       ok: false;
       codigo:
@@ -523,6 +573,8 @@ export async function aplicarEscolhaDeObra(
   const categoria = categoriaValida(dados.categoria);
 
   let resposta: string;
+  let documentoId: string | undefined;
+  let registroId: string | undefined;
   if (tipo === 'obra_documento') {
     const r = await arquivarDocumentoDeObra(supabase, {
       mensagemId: mensagem.id,
@@ -537,7 +589,10 @@ export async function aplicarEscolhaDeObra(
     if (!r.ok) {
       return { ok: false, codigo: 'erro_insert', motivo: `Não consegui arquivar (${r.motivo}).` };
     }
-    resposta = respostaArquivado(obra.nome, categoria);
+    documentoId = r.documentoId;
+    resposta = respostaArquivado(obra.nome, categoria, {
+      link: linkDoPainel(`/documentos/${r.documentoId}`),
+    });
   } else {
     const r = await registrarNaObra(supabase, {
       mensagemId: mensagem.id,
@@ -551,10 +606,13 @@ export async function aplicarEscolhaDeObra(
     if (!r.ok) {
       return { ok: false, codigo: 'erro_insert', motivo: `Não consegui registrar (${r.motivo}).` };
     }
-    resposta = respostaRegistrado(obra.nome);
+    registroId = r.registroId;
+    resposta = respostaRegistrado(obra.nome, { link: linkDoPainel(`/obras/${obra.id}#diario`) });
   }
 
-  if (confirmacao.resolvida) return { ok: true, resposta, jaEstavaResolvida: true };
+  if (confirmacao.resolvida) {
+    return { ok: true, resposta, jaEstavaResolvida: true, documentoId, registroId };
+  }
 
   const confUpd = await supabase
     .from('confirmacoes_pendentes')
@@ -579,7 +637,7 @@ export async function aplicarEscolhaDeObra(
     };
   }
 
-  return { ok: true, resposta, jaEstavaResolvida: false };
+  return { ok: true, resposta, jaEstavaResolvida: false, documentoId, registroId };
 }
 
 function categoriaValida(c: unknown): DocCategoria {
