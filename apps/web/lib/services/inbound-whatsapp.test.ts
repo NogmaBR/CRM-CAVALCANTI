@@ -470,8 +470,9 @@ describe('agente no grupo', () => {
       await processar(cliente(f), msg({ chatId: FERNANDO, isGroup: false, text: 'foto da obra' }));
       expect(enviarTexto).toHaveBeenCalledWith(FERNANDO, '📁 Garibaldi › Fotos ✔');
     } finally {
-      process.env.WHATSAPP_ACEITA_PRIVADO = undefined as unknown as string;
-      delete process.env.WHATSAPP_ACEITA_PRIVADO;
+      // `= undefined` gravaria a string "undefined" em process.env; o Biome
+      // não deixa usar `delete`. Reflect faz o mesmo sem o operador.
+      Reflect.deleteProperty(process.env, 'WHATSAPP_ACEITA_PRIVADO');
     }
   });
 

@@ -218,6 +218,7 @@ class Consulta implements PromiseLike<{ data: unknown; error: unknown }> {
       ? { data: d, error: null }
       : { data: null, error: { code: 'PGRST116', message: 'no rows' } };
   }
+  // biome-ignore lint/suspicious/noThenProperty: a consulta é thenable de propósito — é o que permite `await supabase.from(...)` como no cliente real.
   then<T1 = unknown, T2 = never>(
     ok?: ((v: { data: unknown; error: unknown }) => T1 | PromiseLike<T1>) | null,
     err?: ((e: unknown) => T2 | PromiseLike<T2>) | null,
